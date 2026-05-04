@@ -1,0 +1,452 @@
+/*
+ * recipes.css — Styles spécifiques au module recettes PBRecipe
+ * =============================================================
+ * Dépend de base.css (variables :root définies là-bas).
+ *
+ * STRUCTURE
+ * ─────────
+ *  1. Formulaire de recherche
+ *  2. Listing par catégories (page d'accueil)
+ *  3. Fiche recette         — titre, méta, ingrédients, corps, techniques
+ *  4. Image héros           — première image flottée à gauche des ingrédients
+ *  5. Galerie d'images      — images supplémentaires avec agrandissement au survol
+ *  6. Messages d'état       — liens technique, aucun résultat, erreur
+ *  7. Impression            — règles spécifiques aux recettes @media print
+ *
+ * NAMESPACE
+ * ─────────
+ * Toutes les classes sont préfixées .recipe-, .category- ou .search-.
+ * Elles ne devraient pas entrer en conflit avec un site tiers.
+ */
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   1. FORMULAIRE DE RECHERCHE
+   ══════════════════════════════════════════════════════════════════════════════
+   Structure HTML (render_search_form() dans search.php) :
+   <form class="search-form">
+     <input type="text" name="q" …>
+     <select name="cat">…</select>
+     <select name="ing">…</select>
+     <select name="diff">…</select>
+     <button type="submit">Rechercher</button>
+     <select name="tech" …>…</select>
+   </form>
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1.5rem;
+  background: var(--clr-surface);
+  padding: 1rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-family: var(--font-ui);
+}
+
+.search-form input[type=text],
+.search-form select {
+  padding: .4rem .7rem;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  font-size: .9rem;
+  background: var(--clr-bg);
+}
+
+.search-form input[type=text] { flex: 1 1 200px; }
+
+.search-form button {
+  padding: .4rem 1rem;
+  background: var(--clr-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: .9rem;
+  font-family: var(--font-ui);
+}
+.search-form button:hover { background: var(--clr-accent); }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   2. LISTING DES RECETTES PAR CATÉGORIE (page d'accueil)
+   ══════════════════════════════════════════════════════════════════════════════
+   Structure HTML (render_category_listing() dans display.php) :
+   <div class="category-listing">
+     <details class="category-block" open>
+       <summary class="category-name">Desserts</summary>
+       <ul class="recipe-links">
+         <li><a href="?RECIPE=…">Tarte aux pommes</a></li>
+         …
+       </ul>
+     </details>
+     …
+   </div>
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.category-listing { display: flex; flex-direction: column; gap: .75rem; }
+
+.category-block {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.category-name {
+  cursor: pointer;
+  padding: .6rem 1rem;
+  font-family: var(--font-ui);
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--clr-primary);
+  list-style: none;
+  background: #fef9f4;
+  border-bottom: 1px solid var(--clr-border);
+  user-select: none;
+}
+.category-name::before { content: '▾ '; }
+details:not([open]) .category-name::before { content: '▸ '; }
+
+.recipe-links {
+  list-style: none;
+  padding: .5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.recipe-links li a {
+  font-size: .95rem;
+  display: block;
+  padding: .15rem 0;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   3. FICHE RECETTE
+   ══════════════════════════════════════════════════════════════════════════════
+   Structure HTML (render_recipe() dans display.php) :
+   <article class="recipe">
+     <h1 class="recipe-title">…</h1>
+     <p class="recipe-categories">…</p>
+     <div class="recipe-card">
+       <div class="recipe-meta">
+         <span class="serving">…</span>      ← cadre gauche
+         <span class="duration">…</span>     ← juste après
+         <span class="difficulty">…</span>   ← cadré à droite (margin-left: auto)
+       </div>
+       <div class="recipe-ingredients-block recipe-section"> ou <section class="recipe-ingredients recipe-section">
+       <section class="recipe-description">…</section>
+       <section class="recipe-comments">…</section>
+       <section class="recipe-techniques">…</section>
+       <div class="recipe-gallery no-print">…</div>
+       <p class="recipe-source">…</p>
+     </div>
+   </article>
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.recipe-title {
+  font-size: 1.8rem;
+  color: var(--clr-primary);
+  margin-bottom: .25rem;
+}
+
+.recipe-categories {
+  text-align: right;
+  color: var(--clr-muted);
+  font-family: var(--font-ui);
+  font-size: .9rem;
+  margin-bottom: 1rem;
+}
+
+.recipe-card {
+  background: var(--clr-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;  /* l'espacement entre éléments est géré par les marges individuelles */
+}
+
+/* ── Méta-données ─────────────────────────────────────────────────────────── */
+.recipe-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+  font-family: var(--font-ui);
+  font-size: .9rem;
+  color: var(--clr-muted);
+  margin-bottom: 1.25rem;
+}
+
+/* Quantité : cadre à gauche de la ligne d'informations */
+.serving {
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  padding: .2rem .6rem;
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  white-space: nowrap;
+}
+
+.duration { white-space: nowrap; }
+
+/* ── Badge de difficulté ──────────────────────────────────────────────────── */
+.difficulty {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  margin-left: auto;  /* cadré à droite */
+}
+.diff-icon  { display: inline-flex; align-items: center; }
+.diff-icon-img { height: 1.4em; width: auto; vertical-align: middle; }
+.diff-label { font-size: .85em; color: var(--clr-muted); }
+
+/* ── Cadres de section ────────────────────────────────────────────────────── */
+.recipe-section {
+  border: 2px solid var(--clr-border);
+  padding: .75rem 1rem;
+}
+
+/* Deux sections consécutives partagent un seul trait de séparation */
+.recipe-section + .recipe-section {
+  border-top: none;
+}
+
+/* ── En-têtes des sections (cadré à gauche) ───────────────────────────────── */
+.recipe-section h2 {
+  font-size: 1.1rem;
+  font-family: var(--font-ui);
+  color: var(--clr-primary);
+  text-align: left;
+  border-bottom: 2px solid var(--clr-border);
+  padding-bottom: .3rem;
+  margin-bottom: .75rem;
+}
+
+/* ── Tableau des ingrédients ─────────────────────────────────────────────── */
+/* Réinitialise les styles de table généraux (site hôte) pour ce tableau     */
+.ingredients-table {
+  border-collapse: collapse;
+  border: none;
+  width: 100%;
+  line-height: 1.3;
+}
+
+.ingredients-table td {
+  padding: 0 .5em;
+  border: none;
+  vertical-align: baseline;
+  font-size: inherit;
+  color: inherit;
+}
+.ingredients-table td:first-child { padding-left: 0; }
+.ingredients-table td:last-child  { padding-right: 0; }
+
+/* Colonne préfixe (présente uniquement si au moins un ingrédient a un préfixe) */
+.ing-prefix { width: 1%; text-align: left; white-space: nowrap; }
+
+/* Colonne quantité + unité : se rétrecit à son contenu, cadrée à droite */
+.ing-qty { width: 1%; text-align: right; white-space: nowrap; }
+
+/* Colonne reste (séparateur, nom, suffixe) : cadrée à gauche */
+.ing-rest { text-align: left; }
+.ing-rest strong { font-weight: bold; }
+
+/* ── Corps de texte ───────────────────────────────────────────────────────── */
+.recipe-body { line-height: 1.7; }
+.recipe-body p + p { margin-top: .6rem; }
+
+/* ── Techniques ───────────────────────────────────────────────────────────── */
+.technique { margin-bottom: 1rem; }
+.technique h3 {
+  font-size: 1rem;
+  font-family: var(--font-ui);
+  color: var(--clr-text);
+  margin-bottom: .4rem;
+}
+
+/* ── Source ───────────────────────────────────────────────────────────────── */
+.recipe-source {
+  text-align: right;
+  font-style: italic;
+  font-size: .85rem;
+  color: var(--clr-muted);
+  font-family: var(--font-ui);
+  margin-top: 1rem;
+}
+
+/* ── Images inline [IMG:CODE] ─────────────────────────────────────────────── */
+.recipe-img-ref { position: relative; display: inline-block; cursor: zoom-in; }
+.recipe-thumb {
+  max-height: 60px;
+  border-radius: 3px;
+  vertical-align: middle;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   AGRANDISSEMENT AU SURVOL (partagé : inline, héros, galerie)
+   ══════════════════════════════════════════════════════════════════════════════
+   Panneau fixe centré + fond semi-transparent pour toutes les images.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Backdrop commun */
+.recipe-img-ref:hover::before,
+.hero-item:hover::before,
+.gallery-item:hover::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 49;
+  pointer-events: none;
+}
+
+/* Panneau de prévisualisation commun */
+.recipe-img-preview,
+.hero-preview,
+.gallery-preview {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  background: var(--clr-surface);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 40px rgba(0,0,0,.5);
+  padding: 4px;
+  line-height: 0;
+}
+.recipe-img-preview img,
+.hero-preview img,
+.gallery-preview img {
+  max-width: 95vw;
+  max-height: 95vh;
+  width: auto;
+  height: auto;
+  border-radius: calc(var(--radius) - 2px);
+  display: block;
+}
+
+/* Afficher au survol */
+.recipe-img-ref:hover .recipe-img-preview,
+.hero-item:hover .hero-preview,
+.gallery-item:hover .gallery-preview { display: block; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   4. IMAGE HÉROS (première image, flottée à gauche des ingrédients)
+   ══════════════════════════════════════════════════════════════════════════════
+   Structure HTML :
+   <div class="recipe-ingredients-block">
+     <img class="recipe-hero-img" src="…" alt="…">
+     <section class="recipe-ingredients">…</section>
+   </div>
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.recipe-ingredients-block {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.hero-item {
+  width: 180px;
+  flex-shrink: 0;
+  position: relative;
+  line-height: 0;
+  cursor: zoom-in;
+}
+
+.recipe-hero-img {
+  width: 100%;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  object-fit: cover;
+}
+
+.recipe-ingredients-block .recipe-ingredients {
+  flex: 1;
+  min-width: 0;  /* empêche le débordement si un ingrédient est très long */
+}
+
+@media (max-width: 480px) {
+  .recipe-ingredients-block { flex-direction: column; }
+  .hero-item { width: 100%; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   5. GALERIE D'IMAGES
+   ══════════════════════════════════════════════════════════════════════════════
+   Structure HTML :
+   <div class="recipe-gallery no-print">
+     <figure class="gallery-item">
+       <img class="gallery-thumb" src="…" alt="…" loading="lazy">
+       <span class="gallery-preview"><img src="…" alt="…"></span>
+     </figure>
+     …
+   </div>
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.recipe-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: 1.25rem;
+}
+
+.gallery-item {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.gallery-thumb {
+  height: 80px;
+  width: auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: zoom-in;
+}
+
+/* .gallery-preview, .gallery-item:hover .gallery-preview → règles partagées ci-dessus */
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   6. MESSAGES D'ÉTAT
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.tech-link  { font-style: italic; }
+.no-results { color: var(--clr-muted); font-style: italic; padding: 1rem 0; }
+.error      { color: var(--clr-accent); font-family: var(--font-ui); padding: 1rem 0; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   7. IMPRESSION (@media print) — règles spécifiques aux recettes
+   ══════════════════════════════════════════════════════════════════════════════
+   Les règles générales (body, a, :root, .site-header, .site-footer) sont dans
+   la section @media print de base.css.
+   ══════════════════════════════════════════════════════════════════════════════ */
+@media print {
+  .search-form,
+  .category-listing,
+  .search-results,
+  .recipe-gallery,
+  .no-print { display: none !important; }
+
+  .recipe-card { box-shadow: none; border: none; padding: 0; }
+  .recipe-title { font-size: 18pt; }
+  .recipe-thumb { max-height: 150px !important; }
+
+  /* Force l'affichage des <details> de catégories (fermés par défaut à l'impression) */
+  details { display: block; }
+  details summary { display: none; }
+}

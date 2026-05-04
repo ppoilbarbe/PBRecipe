@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Document box -->
+  <rect x="3" y="12" width="18" height="7" rx="2" fill="#d4e8d0" stroke="#3a6e2a" stroke-width="1.4"/>
+  <!-- Upward arrow (exiting the box) -->
+  <line x1="12" y1="1" x2="12" y2="13" stroke="#3a6e2a" stroke-width="2" stroke-linecap="round"/>
+  <polyline points="8,5 12,1 16,5" fill="none" stroke="#3a6e2a" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- YML label -->
+  <text x="12" y="17.5" text-anchor="middle" font-family="monospace,sans-serif"
+        font-weight="bold" font-size="6" fill="#3a6e2a">YML</text>
+  <!-- Ellipsis dots -->
+  <circle cx="7"  cy="22.5" r="1.2" fill="#3a6e2a"/>
+  <circle cx="12" cy="22.5" r="1.2" fill="#3a6e2a"/>
+  <circle cx="17" cy="22.5" r="1.2" fill="#3a6e2a"/>
+</svg>

@@ -1,0 +1,145 @@
+/*
+ * base.css — Styles de base du site de recettes PBRecipe
+ * =======================================================
+ *
+ * STRUCTURE
+ * ─────────
+ *  1. Reset / base          — normalisation des marges et box-model
+ *  2. Variables CSS         — palette de couleurs et valeurs réutilisables
+ *  3. Corps et liens        — typographie et couleur de base
+ *  4. Mise en page globale  — header, main, footer (mode autonome)
+ *  5. Impression            — règles générales @media print
+ *
+ * Ce fichier ne contient aucune règle spécifique aux recettes.
+ * Les règles métier (formulaire, listing, fiches, galerie) sont dans recipes.css.
+ *
+ * INTÉGRATION DANS UN AUTRE SITE
+ * ───────────────────────────────
+ * Ce fichier peut être inclus dans n'importe quel site existant.
+ * Points d'attention :
+ *
+ *  a) Variables (:root)
+ *     Ajuster les couleurs, la police et la largeur max dans le bloc :root.
+ *     Si le site hôte définit déjà ces custom properties, utiliser un sélecteur
+ *     plus spécifique (ex. .pbrecipe-root) pour isoler la portée.
+ *
+ *  b) Layout (header / main / footer)
+ *     Si le site hôte fournit son propre layout, supprimer la section 4
+ *     et injecter le contenu directement dans le conteneur du site hôte.
+ *
+ *  c) Polices
+ *     Par défaut : Georgia (corps) et system-ui (interface). Remplacer
+ *     --font-body et --font-ui selon la charte graphique du site hôte.
+ */
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   1. RESET / BASE
+   ══════════════════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   2. VARIABLES CSS (DESIGN TOKENS)
+   ══════════════════════════════════════════════════════════════════════════════
+   C'est le seul endroit à modifier pour changer l'apparence globale.
+   Les noms sont alignés sur ceux de site_web/css/general.css pour faciliter
+   l'intégration dans le site Cardolan.
+   ══════════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Couleurs principales ---------------------------------------------------- */
+  --clr-bg:        #fdfaf6;   /* Fond général de la page (crème chaud)          */
+  --clr-surface:   #ffffff;   /* Fond des cartes/panneaux (blanc pur)           */
+  --clr-primary:   #8b4513;   /* Couleur d'accentuation principale (brun)       */
+  --clr-accent:    #c0392b;   /* Couleur d'accentuation secondaire (rouge)      */
+  --clr-text:      #2c2c2c;   /* Couleur du texte courant (quasi-noir)          */
+  --clr-muted:     #666;      /* Texte atténué (méta, source, pied de page)     */
+  --clr-border:    #ddd;      /* Couleur des bordures et séparateurs            */
+
+  /* Géométrie --------------------------------------------------------------- */
+  --radius:        6px;
+  --shadow:        0 2px 8px rgba(0,0,0,.08);
+
+  /* Typographie ------------------------------------------------------------- */
+  --font-body:     'Georgia', serif;
+  --font-ui:       system-ui, sans-serif;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   3. CORPS ET LIENS DE BASE
+   ══════════════════════════════════════════════════════════════════════════════ */
+body {
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+a { color: var(--clr-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   4. MISE EN PAGE GLOBALE (header / main / footer)
+   ══════════════════════════════════════════════════════════════════════════════
+   Structure HTML attendue en mode autonome :
+   ┌─────────────────────────────────────────────┐
+   │ <header class="site-header">                │
+   │   <a class="site-title">…</a>               │
+   │ </header>                                   │
+   │ <main class="site-main">…</main>            │
+   │ <footer class="site-footer">…</footer>      │
+   └─────────────────────────────────────────────┘
+   Supprimer cette section si le site hôte fournit son propre layout.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.site-header {
+  background: var(--clr-primary);
+  padding: .75rem 1.5rem;
+  position: sticky; top: 0; z-index: 10;
+}
+
+.site-title {
+  color: #fff;
+  font-size: 1.4rem;
+  font-family: var(--font-ui);
+  font-weight: bold;
+  letter-spacing: .02em;
+}
+
+.site-main {
+  margin: 2rem 2rem 2rem 1rem;
+}
+
+.site-footer {
+  text-align: center;
+  color: var(--clr-muted);
+  font-size: .85rem;
+  padding: 2rem 1rem;
+  font-family: var(--font-ui);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   5. IMPRESSION (@media print) — règles générales
+   ══════════════════════════════════════════════════════════════════════════════
+   Les règles spécifiques aux recettes (masquage de formulaires, galerie, etc.)
+   se trouvent dans la section @media print de recipes.css.
+   ══════════════════════════════════════════════════════════════════════════════ */
+@media print {
+  :root {
+    --clr-primary: #000;
+    --clr-accent:  #000;
+    --clr-text:    #000;
+    --clr-muted:   #444;
+  }
+
+  body { background: #fff; color: #000; font-size: 11pt; }
+
+  .site-header,
+  .site-footer { display: none !important; }
+
+  a { color: #000; text-decoration: none; }
+  a[href]::after { content: ''; }
+}

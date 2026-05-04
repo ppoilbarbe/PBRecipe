@@ -1,0 +1,33 @@
+name: pbrecipe
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12
+  # GUI
+  - pyside6
+  # YAML
+  - ruamel.yaml
+  - ruamel.yaml.clib
+  # Databases
+  - sqlalchemy       # abstraction DB (SQLite/MariaDB/PostgreSQL)
+  - pymysql          # driver MariaDB / MySQL
+  - psycopg2         # driver PostgreSQL
+  # Tests
+  - pytest
+  - pytest-qt
+  - pytest-cov
+  # Lint / hooks
+  - ruff
+  - pre-commit
+  # PHP (pour les tests PHP)
+  - php
+  # GitHub CLI
+  - gh
+  # Packaging
+  - pyinstaller
+  # Dev install (editable)
+  - pip
+  - pip:
+      - -e ".[dev]"

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Upward arrow -->
+  <line x1="12" y1="2" x2="12" y2="13" stroke="#2e6b8a" stroke-width="2" stroke-linecap="round"/>
+  <polyline points="8,6 12,2 16,6" fill="none" stroke="#2e6b8a" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- PHP label -->
+  <text x="12" y="20" text-anchor="middle" font-family="monospace,sans-serif"
+        font-weight="bold" font-size="7.5" fill="#2e6b8a">PHP</text>
+  <!-- Ellipsis dots -->
+  <circle cx="7"  cy="23" r="1.2" fill="#2e6b8a"/>
+  <circle cx="12" cy="23" r="1.2" fill="#2e6b8a"/>
+  <circle cx="17" cy="23" r="1.2" fill="#2e6b8a"/>
+</svg>

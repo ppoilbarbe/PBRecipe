@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Magnifying glass lens -->
+  <circle cx="10" cy="10" r="7" fill="#e8f0e0" stroke="#3a5e28" stroke-width="1.6"/>
+  <!-- Checkmark inside lens -->
+  <polyline points="6.5,10 9,12.5 13.5,7.5" fill="none" stroke="#3a5e28" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Handle -->
+  <line x1="15.5" y1="15.5" x2="21.5" y2="21.5" stroke="#3a5e28" stroke-width="2.5"
+        stroke-linecap="round"/>
+</svg>
