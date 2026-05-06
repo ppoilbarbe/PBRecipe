@@ -6,6 +6,10 @@ CONDA_RUN  := conda run -n $(CONDA_ENV) --no-capture-output
 endif
 SRC        := src
 
+ICON_SRC   := src/pbrecipe/resources/icons/pbrecipe-512x512.png
+ICON_ICO   := src/pbrecipe/resources/icons/pbrecipe.ico
+ICON_ICNS  := src/pbrecipe/resources/icons/pbrecipe.icns
+
 R  := \033[0m
 B  := \033[1m
 G  := \033[32m
@@ -15,11 +19,17 @@ C  := \033[36m
 PY_SOURCES := $(shell find $(SRC)/pbrecipe -name "*.py" ! -path "*/__pycache__/*")
 
 .DEFAULT_GOAL := help
-.PHONY: all help venv venv-update install run test test-php coverage lint format \
+.PHONY: all help icons venv venv-update install run test test-php coverage lint format \
         dist clean hooks
 
-all: ## No generated artifacts — placeholder for future build steps
-	@printf "$(G)Nothing to build.$(R)\n"
+all: icons ## Génère tous les artefacts (icônes)
+
+icons: $(ICON_ICO) $(ICON_ICNS) ## Génère .ico et .icns depuis le PNG source
+
+$(ICON_ICO) $(ICON_ICNS): $(ICON_SRC)
+	@printf "$(C)Génération des icônes depuis $<...$(R)\n"
+	$(CONDA_RUN) python tools/make_icons.py $(ICON_SRC) $(ICON_ICO) $(ICON_ICNS)
+	@printf "$(G)Icônes générées.$(R)\n"
 
 help: ## This help (default target)
 	@printf "$(B)$(C)PBRecipe — Development Tasks$(R)\n\n"

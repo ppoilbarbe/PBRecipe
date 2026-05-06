@@ -134,6 +134,6 @@ class TechniqueTest extends TestCase
     {
         $techs = ['X' => ['code' => 'X', 'title' => 'X', 'description' => '']];
         $html  = render_techniques_panel($techs, 'T');
-        $this->assertStringContainsString('class="recipe-techniques"', $html);
+        $this->assertStringContainsString('class="recipe-techniques recipe-section"', $html);
     }
 }

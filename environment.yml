@@ -27,6 +27,7 @@ dependencies:
   - gh
   # Packaging
   - pyinstaller
+  - pillow          # génération des icônes .ico/.icns + conversion PyInstaller
   # Dev install (editable)
   - pip
   - pip:

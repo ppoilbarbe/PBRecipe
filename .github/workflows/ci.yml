@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["[0-9][0-9][0-9][0-9].[0-9]*"]   # AAAA.x
+  pull_request:
+
+# Cancel in-flight runs for the same ref when a newer push arrives.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Tests ─────────────────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up conda environment
+        uses: conda-incubator/setup-miniconda@v4
+        with:
+          miniforge-version: latest
+          environment-file: environment.yml
+          activate-environment: pbrecipe
+          conda-remove-defaults: 'true'
+
+      - name: Run Python test suite
+        shell: bash -el {0}
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: make test NOCONDA=1
+
+      - name: Run PHP test suite
+        shell: bash -el {0}
+        run: make test-php NOCONDA=1
+
+  # ── Pre-commit hooks ──────────────────────────────────────────────────────────
+  hooks:
+    name: Pre-commit hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up conda environment
+        uses: conda-incubator/setup-miniconda@v4
+        with:
+          miniforge-version: latest
+          environment-file: environment.yml
+          activate-environment: pbrecipe
+          conda-remove-defaults: 'true'
+
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run hooks on all files
+        shell: bash -el {0}
+        run: make hooks NOCONDA=1
+
+  # ── Build executables ─────────────────────────────────────────────────────────
+  build:
+    name: Build / ${{ matrix.os }}
+    needs: [test, hooks]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up conda environment
+        uses: conda-incubator/setup-miniconda@v4
+        with:
+          miniforge-version: latest
+          environment-file: environment.yml
+          activate-environment: pbrecipe
+          conda-remove-defaults: 'true'
+
+      - name: Build with PyInstaller
+        shell: bash -el {0}
+        run: |
+          pyinstaller --clean --noconfirm \
+            --distpath dist --workpath build/pyinstaller \
+            pbrecipe.spec
+
+      - name: Zip .app bundle (macOS)
+        # Un bundle .app est un répertoire ; on le zippe pour l'upload et la release.
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd dist
+          for app in *.app; do
+            zip -r "${app%.app}.zip" "$app"
+            rm -rf "$app"
+          done
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-${{ runner.os }}
+          path: dist/pbrecipe*
+          if-no-files-found: error
+
+  # ── GitHub release ────────────────────────────────────────────────────────────
+  release:
+    name: Release ${{ github.ref_name }}
+    needs: [build]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Extract changelog entry for ${{ github.ref_name }}
+        id: changelog
+        run: python3 tools/extract_changelog.py
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          body: ${{ steps.changelog.outputs.body }}
+          files: dist/pbrecipe*
+          fail_on_unmatched_files: true

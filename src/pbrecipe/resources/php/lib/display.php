@@ -20,8 +20,14 @@ function media_url(string $code): string {
     return 'lib/media.php?code=' . urlencode($code);
 }
 
-/** Return difficulty levels from DB as [level => ['label' => …, 'icon' => …]]. Cached per request. */
+/**
+ * Return difficulty levels as [level => ['label' => …, 'icon' => …]].
+ * Uses global $DIFFICULTY_LEVELS if set (injection de tests ou index.php),
+ * sinon interroge la DB et met en cache le résultat.
+ */
 function get_difficulty_levels(): array {
+    global $DIFFICULTY_LEVELS;
+    if (!empty($DIFFICULTY_LEVELS)) return $DIFFICULTY_LEVELS;
     static $cache = null;
     if ($cache !== null) return $cache;
     $cache = [];
@@ -88,7 +94,7 @@ function parse_markers(string $html, array $url_map = []): string {
         '/\[IMG:([A-Z0-9_]+)\]/i',
         function ($m) use ($url_map) {
             $code = strtoupper($m[1]);
-            $src  = $url_map[$code] ?? media_url($code);
+            $src  = $url_map[$code] ?? '';
             if ($src === '') return '<span class="img-missing">[IMG:' . h($code) . ']</span>';
             return '<span class="recipe-img-ref">'
                  . '<img src="' . h($src) . '" alt="' . h($code) . '" class="recipe-thumb" loading="lazy">'

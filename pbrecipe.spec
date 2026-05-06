@@ -7,7 +7,11 @@ from pathlib import Path
 SRC = Path("src/pbrecipe")
 RESOURCES = SRC / "resources"
 
-icon = str(RESOURCES / "icons" / "pbrecipe-512x512.png")
+_icons = {
+    "win32":  RESOURCES / "icons" / "pbrecipe.ico",
+    "darwin": RESOURCES / "icons" / "pbrecipe.icns",
+}
+icon = str(_icons.get(sys.platform, RESOURCES / "icons" / "pbrecipe-512x512.png"))
 
 datas = [
     (str(RESOURCES / "icons"), "pbrecipe/resources/icons"),

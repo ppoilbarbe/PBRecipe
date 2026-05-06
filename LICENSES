@@ -1,0 +1,55 @@
+PBRecipe — Licences des composants tiers
+=========================================
+
+Ce projet est distribué sous licence GNU GPL v3 (voir LICENSE).
+Les bibliothèques et outils suivants sont utilisés en exécution ou en construction.
+
+-------------------------------------------------------------------------------
+PySide6
+  Rôle    : interface graphique (bindings Python pour Qt 6)
+  Licence : GNU Lesser General Public License v3 (LGPL-3.0)
+  Source  : https://code.qt.io/cgit/pyside/pyside-setup.git
+  Note    : Qt lui-même est également distribué sous LGPL v3.
+            Les fichiers Qt utilisés dynamiquement ne sont pas modifiés.
+
+-------------------------------------------------------------------------------
+ruamel.yaml
+  Rôle    : lecture/écriture YAML 1.2
+  Licence : MIT
+  Source  : https://sourceforge.net/p/ruamel-yaml/code/ci/default/tree/
+  Auteur  : Anthon van der Neut
+
+-------------------------------------------------------------------------------
+SQLAlchemy
+  Rôle    : abstraction base de données (SQLite / MariaDB / PostgreSQL)
+  Licence : MIT
+  Source  : https://github.com/sqlalchemy/sqlalchemy
+  Auteur  : Mike Bayer et contributeurs
+
+-------------------------------------------------------------------------------
+PyMySQL
+  Rôle    : pilote Python pour MariaDB / MySQL
+  Licence : MIT
+  Source  : https://github.com/PyMySQL/PyMySQL
+  Auteur  : Inada Naoki et contributeurs
+
+-------------------------------------------------------------------------------
+psycopg2
+  Rôle    : pilote Python pour PostgreSQL
+  Licence : GNU Lesser General Public License v3 (LGPL-3.0)
+  Source  : https://github.com/psycopg/psycopg2
+  Auteur  : Daniele Varrazzo et contributeurs
+
+-------------------------------------------------------------------------------
+PyInstaller
+  Rôle    : création de l'exécutable autonome (usage build uniquement)
+  Licence : GNU GPL v2 avec exception bootloader
+            L'exception autorise la distribution du programme final
+            sans obligation de le placer sous GPL.
+  Source  : https://github.com/pyinstaller/pyinstaller
+
+-------------------------------------------------------------------------------
+Python
+  Rôle    : environnement d'exécution
+  Licence : Python Software Foundation License v2 (compatible GPL)
+  Source  : https://www.python.org
