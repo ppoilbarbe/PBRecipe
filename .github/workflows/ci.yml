@@ -92,13 +92,31 @@ jobs:
 
       - name: Zip .app bundle (macOS)
         # Un bundle .app est un répertoire ; on le zippe pour l'upload et la release.
+        # Le nom est mis en minuscules pour que le glob `pbrecipe*` fonctionne
+        # sur Linux (sensible à la casse) dans le job release.
         if: runner.os == 'macOS'
         shell: bash
         run: |
           cd dist
           for app in *.app; do
-            zip -r "${app%.app}.zip" "$app"
+            name=$(echo "${app%.app}" | tr '[:upper:]' '[:lower:]')
+            zip -r "${name}.zip" "$app"
             rm -rf "$app"
+          done
+
+      - name: Rename artifact (OS + architecture)
+        shell: bash
+        run: |
+          arch=$(uname -m)
+          case "${{ runner.os }}" in
+            Linux)   os_tag="linux" ;;
+            macOS)   os_tag="macos" ;;
+            Windows) os_tag="windows" ;;
+          esac
+          cd dist
+          for f in pbrecipe*; do
+            ext="${f#pbrecipe}"
+            mv "$f" "pbrecipe-${os_tag}-${arch}${ext}"
           done
 
       - name: Upload build artifact
