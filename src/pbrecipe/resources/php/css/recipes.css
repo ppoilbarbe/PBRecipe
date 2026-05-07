@@ -149,8 +149,6 @@ details:not([open]) .category-name::before { content: '▸ '; }
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .recipe-title {
-  font-size: 1.8rem;
-  color: var(--clr-primary);
   margin-bottom: .25rem;
 }
 
@@ -204,7 +202,7 @@ details:not([open]) .category-name::before { content: '▸ '; }
   margin-left: auto;  /* cadré à droite */
 }
 .diff-icon  { display: inline-flex; align-items: center; }
-.diff-icon-img { height: 1.4em; width: auto; vertical-align: middle; }
+.diff-icon-img { height: 1cm; width: auto; vertical-align: middle; }
 .diff-label { font-size: .85em; color: var(--clr-muted); }
 
 /* ── Cadres de section ────────────────────────────────────────────────────── */
@@ -218,14 +216,25 @@ details:not([open]) .category-name::before { content: '▸ '; }
   border-top: none;
 }
 
-/* ── En-têtes des sections (cadré à gauche) ───────────────────────────────── */
-.recipe-section h2 {
-  font-size: 1.1rem;
+/* ── En-têtes H1–H4 communs recettes et techniques ───────────────────────── */
+/* Les sélecteurs doubles (.recipe X + .recipe-body X) assurent la surspécificité
+   face aux styles du CMS hôte pour le contenu libre (commentaires, réalisation). */
+.recipe h1, .recipe h2, .recipe h3, .recipe h4,
+.recipe-body h1, .recipe-body h2, .recipe-body h3, .recipe-body h4,
+.technique h1, .technique h2, .technique h3, .technique h4,
+.technique-body h1, .technique-body h2, .technique-body h3, .technique-body h4 {
+  text-align: left;
+  font-weight: bold;
   font-family: var(--font-ui);
   color: var(--clr-primary);
-  text-align: left;
-  border-bottom: 2px solid var(--clr-border);
-  padding-bottom: .3rem;
+}
+.recipe h1, .recipe-body h1, .technique h1, .technique-body h1 { font-size: 200%; }
+.recipe h2, .recipe-body h2, .technique h2, .technique-body h2 { font-size: 175%; }
+.recipe h3, .recipe-body h3, .technique h3, .technique-body h3 { font-size: 150%; }
+.recipe h4, .recipe-body h4, .technique h4, .technique-body h4 { font-size: 125%; }
+
+/* ── En-têtes des sections ────────────────────────────────────────────────── */
+.recipe-section h2 {
   margin-bottom: .75rem;
 }
 
@@ -265,9 +274,6 @@ details:not([open]) .category-name::before { content: '▸ '; }
 /* ── Techniques ───────────────────────────────────────────────────────────── */
 .technique { margin-bottom: 1rem; }
 .technique h3 {
-  font-size: 1rem;
-  font-family: var(--font-ui);
-  color: var(--clr-text);
   margin-bottom: .4rem;
 }
 

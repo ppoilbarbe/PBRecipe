@@ -67,7 +67,7 @@ if ($recipe_code !== '') {
 
 // ── HTML skeleton ────────────────────────────────────────────────────────────
 
-$_site_lib = __DIR__ . '/../include/General_recipe.lib.php';
+$_site_lib = __DIR__ . '/../include/recipe_integration.lib.php';
 if (file_exists($_site_lib)) {
     require_once $_site_lib;
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pbrecipe.ui.html_editor import HtmlEditor, _clean_html
+from pbrecipe.ui.html_editor import HtmlEditor, _clean_html, _pretty_html
 
 # ---------------------------------------------------------------------------
 # Tests de _clean_html (fonction pure, pas de Qt)
@@ -68,6 +68,94 @@ def test_clean_html_bare_span_unwrapped():
 def test_clean_html_heading_removes_inner_bold():
     raw = "<h2><b>Titre</b></h2>"
     assert _clean_html(raw) == "<h2>Titre</h2>"
+
+
+# ---------------------------------------------------------------------------
+# Tests de _pretty_html (fonction pure, pas de Qt)
+# ---------------------------------------------------------------------------
+
+
+def test_pretty_html_empty_returns_empty():
+    assert _pretty_html("") == ""
+
+
+def test_pretty_html_block_elements_on_separate_lines():
+    html = "<h2>Titre</h2><p>Texte.</p>"
+    result = _pretty_html(html)
+    lines = result.splitlines()
+    assert lines[0] == "<h2>Titre</h2>"
+    assert lines[1] == "<p>Texte.</p>"
+
+
+def test_pretty_html_list_items_indented():
+    html = "<ul><li>A</li><li>B</li></ul>"
+    result = _pretty_html(html)
+    assert "<ul>" in result
+    assert "  <li>A</li>" in result
+    assert "  <li>B</li>" in result
+    assert "</ul>" in result
+
+
+def test_pretty_html_inline_elements_preserved():
+    """Les balises inline (<b>, <i>) dans un bloc ne doivent pas disparaître."""
+    html = "<p>Texte <b>gras</b> et <i>italique</i>.</p>"
+    result = _pretty_html(html)
+    assert "<b>gras</b>" in result
+    assert "<i>italique</i>" in result
+
+
+def test_pretty_html_no_xml_declaration():
+    """La déclaration <?xml …?> ne doit pas apparaître dans le résultat."""
+    result = _pretty_html("<p>Test</p>")
+    assert "<?xml" not in result
+
+
+def test_pretty_html_no_root_wrapper():
+    """La balise <root> d'enrobage ne doit pas apparaître dans le résultat."""
+    result = _pretty_html("<p>Test</p>")
+    assert "<root>" not in result
+    assert "</root>" not in result
+
+
+def test_pretty_html_invalid_html_returns_raw():
+    """HTML invalide pour minidom : retourne le HTML brut sans lever d'exception."""
+    invalid = "<p>Non fermé & entité brute"
+    result = _pretty_html(invalid)
+    assert result == invalid
+
+
+def test_pretty_html_roundtrip_block_only(editor):
+    """Le HTML mis en forme par _pretty_html peut être rechargé sans perte
+    pour du contenu sans éléments inline mixés à du texte brut."""
+    original = "<h2>Titre</h2><p>Texte simple.</p><ul><li>A</li><li>B</li></ul>"
+    editor.set_html(original)
+    clean = editor.get_html()
+
+    pretty = _pretty_html(clean)
+    editor.set_html(pretty)
+    after = editor.get_html()
+
+    assert after == clean
+
+
+def test_pretty_html_inline_elements_alter_whitespace(editor):
+    """Limitation connue de minidom : les espaces autour des balises inline
+    peuvent être modifiés après pretty-print + rechargement.
+    Le contenu textuel doit rester présent même si la mise en forme change."""
+    original = "<p>Texte <b>gras</b> et <i>italique</i>.</p>"
+    editor.set_html(original)
+    clean = editor.get_html()
+
+    pretty = _pretty_html(clean)
+    editor.set_html(pretty)
+    after = editor.get_html()
+
+    # Le texte brut est conservé, même si la ponctuation est réencadrée d'espaces.
+    import re as _re
+
+    text = _re.sub(r"<[^>]+>", "", after)
+    assert "gras" in text
+    assert "italique" in text
 
 
 # ---------------------------------------------------------------------------

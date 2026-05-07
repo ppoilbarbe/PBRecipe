@@ -68,7 +68,7 @@ class ConfigDialog(QDialog):
         yaml_row.addWidget(browse_yaml_btn)
         form.addRow("Fichier d'export YAML :", yaml_row)
 
-        # Site type (used by General_recipe.lib.php when integrated)
+        # Site type (used by recipe_integration.lib.php when integrated)
         self._site_type_edit = QLineEdit()
         self._site_type_edit.setPlaceholderText("recettes")
         self._site_type_edit.setMaxLength(40)

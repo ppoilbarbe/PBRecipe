@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import xml.dom.minidom
 from html import escape
 
 from PySide6.QtCore import Qt, Signal
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QPlainTextEdit,
     QTextEdit,
     QToolBar,
     QVBoxLayout,
@@ -126,6 +128,58 @@ def _clean_html(raw: str) -> str:
     html = _INTER_BLOCK_WS_RE.sub(r"\1", html)
 
     return html
+
+
+def _pretty_html(html: str) -> str:
+    """Indente le HTML avec minidom ; retourne le HTML brut en cas d'erreur."""
+    try:
+        dom = xml.dom.minidom.parseString(f"<root>{html}</root>")
+        pretty = dom.toprettyxml(indent="  ")
+        # Supprime la déclaration XML et le <root> englobant
+        lines = pretty.splitlines()[2:-1]  # saute <?xml …?> et <root>, retire </root>
+        # Dédente d'un niveau (minidom indente <root> à 0, son contenu à 1)
+        result = "\n".join(
+            line[2:] if line.startswith("  ") else line for line in lines
+        )
+        return result.strip()
+    except Exception:  # noqa: BLE001
+        return html
+
+
+class _HtmlSourceDialog(QDialog):
+    """Dialogue d'édition directe du HTML brut."""
+
+    def __init__(self, html: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Éditer le HTML source")
+        self.setMinimumSize(640, 480)
+        self._html = html
+        self._setup_ui(html)
+
+    def _setup_ui(self, html: str) -> None:
+        root = QVBoxLayout(self)
+
+        self._editor = QPlainTextEdit()
+        self._editor.setPlainText(html)
+        font = QFont("Monospace")
+        font.setStyleHint(QFont.StyleHint.TypeWriter)
+        self._editor.setFont(font)
+        root.addWidget(self._editor)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self._accept)
+        buttons.rejected.connect(self.reject)
+        root.addWidget(buttons)
+
+    def _accept(self) -> None:
+        self._html = self._editor.toPlainText()
+        self.accept()
+
+    @property
+    def html(self) -> str:
+        return self._html
 
 
 class _LinkDialog(QDialog):
@@ -397,6 +451,8 @@ class HtmlEditor(QWidget):
         if self._show_img:
             _fmt_action("[IMG]", self._insert_img_marker)
         _fmt_action("[TECH]", self._insert_tech_marker)
+        toolbar.addSeparator()
+        _fmt_action("</>", self._edit_html_source)
 
         layout.addWidget(toolbar)
 
@@ -549,3 +605,8 @@ class HtmlEditor(QWidget):
         code = self._pick_ref("Sélectionner une technique", self._techniques)
         if code:
             self._insert_marker(f"[TECH:{code}]")
+
+    def _edit_html_source(self) -> None:
+        dlg = _HtmlSourceDialog(_pretty_html(self.get_html()), self)
+        if dlg.exec():
+            self.set_html(dlg.html)

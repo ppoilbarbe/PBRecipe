@@ -44,16 +44,6 @@ class IngredientRow(QWidget):
         self._btn_down.clicked.connect(self.move_down)
         layout.addWidget(self._btn_down)
 
-        btn_add = QPushButton("+")
-        btn_add.setFixedWidth(28)
-        btn_add.clicked.connect(self.add_after)
-        layout.addWidget(btn_add)
-
-        btn_del = QPushButton("−")
-        btn_del.setFixedWidth(28)
-        btn_del.clicked.connect(self.remove_self)
-        layout.addWidget(btn_del)
-
         self._prefix = QLineEdit(row.prefix)
         self._prefix.setMaxLength(10)
         self._prefix.setFixedWidth(70)
@@ -98,6 +88,28 @@ class IngredientRow(QWidget):
 
         layout.addStretch()
 
+        _action_btn_style = (
+            "QPushButton { font-weight: bold; }"
+            "QPushButton:focus {"
+            "  background-color: palette(highlight);"
+            "  color: palette(highlighted-text);"
+            "  border: 2px solid palette(highlight);"
+            "  outline: none;"
+            "}"
+        )
+
+        btn_add = QPushButton("+")
+        btn_add.setFixedWidth(28)
+        btn_add.setStyleSheet(_action_btn_style)
+        btn_add.clicked.connect(self.add_after)
+        layout.addWidget(btn_add)
+
+        btn_del = QPushButton("−")
+        btn_del.setFixedWidth(28)
+        btn_del.setStyleSheet(_action_btn_style)
+        btn_del.clicked.connect(self.remove_self)
+        layout.addWidget(btn_del)
+
     def get_data(self, recipe_code: str, position: int) -> RecipeIngredient:
         return RecipeIngredient(
             id=self._row.id,
@@ -118,6 +130,9 @@ class IngredientRow(QWidget):
         self._sep.textChanged.connect(slot)
         self._ingredient.currentIndexChanged.connect(slot)
         self._suffix.textChanged.connect(slot)
+
+    def focus_prefix(self) -> None:
+        self._prefix.setFocus()
 
     def set_move_buttons(self, up_enabled: bool, down_enabled: bool) -> None:
         self._btn_up.setEnabled(up_enabled)
@@ -165,8 +180,6 @@ class IngredientListEditor(QWidget):
         for label, width in [
             ("", 28),  # ↑
             ("", 28),  # ↓
-            ("", 28),  # +
-            ("", 28),  # −
             ("Préfixe", 70),
             ("Qté", 60),
             ("Unité", 90),
@@ -244,6 +257,7 @@ class IngredientListEditor(QWidget):
             self._update_move_buttons()
             self._update_empty_state()
             self.changed.emit()
+            row.focus_prefix()
 
     def _remove_row(self, row: IngredientRow) -> None:
         self._rows.remove(row)
