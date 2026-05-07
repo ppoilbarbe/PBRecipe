@@ -244,8 +244,14 @@ function render_recipe(array $recipe, array $strings): string {
         $html .= $ing_indent . "  <table class=\"ingredients-table\">\n";
         $html .= $ing_indent . "    <tbody>\n";
         foreach ($recipe['ingredients'] as $ing) {
-            $sep      = (string)($ing['separator']       ?? '');
-            $ing_name = (string)($ing['ingredient_name'] ?? '');
+            $sep      = (string)($ing['separator'] ?? '');
+
+            $unit_name = !empty($ing['unit_plural']) && !empty($ing['unit_name_plural'])
+                       ? (string)$ing['unit_name_plural']
+                       : (string)($ing['unit_name'] ?? '');
+            $ing_name  = !empty($ing['ingredient_plural']) && !empty($ing['ingredient_name_plural'])
+                       ? (string)$ing['ingredient_name_plural']
+                       : (string)($ing['ingredient_name'] ?? '');
 
             // Colonne "reste" : séparateur + nom en gras + suffixe
             $rest_parts = [];
@@ -268,7 +274,7 @@ function render_recipe(array $recipe, array $strings): string {
             if ($has_prefix) {
                 $html .= $ing_indent . "        <td class=\"ing-prefix\">" . h((string)($ing['prefix'] ?? '')) . "</td>\n";
             }
-            $qty_cell = trim(h((string)($ing['quantity'] ?? '')) . ' ' . h((string)($ing['unit_name'] ?? '')));
+            $qty_cell = trim(h((string)($ing['quantity'] ?? '')) . ' ' . h($unit_name));
             $html .= $ing_indent . "        <td class=\"ing-qty\">" . $qty_cell . "</td>\n";
             $html .= $ing_indent . "        <td class=\"ing-rest\">" . $rest . "</td>\n";
             $html .= $ing_indent . "      </tr>\n";

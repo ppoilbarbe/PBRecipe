@@ -40,6 +40,7 @@ Thumbs.db
 *.yaml.bak
 images/
 .claude/settings.local.json
+.phpunit.result.cache
 
 # PHP / Composer
 vendor/

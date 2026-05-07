@@ -431,28 +431,42 @@ class HtmlEditor(QWidget):
         toolbar = QToolBar()
         toolbar.setIconSize(toolbar.iconSize() * 0.8)
 
-        def _fmt_action(label: str, fmt_fn) -> None:
+        def _fmt_action(label: str, fmt_fn, tooltip: str = "") -> None:
             act = QAction(label, self)
+            if tooltip:
+                act.setToolTip(tooltip)
             act.triggered.connect(fmt_fn)
             toolbar.addAction(act)
 
-        _fmt_action("G", self._bold)
-        _fmt_action("I", self._italic)
-        _fmt_action("U", self._underline)
+        _fmt_action("G", self._bold, "Gras")
+        _fmt_action("I", self._italic, "Italique")
+        _fmt_action("U", self._underline, "Souligné")
         toolbar.addSeparator()
         for lvl in (1, 2, 3, 4):
-            _fmt_action(f"H{lvl}", lambda _checked, lv=lvl: self._heading(lv))
+            _fmt_action(
+                f"H{lvl}",
+                lambda _checked, lv=lvl: self._heading(lv),
+                f"Titre de niveau {lvl}",
+            )
         toolbar.addSeparator()
-        _fmt_action("• Liste", self._bullet_list)
-        _fmt_action("1. Liste", self._numbered_list)
+        _fmt_action("• Liste", self._bullet_list, "Liste à puces")
+        _fmt_action("1. Liste", self._numbered_list, "Liste numérotée")
         toolbar.addSeparator()
-        _fmt_action("[LIEN]", self._insert_link)
-        _fmt_action("[RECETTE]", self._insert_recipe_marker)
+        _fmt_action("[LIEN]", self._insert_link, "Insérer un lien hypertexte")
+        _fmt_action(
+            "[RECETTE]",
+            self._insert_recipe_marker,
+            "Insérer un lien vers une autre recette",
+        )
         if self._show_img:
-            _fmt_action("[IMG]", self._insert_img_marker)
-        _fmt_action("[TECH]", self._insert_tech_marker)
+            _fmt_action("[IMG]", self._insert_img_marker, "Insérer une image")
+        _fmt_action(
+            "[TECH]",
+            self._insert_tech_marker,
+            "Insérer une référence de technique",
+        )
         toolbar.addSeparator()
-        _fmt_action("</>", self._edit_html_source)
+        _fmt_action("</>", self._edit_html_source, "Éditer le HTML source")
 
         layout.addWidget(toolbar)
 

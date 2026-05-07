@@ -1,4 +1,5 @@
 CONDA_ENV  := pbrecipe
+PHP_TEST_DB := /tmp/pbrecipe_php_test.db
 ifdef NOCONDA
 CONDA_RUN  :=
 else
@@ -68,7 +69,8 @@ test-php: ## Run PHP test suite (télécharge composer/phpunit si nécessaire)
 	    rm -f composer-setup.php; \
 	}
 	@test -f vendor/bin/phpunit || $(CONDA_RUN) php composer.phar install --no-interaction --quiet
-	$(CONDA_RUN) ./vendor/bin/phpunit
+	PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) pytest tests/test_php_fixtures.py
+	PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) ./vendor/bin/phpunit
 
 coverage: ## Run test suite and open HTML coverage report
 	$(CONDA_RUN) pytest --cov-report=term-missing --cov-report=html

@@ -7,3 +7,4 @@ from dataclasses import dataclass
 class Ingredient:
     id: int | None = None
     name: str = ""  # max 50 chars, non-empty
+    name_plural: str = ""  # max 50 chars, optional plural form

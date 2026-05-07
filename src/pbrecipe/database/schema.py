@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    Boolean,
     Column,
     ForeignKey,
     Integer,
@@ -24,6 +25,7 @@ t_units = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", String(15), nullable=False, default=""),
+    Column("name_plural", String(15), nullable=False, default=""),
 )
 
 t_ingredients = Table(
@@ -31,6 +33,7 @@ t_ingredients = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", String(50), nullable=False),
+    Column("name_plural", String(50), nullable=False, default=""),
 )
 
 t_sources = Table(
@@ -97,6 +100,8 @@ t_recipe_ingredients = Table(
     Column("separator", String(20), nullable=False, default=""),
     Column("ingredient_id", Integer, ForeignKey("ingredients.id", ondelete="SET NULL")),
     Column("suffix", String(20), nullable=False, default=""),
+    Column("unit_plural", Boolean, nullable=False, default=False),
+    Column("ingredient_plural", Boolean, nullable=False, default=False),
 )
 
 t_recipe_media = Table(

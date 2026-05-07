@@ -178,6 +178,9 @@ class MainWindow(QMainWindow):
         self._act_del_recipe.triggered.connect(self._delete_recipe)
         recipe_menu.addAction(self._act_del_recipe)
 
+        recipe_menu.addSeparator()
+        recipe_menu.addAction(self._recipe_editor.save_action)
+
         # Reference tables
         ref_menu = menu_bar.addMenu("&Référentiels")
         self._act_ref_categories = QAction("Catégories…", self)

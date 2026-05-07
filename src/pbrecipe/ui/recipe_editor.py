@@ -5,6 +5,7 @@ import re
 import unicodedata
 
 from PySide6.QtCore import Signal
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
@@ -103,10 +104,18 @@ class RecipeEditor(QWidget):
         self._media_tab.changed.connect(self._refresh_editor_images)
         tabs.addTab(self._media_tab, "Médias")
 
+        # Save action (shared between menu and keyboard shortcut)
+        self._act_save = QAction("&Enregistrer la recette", self)
+        self._act_save.setShortcut(QKeySequence.StandardKey.Save)
+        self._act_save.setStatusTip("Enregistrer la recette en cours")
+        self._act_save.setEnabled(False)
+        self._act_save.triggered.connect(self._save)
+
         # Save button
         btn_bar = QHBoxLayout()
         btn_bar.addStretch()
         self._save_btn = QPushButton("Enregistrer")
+        self._save_btn.setToolTip("Enregistrer la recette (Ctrl+S)")
         self._save_btn.clicked.connect(self._save)
         self._save_btn.setEnabled(False)
         btn_bar.addWidget(self._save_btn)
@@ -249,14 +258,20 @@ class RecipeEditor(QWidget):
     # Slots
     # ------------------------------------------------------------------
 
+    @property
+    def save_action(self) -> QAction:
+        return self._act_save
+
     def _mark_dirty(self) -> None:
         if self._loading:
             return
         self._dirty = True
+        self._act_save.setEnabled(True)
         self._save_btn.setEnabled(True)
 
     def _mark_clean(self) -> None:
         self._dirty = False
+        self._act_save.setEnabled(False)
         self._save_btn.setEnabled(False)
 
     def _on_name_changed(self, text: str) -> None:

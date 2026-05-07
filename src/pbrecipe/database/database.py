@@ -167,6 +167,18 @@ class Database:
             conn.execute(text("ALTER TABLE recipes ADD COLUMN cook_time INTEGER"))
             _log.info("Migration : colonne recipes.cook_time ajoutée")
 
+        # v3 : formes plurielles pour unités/ingrédients, flags pluriel par ligne
+        for table, col, definition in [
+            ("units", "name_plural", "VARCHAR(15) NOT NULL DEFAULT ''"),
+            ("ingredients", "name_plural", "VARCHAR(50) NOT NULL DEFAULT ''"),
+            ("recipe_ingredients", "unit_plural", "INTEGER NOT NULL DEFAULT 0"),
+            ("recipe_ingredients", "ingredient_plural", "INTEGER NOT NULL DEFAULT 0"),
+        ]:
+            cols = {c["name"] for c in inspect(conn).get_columns(table)}
+            if col not in cols:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {definition}"))
+                _log.info("Migration : colonne %s.%s ajoutée", table, col)
+
     @staticmethod
     def _enable_sqlite_fk(dbapi_conn, _record) -> None:
         dbapi_conn.execute("PRAGMA foreign_keys=ON")
@@ -222,21 +234,23 @@ class Database:
             rows = conn.execute(select(t_units)).fetchall()
         _log.debug("Unités : %d trouvées", len(rows))
         return sorted(
-            [Unit(id=r.id, name=r.name) for r in rows],
+            [Unit(id=r.id, name=r.name, name_plural=r.name_plural) for r in rows],
             key=lambda x: _sort_key(x.name),
         )
 
     def save_unit(self, unit: Unit) -> Unit:
         with self._tx() as conn:
             if unit.id is None:
-                result = conn.execute(insert(t_units).values(name=unit.name))
+                result = conn.execute(
+                    insert(t_units).values(name=unit.name, name_plural=unit.name_plural)
+                )
                 unit.id = result.inserted_primary_key[0]
                 _log.info("Unité créée : «%s» (id=%s)", unit.name, unit.id)
             else:
                 conn.execute(
                     update(t_units)
                     .where(t_units.c.id == unit.id)
-                    .values(name=unit.name)
+                    .values(name=unit.name, name_plural=unit.name_plural)
                 )
                 _log.info("Unité mise à jour : «%s» (id=%s)", unit.name, unit.id)
         return unit
@@ -255,7 +269,7 @@ class Database:
             rows = conn.execute(select(t_ingredients)).fetchall()
         _log.debug("Ingrédients : %d trouvés", len(rows))
         return sorted(
-            [Ingredient(id=r.id, name=r.name) for r in rows],
+            [Ingredient(id=r.id, name=r.name, name_plural=r.name_plural) for r in rows],
             key=lambda x: _sort_key(x.name),
         )
 
@@ -263,7 +277,9 @@ class Database:
         with self._tx() as conn:
             if ingredient.id is None:
                 result = conn.execute(
-                    insert(t_ingredients).values(name=ingredient.name)
+                    insert(t_ingredients).values(
+                        name=ingredient.name, name_plural=ingredient.name_plural
+                    )
                 )
                 ingredient.id = result.inserted_primary_key[0]
                 _log.info(
@@ -273,7 +289,7 @@ class Database:
                 conn.execute(
                     update(t_ingredients)
                     .where(t_ingredients.c.id == ingredient.id)
-                    .values(name=ingredient.name)
+                    .values(name=ingredient.name, name_plural=ingredient.name_plural)
                 )
                 _log.info(
                     "Ingrédient mis à jour : «%s» (id=%s)",
@@ -510,6 +526,8 @@ class Database:
                     separator=r.separator,
                     ingredient_id=r.ingredient_id,
                     suffix=r.suffix,
+                    unit_plural=bool(r.unit_plural),
+                    ingredient_plural=bool(r.ingredient_plural),
                 )
                 for r in conn.execute(
                     select(t_recipe_ingredients)
@@ -616,6 +634,8 @@ class Database:
                             "separator": i.separator,
                             "ingredient_id": i.ingredient_id,
                             "suffix": i.suffix,
+                            "unit_plural": i.unit_plural,
+                            "ingredient_plural": i.ingredient_plural,
                         }
                         for i in recipe.ingredients
                     ],

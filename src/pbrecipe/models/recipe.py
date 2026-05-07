@@ -14,6 +14,8 @@ class RecipeIngredient:
     separator: str = ""  # max 20 chars
     ingredient_id: int | None = None
     suffix: str = ""  # max 20 chars
+    unit_plural: bool = False
+    ingredient_plural: bool = False
 
 
 @dataclass

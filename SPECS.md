@@ -71,8 +71,9 @@ strings:                 # textes spécifiques au type de recette
 
 ```
 categories(id PK, name ≤20 NN)
-units(id PK, name ≤15)                         # peut être vide
-ingredients(id PK, name ≤50 NN)
+units(id PK, name ≤15, name_plural ≤15 DEF'')  # name peut être vide ; name_plural : forme plurielle
+ingredients(id PK, name ≤50 NN,
+            name_plural ≤50 DEF'')              # name_plural : forme plurielle optionnelle
 sources(id PK, name TEXT NN)                   # TEXT (pas de limite), peut contenir du HTML
 techniques(code ≤10 PK, title ≤40 NN, description TEXT)
 difficulty_levels(level 0-3 PK, label ≤50 DEF'',
@@ -85,8 +86,10 @@ recipes(code ≤50 PK, name ≤200 NN, difficulty 0-3 DEF 0,
 recipe_categories(recipe_code→recipes, category_id→categories, PK composée)
 recipe_ingredients(id PK, recipe_code→recipes, position,
                    prefix ≤10 DEF'', quantity ≤10 DEF'1',
-                   unit_id→units?, separator ≤20 DEF'',
-                   ingredient_id→ingredients?, suffix ≤20 DEF'')
+                   unit_id→units?, unit_plural BOOL DEF False,
+                   separator ≤20 DEF'',
+                   ingredient_id→ingredients?, ingredient_plural BOOL DEF False,
+                   suffix ≤20 DEF'')
 recipe_media(id PK, recipe_code→recipes, position,
              code ≤20 NN,        # référence dans [IMG:CODE]
              mime_type ≤50 NN DEF'image/jpeg',
@@ -100,6 +103,8 @@ Migration : à la création du schéma :
 - Si `difficulty_levels` est vide → insertion des 4 niveaux par défaut (0 vide, 1 Facile, 2 Moyen, 3 Difficile).
 - Si la colonne `recipe_media.filename` existe → suppression (colonne obsolète).
 - Si la colonne `recipes.serving` est absente → `ALTER TABLE recipes ADD COLUMN serving VARCHAR(30) NOT NULL DEFAULT ''`.
+- v3 : si `units.name_plural`, `ingredients.name_plural`, `recipe_ingredients.unit_plural` ou
+  `recipe_ingredients.ingredient_plural` sont absentes → `ALTER TABLE … ADD COLUMN …`.
 
 Tri de toutes les listes : effectué côté Python via `_sort_key()` (insensible à la casse et aux
 diacritiques : `unicodedata.normalize("NFD").casefold().encode("ascii","ignore")`). Les requêtes SQL
@@ -244,6 +249,8 @@ ui/
                               avant Difficulté dans le formulaire méta.
                             _slugify(name) → CODE (ASCII upper, espaces→_)
                             Bouton Enregistrer : désactivé tant qu'aucune modification.
+                            Action « Enregistrer la recette » (QAction) avec raccourci Ctrl+S,
+                              partagée entre le menu Recette et le bouton Enregistrer.
                             Validation à l'enregistrement : au moins une catégorie requise
                             (message d'erreur + annulation si aucune sélectionnée).
                             Combo sources : affichage sans balises HTML (re.sub r"<[^>]+>").
@@ -254,11 +261,13 @@ ui/
                               alimente desc_editor et comment_editor via set_references() :
                               recipes=db.list_recipes(), images=[(m.code, m.data) for m in
                               recipe.media], techniques=db.list_techniques().
-  ingredient_list_editor.py Lignes scrollables : ↑ ↓ + − | prefix/qty/unit/sep/ingredient/suffix
+  ingredient_list_editor.py Lignes scrollables : ↑ ↓ + − | prefix/qty/unit/[Pl.]/sep/ingredient/[Pl.]/suffix
                             Boutons par ligne (à gauche) : ↑ déplacer vers le haut (désactivé en 1re pos),
                               ↓ vers le bas (désactivé en dernière pos), + insérer après, − supprimer.
                             Bouton + seul affiché quand la liste est vide (_empty_btn).
                             Ancienne barre "Ajouter/Supprimer dernier" supprimée.
+                            Cases à cocher « Pl. » : activent unit_plural / ingredient_plural par ligne
+                              (utilise name_plural si coché et la forme plurielle est renseignée).
                             reload(db) : recharge les listes unit/ingredient de chaque ligne
                               sans perdre les valeurs saisies (utilisé par reload_references()).
   html_editor.py            QTextEdit WYSIWYG.
@@ -310,7 +319,9 @@ ui/
   dialogs/
     _base_list_dialog.py    générique liste+ajout+modif+suppression (QInputDialog)
                               double-clic sur un élément → édition directe
-    category/ingredient/unit/source_dialog.py  (5 lignes chacun)
+    category/source_dialog.py  (5 lignes chacun)
+    ingredient_dialog.py    dialogue dédié : champs Nom + Nom pluriel (QLineEdit ≤50 chars)
+    unit_dialog.py          dialogue dédié : champs Nom + Nom pluriel (QLineEdit ≤15 chars)
     technique_dialog.py     TechniqueDialog : liste des techniques + TechniqueEditDialog
                               double-clic sur un élément → édition directe
                             TechniqueEditDialog (code+titre+HtmlEditor(show_img=False))
@@ -383,8 +394,14 @@ resources/
 
 ```yaml
 categories: [Entrée, Plat principal, Dessert]
-units: [g, kg, L]
-ingredients: [Beurre, Farine, Sucre]
+units:
+  - {name: g, name_plural: g}
+  - {name: kg, name_plural: kg}
+  - {name: L, name_plural: L}
+ingredients:
+  - {name: Beurre, name_plural: ""}
+  - {name: Farine, name_plural: Farines}
+  - {name: Sucre, name_plural: ""}
 sources: [Larousse Gastronomique]
 techniques:
   - code: BAIN_MA
@@ -416,7 +433,9 @@ recipes:
         prefix: ""
         quantity: "200"
         unit: g
+        unit_plural: false
         ingredient: Farine
+        ingredient_plural: false
         separator: ""
         suffix: ""
     media:
@@ -444,7 +463,7 @@ target/
 ## Affichage recette PHP
 1. `<h1>` nom  +  catégories cadrées à droite
 2. Card : ligne méta — quantité/portions (`serving`) + difficulté (icône bitmap + libellé depuis `$DIFFICULTY_LEVELS`) + durée totale (prép+attente)
-3. `<ul>` ingrédients : prefix qty unité séparateur **nom** suffix
+3. Table ingrédients : prefix | qty unité (plurielle si `unit_plural` et `name_plural` renseigné) | séparateur **nom** (pluriel si `ingredient_plural` et `name_plural` renseigné) suffix
 4. Section réalisation (HTML parsé)
 5. Section commentaires (HTML parsé) — si non vide
 6. Section techniques mentionnées (récursif, dédupliqué) — si présentes

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -109,6 +110,14 @@ class IngredientRow(QWidget):
         self._unit.setFixedWidth(90)
         layout.addWidget(self._unit)
 
+        self._unit_plural = QCheckBox()
+        self._unit_plural.setChecked(row.unit_plural)
+        self._unit_plural.setFixedWidth(24)
+        self._unit_plural.setToolTip(
+            "Pluriel (coché = utiliser la forme plurielle de l'unité)"
+        )
+        layout.addWidget(self._unit_plural)
+
         self._sep = QLineEdit(row.separator)
         self._sep.setMaxLength(20)
         self._sep.setFixedWidth(90)
@@ -123,6 +132,14 @@ class IngredientRow(QWidget):
                 self._ingredient.setCurrentIndex(self._ingredient.count() - 1)
         self._ingredient.setMinimumWidth(150)
         layout.addWidget(self._ingredient)
+
+        self._ingredient_plural = QCheckBox()
+        self._ingredient_plural.setChecked(row.ingredient_plural)
+        self._ingredient_plural.setFixedWidth(24)
+        self._ingredient_plural.setToolTip(
+            "Pluriel (coché = utiliser la forme plurielle de l'ingrédient)"
+        )
+        layout.addWidget(self._ingredient_plural)
 
         self._suffix = QLineEdit(row.suffix)
         self._suffix.setMaxLength(20)
@@ -145,12 +162,14 @@ class IngredientRow(QWidget):
         btn_add = QPushButton("+")
         btn_add.setFixedWidth(28)
         btn_add.setStyleSheet(_action_btn_style)
+        btn_add.setToolTip("Ajouter un ingrédient après celui-ci")
         btn_add.clicked.connect(self.add_after)
         layout.addWidget(btn_add)
 
         btn_del = QPushButton("−")
         btn_del.setFixedWidth(28)
         btn_del.setStyleSheet(_action_btn_style)
+        btn_del.setToolTip("Supprimer cet ingrédient")
         btn_del.clicked.connect(self.remove_self)
         layout.addWidget(btn_del)
 
@@ -165,14 +184,18 @@ class IngredientRow(QWidget):
             separator=self._sep.text(),
             ingredient_id=self._ingredient.currentData(),
             suffix=self._suffix.text(),
+            unit_plural=self._unit_plural.isChecked(),
+            ingredient_plural=self._ingredient_plural.isChecked(),
         )
 
     def connect_changed(self, slot) -> None:
         self._prefix.textChanged.connect(slot)
         self._qty.textChanged.connect(slot)
         self._unit.currentIndexChanged.connect(slot)
+        self._unit_plural.stateChanged.connect(slot)
         self._sep.textChanged.connect(slot)
         self._ingredient.currentIndexChanged.connect(slot)
+        self._ingredient_plural.stateChanged.connect(slot)
         self._suffix.textChanged.connect(slot)
 
     def focus_prefix(self) -> None:
@@ -223,8 +246,10 @@ class IngredientListEditor(QWidget):
             ("Préfixe", 70),
             ("Qté", 60),
             ("Unité", 90),
+            ("Pl.", 24),
             ("Sépar.", 90),
             ("Ingrédient", 150),
+            ("Pl.", 24),
             ("Suffixe", 90),
         ]:
             lbl = QLabel(label)
@@ -241,6 +266,7 @@ class IngredientListEditor(QWidget):
 
         self._empty_btn = QPushButton("+")
         self._empty_btn.setFixedWidth(40)
+        self._empty_btn.setToolTip("Ajouter un premier ingrédient")
         self._empty_btn.clicked.connect(lambda: self._insert_at(0))
         self._rows_layout.addWidget(self._empty_btn)
 

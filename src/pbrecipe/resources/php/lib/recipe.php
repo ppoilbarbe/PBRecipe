@@ -86,7 +86,9 @@ function get_recipe(string $code): ?array {
 
     // Ingredients
     $ings = $pdo->prepare('
-        SELECT ri.*, u.name AS unit_name, i.name AS ingredient_name
+        SELECT ri.*,
+               u.name AS unit_name, u.name_plural AS unit_name_plural,
+               i.name AS ingredient_name, i.name_plural AS ingredient_name_plural
         FROM recipe_ingredients ri
         LEFT JOIN units u ON u.id = ri.unit_id
         LEFT JOIN ingredients i ON i.id = ri.ingredient_id

@@ -72,8 +72,14 @@ class YamlExport:
 
         return {
             "categories": [c.name for c in sorted(categories, key=lambda x: x.name)],
-            "units": [u.name for u in sorted(units, key=lambda x: x.name)],
-            "ingredients": [i.name for i in sorted(ingredients, key=lambda x: x.name)],
+            "units": [
+                {"name": u.name, "name_plural": u.name_plural}
+                for u in sorted(units, key=lambda x: x.name)
+            ],
+            "ingredients": [
+                {"name": i.name, "name_plural": i.name_plural}
+                for i in sorted(ingredients, key=lambda x: x.name)
+            ],
             "sources": [s.name for s in sorted(sources, key=lambda x: x.name)],
             "techniques": [
                 {
@@ -115,8 +121,9 @@ class YamlExport:
         ing_by_id: dict,
         src_by_id: dict,
     ) -> dict[str, Any]:
-        ingredients = [
-            {
+        ingredients = []
+        for ri in recipe.ingredients:
+            entry: dict[str, Any] = {
                 "position": ri.position,
                 "prefix": ri.prefix,
                 "quantity": ri.quantity,
@@ -129,8 +136,9 @@ class YamlExport:
                 "separator": ri.separator,
                 "suffix": ri.suffix,
             }
-            for ri in recipe.ingredients
-        ]
+            entry["unit_plural"] = ri.unit_plural
+            entry["ingredient_plural"] = ri.ingredient_plural
+            ingredients.append(entry)
         media = [
             {
                 "position": m.position,
@@ -208,22 +216,8 @@ class YamlImport:
             stats,
             "categories",
         )
-        unit_map = self._import_simple_list(
-            doc.get("units", []),
-            self._db.list_units(),
-            self._db.save_unit,
-            lambda name: Unit(name=name),
-            stats,
-            "units",
-        )
-        ing_map = self._import_simple_list(
-            doc.get("ingredients", []),
-            self._db.list_ingredients(),
-            self._db.save_ingredient,
-            lambda name: Ingredient(name=name),
-            stats,
-            "ingredients",
-        )
+        unit_map = self._import_units(doc.get("units", []), stats)
+        ing_map = self._import_ingredients(doc.get("ingredients", []), stats)
         src_map = self._import_simple_list(
             doc.get("sources", []),
             self._db.list_sources(),
@@ -254,6 +248,52 @@ class YamlImport:
         return stats
 
     # ------------------------------------------------------------------
+
+    def _import_units(self, entries: list, stats: dict) -> dict[str, int]:
+        existing = {u.name: u for u in self._db.list_units()}
+        result: dict[str, int] = {u.name: u.id for u in existing.values()}
+        for raw in entries:
+            name = str(raw.get("name", "")).strip()
+            name_plural = str(raw.get("name_plural", "")).strip()
+            if not name:
+                continue
+            if name in existing:
+                u = existing[name]
+                if u.name_plural != name_plural:
+                    u.name_plural = name_plural
+                    self._db.save_unit(u)
+                result[name] = u.id
+            else:
+                u = self._db.save_unit(Unit(name=name, name_plural=name_plural))
+                existing[name] = u
+                result[name] = u.id
+                stats["units"] += 1
+                _log.debug("Créé (units) : «%s»", name)
+        return result
+
+    def _import_ingredients(self, entries: list, stats: dict) -> dict[str, int]:
+        existing = {i.name: i for i in self._db.list_ingredients()}
+        result: dict[str, int] = {i.name: i.id for i in existing.values()}
+        for raw in entries:
+            name = str(raw.get("name", "")).strip()
+            name_plural = str(raw.get("name_plural", "")).strip()
+            if not name:
+                continue
+            if name in existing:
+                i = existing[name]
+                if i.name_plural != name_plural:
+                    i.name_plural = name_plural
+                    self._db.save_ingredient(i)
+                result[name] = i.id
+            else:
+                i = self._db.save_ingredient(
+                    Ingredient(name=name, name_plural=name_plural)
+                )
+                existing[name] = i
+                result[name] = i.id
+                stats["ingredients"] += 1
+                _log.debug("Créé (ingredients) : «%s»", name)
+        return result
 
     def _import_simple_list(
         self,
@@ -400,6 +440,8 @@ class YamlImport:
                     separator=str(ri_data.get("separator", "")),
                     ingredient_id=ing_id,
                     suffix=str(ri_data.get("suffix", "")),
+                    unit_plural=bool(ri_data.get("unit_plural", False)),
+                    ingredient_plural=bool(ri_data.get("ingredient_plural", False)),
                 )
             )
 
