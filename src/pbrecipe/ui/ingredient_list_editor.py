@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -16,11 +17,58 @@ from pbrecipe.database import Database
 from pbrecipe.models import RecipeIngredient
 
 
+class _DragHandle(QLabel):
+    _THRESHOLD = 5
+
+    drag_started = Signal()
+    drag_moved = Signal(QPoint)
+    drag_ended = Signal(QPoint)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__("⠿", parent)
+        self.setFixedWidth(20)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setToolTip("Glisser pour réordonner")
+        self._pressing = False
+        self._dragging = False
+        self._press_pos = QPoint()
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._pressing = True
+            self._dragging = False
+            self._press_pos = event.globalPosition().toPoint()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        if self._pressing:
+            pos = event.globalPosition().toPoint()
+            if not self._dragging:
+                if (pos - self._press_pos).manhattanLength() >= self._THRESHOLD:
+                    self._dragging = True
+                    self.drag_started.emit()
+            if self._dragging:
+                self.drag_moved.emit(pos)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self._pressing:
+            self._pressing = False
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+            if self._dragging:
+                self._dragging = False
+                self.drag_ended.emit(event.globalPosition().toPoint())
+        super().mouseReleaseEvent(event)
+
+
 class IngredientRow(QWidget):
-    move_up = Signal()
-    move_down = Signal()
     add_after = Signal()
     remove_self = Signal()
+    drag_started = Signal()
+    drag_moved = Signal(QPoint)
+    drag_ended = Signal(QPoint)
 
     def __init__(
         self,
@@ -34,15 +82,11 @@ class IngredientRow(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 2, 0, 2)
 
-        self._btn_up = QPushButton("↑")
-        self._btn_up.setFixedWidth(28)
-        self._btn_up.clicked.connect(self.move_up)
-        layout.addWidget(self._btn_up)
-
-        self._btn_down = QPushButton("↓")
-        self._btn_down.setFixedWidth(28)
-        self._btn_down.clicked.connect(self.move_down)
-        layout.addWidget(self._btn_down)
+        handle = _DragHandle()
+        handle.drag_started.connect(self.drag_started)
+        handle.drag_moved.connect(self.drag_moved)
+        handle.drag_ended.connect(self.drag_ended)
+        layout.addWidget(handle)
 
         self._prefix = QLineEdit(row.prefix)
         self._prefix.setMaxLength(10)
@@ -134,10 +178,6 @@ class IngredientRow(QWidget):
     def focus_prefix(self) -> None:
         self._prefix.setFocus()
 
-    def set_move_buttons(self, up_enabled: bool, down_enabled: bool) -> None:
-        self._btn_up.setEnabled(up_enabled)
-        self._btn_down.setEnabled(down_enabled)
-
     def reload(self, units: list, ingredients: list) -> None:
         current_unit_id = self._unit.currentData()
         current_ing_id = self._ingredient.currentData()
@@ -170,16 +210,16 @@ class IngredientListEditor(QWidget):
         self._units: list = []
         self._ingredients: list = []
         self._loading = False
+        self._drag_row: IngredientRow | None = None
+        self._drag_target_idx: int = 0
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)
 
-        # Header labels aligned with row columns
         header = QHBoxLayout()
         for label, width in [
-            ("", 28),  # ↑
-            ("", 28),  # ↓
+            ("", 20),  # drag handle
             ("Préfixe", 70),
             ("Qté", 60),
             ("Unité", 90),
@@ -193,14 +233,12 @@ class IngredientListEditor(QWidget):
         header.addStretch()
         root.addLayout(header)
 
-        # Scrollable rows area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         self._rows_widget = QWidget()
         self._rows_layout = QVBoxLayout(self._rows_widget)
         self._rows_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Empty-state button (index 0, hidden when rows exist)
         self._empty_btn = QPushButton("+")
         self._empty_btn.setFixedWidth(40)
         self._empty_btn.clicked.connect(lambda: self._insert_at(0))
@@ -209,6 +247,15 @@ class IngredientListEditor(QWidget):
         self._rows_layout.addStretch()
         scroll.setWidget(self._rows_widget)
         root.addWidget(scroll)
+
+        # Overlay indicator shown during drag (not in layout, positioned manually)
+        self._drop_indicator = QFrame(self._rows_widget)
+        self._drop_indicator.setFixedHeight(2)
+        self._drop_indicator.setStyleSheet("background: palette(highlight);")
+        self._drop_indicator.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
+        self._drop_indicator.hide()
 
     def load(self, ingredients: list[RecipeIngredient], db: Database) -> None:
         self._loading = True
@@ -220,7 +267,6 @@ class IngredientListEditor(QWidget):
         for ing in ingredients:
             self._insert_at(len(self._rows), ing)
         self._loading = False
-        self._update_move_buttons()
         self._update_empty_state()
 
     def clear(self) -> None:
@@ -229,7 +275,6 @@ class IngredientListEditor(QWidget):
             row.setParent(None)
         self._rows.clear()
         self._loading = False
-        self._update_move_buttons()
         self._update_empty_state()
 
     def reload(self, db: Database) -> None:
@@ -249,12 +294,12 @@ class IngredientListEditor(QWidget):
         self._rows_layout.insertWidget(idx + 1, row)
         self._rows.insert(idx, row)
         row.connect_changed(self.changed)
-        row.move_up.connect(lambda r=row: self._move_row(r, -1))
-        row.move_down.connect(lambda r=row: self._move_row(r, 1))
         row.add_after.connect(lambda r=row: self._insert_at(self._rows.index(r) + 1))
         row.remove_self.connect(lambda r=row: self._remove_row(r))
+        row.drag_started.connect(lambda r=row: self._on_drag_start(r))
+        row.drag_moved.connect(lambda pos, r=row: self._on_drag_move(r, pos))
+        row.drag_ended.connect(lambda pos, r=row: self._on_drag_end(r, pos))
         if not self._loading:
-            self._update_move_buttons()
             self._update_empty_state()
             self.changed.emit()
             row.focus_prefix()
@@ -262,24 +307,66 @@ class IngredientListEditor(QWidget):
     def _remove_row(self, row: IngredientRow) -> None:
         self._rows.remove(row)
         row.setParent(None)
-        self._update_move_buttons()
         self._update_empty_state()
         self.changed.emit()
 
-    def _move_row(self, row: IngredientRow, delta: int) -> None:
-        idx = self._rows.index(row)
-        new_idx = idx + delta
-        if new_idx < 0 or new_idx >= len(self._rows):
+    def _move_row_to(self, row: IngredientRow, target_idx: int) -> None:
+        """Déplace row à target_idx (index dans la liste sans row)."""
+        src = self._rows.index(row)
+        if src == target_idx:
             return
-        self._rows[idx], self._rows[new_idx] = self._rows[new_idx], self._rows[idx]
-        self._rows_layout.insertWidget(new_idx + 1, row)
-        self._update_move_buttons()
+        self._rows.pop(src)
+        self._rows.insert(target_idx, row)
+        self._rows_layout.insertWidget(target_idx + 1, row)
         self.changed.emit()
 
-    def _update_move_buttons(self) -> None:
-        n = len(self._rows)
-        for i, row in enumerate(self._rows):
-            row.set_move_buttons(i > 0, i < n - 1)
+    # ------------------------------------------------------------------
+    # Drag handling
+    # ------------------------------------------------------------------
+
+    def _on_drag_start(self, row: IngredientRow) -> None:
+        self._drag_row = row
+        self._drag_target_idx = self._rows.index(row)
+        row.setStyleSheet("background-color: palette(midlight);")
+
+    def _on_drag_move(self, row: IngredientRow, global_pos: QPoint) -> None:
+        target = self._drop_target_for_global_y(row, global_pos.y())
+        self._drag_target_idx = target
+        self._position_indicator(row, target)
+
+    def _on_drag_end(self, row: IngredientRow, _global_pos: QPoint) -> None:
+        row.setStyleSheet("")
+        self._drop_indicator.hide()
+        self._move_row_to(row, self._drag_target_idx)
+        self._drag_row = None
+
+    def _drop_target_for_global_y(self, dragging: IngredientRow, global_y: int) -> int:
+        """Retourne l'index cible dans la liste sans la ligne en cours de drag."""
+        other = [r for r in self._rows if r is not dragging]
+        for i, r in enumerate(other):
+            mid = r.mapToGlobal(QPoint(0, r.height() // 2)).y()
+            if global_y < mid:
+                return i
+        return len(other)
+
+    def _position_indicator(self, dragging: IngredientRow, target_idx: int) -> None:
+        other = [r for r in self._rows if r is not dragging]
+        if not other:
+            self._drop_indicator.hide()
+            return
+
+        if target_idx == 0:
+            ref = other[0]
+            local = self._rows_widget.mapFromGlobal(ref.mapToGlobal(QPoint(0, 0)))
+        else:
+            ref = other[target_idx - 1]
+            local = self._rows_widget.mapFromGlobal(
+                ref.mapToGlobal(QPoint(0, ref.height()))
+            )
+
+        self._drop_indicator.setGeometry(0, local.y() - 1, self._rows_widget.width(), 2)
+        self._drop_indicator.show()
+        self._drop_indicator.raise_()
 
     def _update_empty_state(self) -> None:
         self._empty_btn.setVisible(len(self._rows) == 0)
