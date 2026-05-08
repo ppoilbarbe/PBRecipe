@@ -23,7 +23,7 @@ class RecipeMedia:
     id: int | None = None
     recipe_code: str = ""
     position: int = 0
-    code: str = ""  # référence [IMG:CODE] dans description/commentaires
+    code: str = ""  # référence [IMG:RECIPE_CODE:CODE] dans description/commentaires
     mime_type: str = "image/jpeg"
     data: bytes = b""
 

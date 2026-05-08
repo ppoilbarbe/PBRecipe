@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pbrecipe.constants import MAX_TECHNIQUE_CODE, MAX_TECHNIQUE_TITLE
 from pbrecipe.database import Database
 from pbrecipe.models import Technique
 from pbrecipe.ui.html_editor import HtmlEditor
@@ -41,18 +42,19 @@ class TechniqueEditDialog(QDialog):
         root = QVBoxLayout(self)
         form = QFormLayout()
         self._code_edit = QLineEdit(self._technique.code)
-        self._code_edit.setMaxLength(10)
+        self._code_edit.setMaxLength(MAX_TECHNIQUE_CODE)
         form.addRow("Code :", self._code_edit)
         self._title_edit = QLineEdit(self._technique.title)
-        self._title_edit.setMaxLength(40)
+        self._title_edit.setMaxLength(MAX_TECHNIQUE_TITLE)
         form.addRow("Titre :", self._title_edit)
         root.addLayout(form)
-        self._desc_editor = HtmlEditor(show_img=False)
+        self._desc_editor = HtmlEditor()
         self._desc_editor.set_html(self._technique.description)
         if self._db is not None:
             recipes = [(r.code, r.name) for r in self._db.list_recipes()]
+            images = self._db.list_all_media()
             techniques = [(t.code, t.title) for t in self._db.list_techniques()]
-            self._desc_editor.set_references(recipes, [], techniques)
+            self._desc_editor.set_references(recipes, images, techniques)
         root.addWidget(self._desc_editor)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel

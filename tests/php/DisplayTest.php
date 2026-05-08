@@ -207,11 +207,11 @@ class DisplayTest extends TestCase
         $this->assertStringContainsString('INCONNU', $html);
     }
 
-    public function test_parse_markers_img_missing_shows_fallback(): void
+    public function test_parse_markers_img_with_recipe_code(): void
     {
-        $html = parse_markers('[IMG:PHOTO1]');
-        $this->assertStringContainsString('img-missing', $html);
-        $this->assertStringContainsString('PHOTO1', $html);
+        $html = parse_markers('[IMG:GATEAU:PHOTO1]');
+        $this->assertStringContainsString('recipe-img-ref', $html);
+        $this->assertStringContainsString('media.php?recipe=GATEAU&amp;code=PHOTO1', $html);
     }
 
     public function test_parse_markers_tech_link(): void

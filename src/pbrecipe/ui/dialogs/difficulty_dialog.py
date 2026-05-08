@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pbrecipe.constants import MAX_DIFFICULTY_LABEL
 from pbrecipe.database import Database
 from pbrecipe.models import DifficultyLevel
 
@@ -85,7 +86,7 @@ class DifficultyDialog(QDialog):
 
         form = QFormLayout()
         self._label_edit = QLineEdit()
-        self._label_edit.setMaxLength(50)
+        self._label_edit.setMaxLength(MAX_DIFFICULTY_LABEL)
         self._label_edit.setPlaceholderText("(vide pour niveau non défini)")
         self._label_edit.editingFinished.connect(self._save_current)
         form.addRow("Libellé :", self._label_edit)

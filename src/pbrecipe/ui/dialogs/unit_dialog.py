@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pbrecipe.constants import MAX_UNIT_NAME
 from pbrecipe.models import Unit
 from pbrecipe.ui.dialogs._base_list_dialog import BaseListDialog
 
@@ -22,9 +23,9 @@ def _plural_dialog(
     dlg.setWindowTitle(title)
     form = QFormLayout(dlg)
     edit_name = QLineEdit(name)
-    edit_name.setMaxLength(15)
+    edit_name.setMaxLength(MAX_UNIT_NAME)
     edit_plural = QLineEdit(name_plural)
-    edit_plural.setMaxLength(15)
+    edit_plural.setMaxLength(MAX_UNIT_NAME)
     edit_plural.setPlaceholderText("(identique au singulier si vide)")
     form.addRow("Singulier :", edit_name)
     form.addRow("Pluriel :", edit_plural)

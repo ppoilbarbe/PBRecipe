@@ -293,7 +293,7 @@ class MediaTab(QWidget):
             self,
             "Code de l'image",
             "Code unique pour référencer cette image dans\n"
-            "la description (ex. [IMG:CODE]) :",
+            "la description (ex. [IMG:CODE_RECETTE:CODE]) :",
             text=default_code,
         )
         if not ok or not code.strip():

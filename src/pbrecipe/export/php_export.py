@@ -6,6 +6,7 @@ from pathlib import Path
 from string import Template
 
 from pbrecipe.config import RecipeConfig
+from pbrecipe.config.recipe_config import _DEFAULT_STRINGS
 from pbrecipe.database import Database
 
 _log = logging.getLogger(__name__)
@@ -81,28 +82,44 @@ class PhpExport:
 
     def _write_config(self, tpl_path: Path) -> None:
         _log.debug("Génération de lib/config.php depuis %s", tpl_path.name)
-        db = self._config.db
+        cfg_db = self._config.db
         php_db_type = {
             "sqlite": "sqlite",
             "mariadb": "mysql",
             "postgresql": "pgsql",
-        }.get(db.type, "mysql")
+        }.get(cfg_db.type, "mysql")
+
+        globals_data = self._db.get_globals()
+        strings = dict(_DEFAULT_STRINGS)
+        for key, value in globals_data.items():
+            if key in strings and value:
+                strings[key] = value
+        presentation = globals_data.get("presentation", "")
+
+        php_host, php_port, php_user, php_pass = cfg_db.php_credentials()
         mapping = {
             "DB_TYPE": php_db_type,
-            "DB_HOST": db.host,
-            "DB_PORT": str(db.port),
-            "DB_NAME": db.database,
-            "DB_USER": db.user,
-            "DB_PASS": db.password,
-            "DB_PATH": str(Path(db.path).expanduser()) if db.path else db.path,
-            "STRINGS_PHP": self._strings_to_php(self._config.strings),
-            "SITE_TITLE": self._config.string("site_title"),
+            "DB_HOST": php_host,
+            "DB_PORT": str(php_port),
+            "DB_NAME": cfg_db.database,
+            "DB_USER": php_user,
+            "DB_PASS": php_pass,
+            "DB_PATH": str(Path(cfg_db.path).expanduser())
+            if cfg_db.path
+            else cfg_db.path,
+            "STRINGS_PHP": self._strings_to_php(strings),
+            "SITE_TITLE": strings.get("site_title", _DEFAULT_STRINGS["site_title"]),
             "SITE_TYPE": self._config.site_type,
+            "SITE_PRESENTATION": self._escape_php_str(presentation),
         }
         tpl = Template(tpl_path.read_text(encoding="utf-8"))
         (self._target / "lib" / "config.php").write_text(
             tpl.safe_substitute(mapping), encoding="utf-8"
         )
+
+    @staticmethod
+    def _escape_php_str(value: str) -> str:
+        return value.replace("\\", "\\\\").replace("'", "\\'")
 
     @staticmethod
     def _strings_to_php(strings: dict[str, str]) -> str:

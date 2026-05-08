@@ -24,6 +24,14 @@ from PySide6.QtWidgets import (
 )
 
 from pbrecipe.config import RecipeConfig
+from pbrecipe.constants import (
+    MAX_DIFFICULTY,
+    MAX_RECIPE_CODE,
+    MAX_RECIPE_SERVING,
+    MAX_TIME_MINUTES,
+    MIN_DIFFICULTY,
+    MIN_TIME_MINUTES,
+)
 from pbrecipe.database import Database
 from pbrecipe.models import Recipe
 from pbrecipe.ui.html_editor import HtmlEditor
@@ -37,7 +45,7 @@ def _slugify(text: str) -> str:
     """Derive a recipe code from its name."""
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     text = re.sub(r"[^\w\s-]", "", text).strip().upper()
-    return re.sub(r"[\s-]+", "_", text)[:50]
+    return re.sub(r"[\s-]+", "_", text)[:MAX_RECIPE_CODE]
 
 
 class RecipeEditor(QWidget):
@@ -50,6 +58,7 @@ class RecipeEditor(QWidget):
         self._config: RecipeConfig | None = None
         self._dirty = False
         self._loading = False
+        self._original_code: str = ""
         self._setup_ui()
 
     # ------------------------------------------------------------------
@@ -89,12 +98,12 @@ class RecipeEditor(QWidget):
         tabs.addTab(self._ingredient_editor, "Ingrédients")
 
         # Tab 3 — description
-        self._desc_editor = HtmlEditor()
+        self._desc_editor = HtmlEditor(current_recipe_mode=True)
         self._desc_editor.changed.connect(self._mark_dirty)
         tabs.addTab(self._desc_editor, "Réalisation")
 
         # Tab 4 — comments
-        self._comment_editor = HtmlEditor()
+        self._comment_editor = HtmlEditor(current_recipe_mode=True)
         self._comment_editor.changed.connect(self._mark_dirty)
         tabs.addTab(self._comment_editor, "Commentaires")
 
@@ -127,13 +136,13 @@ class RecipeEditor(QWidget):
         # Serving
         self._serving_edit = QLineEdit()
         self._serving_edit.setPlaceholderText("ex. 6 parts, 3 personnes")
-        self._serving_edit.setMaxLength(30)
+        self._serving_edit.setMaxLength(MAX_RECIPE_SERVING)
         self._serving_edit.textChanged.connect(self._mark_dirty)
         form.addRow("Quantité :", self._serving_edit)
 
         # Difficulty
         self._difficulty_spin = QSpinBox()
-        self._difficulty_spin.setRange(0, 3)
+        self._difficulty_spin.setRange(MIN_DIFFICULTY, MAX_DIFFICULTY)
         self._difficulty_spin.setSpecialValueText("Inconnue")
         self._difficulty_spin.valueChanged.connect(self._mark_dirty)
         form.addRow("Difficulté :", self._difficulty_spin)
@@ -141,7 +150,7 @@ class RecipeEditor(QWidget):
         # Temps (préparation + attente + cuisson sur une ligne)
         def _make_time_spin() -> QSpinBox:
             s = QSpinBox()
-            s.setRange(0, 9999)
+            s.setRange(MIN_TIME_MINUTES, MAX_TIME_MINUTES)
             s.setSuffix(" min")
             s.setSpecialValueText("—")
             s.valueChanged.connect(self._mark_dirty)
@@ -194,6 +203,7 @@ class RecipeEditor(QWidget):
         self._recipe = recipe
         self._db = db
         self._config = config
+        self._original_code = recipe.code
 
         self._name_edit.setText(recipe.name)
         self._code_edit.setText(recipe.code)
@@ -227,6 +237,7 @@ class RecipeEditor(QWidget):
         self._recipe = None
         self._db = None
         self._config = None
+        self._original_code = ""
         self._name_edit.clear()
         self._code_edit.clear()
         self._serving_edit.clear()
@@ -324,6 +335,7 @@ class RecipeEditor(QWidget):
             len(self._recipe.media),
         )
         self.saved.emit(self._recipe)
+        self._original_code = self._recipe.code
 
     # ------------------------------------------------------------------
     # Helpers
@@ -331,15 +343,18 @@ class RecipeEditor(QWidget):
 
     def _reload_editor_references(self, recipe: Recipe, db: Database) -> None:
         recipes = [(r.code, r.name) for r in db.list_recipes()]
-        images = [(m.code, m.data) for m in recipe.media]
+        all_images = db.list_all_media()  # (recipe_code, img_code, data)
         techniques = [(t.code, t.title) for t in db.list_techniques()]
         for editor in (self._desc_editor, self._comment_editor):
-            editor.set_references(recipes, images, techniques)
+            editor.set_current_recipe(recipe.code)
+            editor.set_references(recipes, all_images, techniques)
 
     def _refresh_editor_images(self) -> None:
-        images = [(m.code, m.data) for m in self._media_tab.get_media("")]
+        if self._db is None or self._recipe is None:
+            return
+        all_images = self._db.list_all_media()
         for editor in (self._desc_editor, self._comment_editor):
-            editor.set_images(images)
+            editor.set_images(all_images)
 
     def _reload_categories(self, recipe: Recipe) -> None:
         self._category_list.clear()

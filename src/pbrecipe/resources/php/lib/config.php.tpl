@@ -16,5 +16,6 @@ $STRINGS = [
 $STRINGS_PHP
 ];
 
-define('SITE_TITLE', '$SITE_TITLE');
-define('SITE_TYPE',  '$SITE_TYPE');
+define('SITE_TITLE',         '$SITE_TITLE');
+define('SITE_TYPE',          '$SITE_TYPE');
+define('SITE_PRESENTATION',  '$SITE_PRESENTATION');

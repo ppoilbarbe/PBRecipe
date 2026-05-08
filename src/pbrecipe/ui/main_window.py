@@ -4,7 +4,7 @@ import logging
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QByteArray, Qt
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -112,6 +112,13 @@ class MainWindow(QMainWindow):
         self._act_settings.triggered.connect(self._edit_config)
         file_menu.addAction(self._act_settings)
 
+        self._act_globals = QAction("Présentation et &libellés…", self)
+        self._act_globals.setStatusTip(
+            "Modifier la présentation et les libellés propres à cette base"
+        )
+        self._act_globals.triggered.connect(self._edit_globals)
+        file_menu.addAction(self._act_globals)
+
         act_prefs = QAction("P&références du programme…", self)
         act_prefs.setStatusTip("Modifier les préférences du programme")
         act_prefs.triggered.connect(self._edit_preferences)
@@ -213,14 +220,13 @@ class MainWindow(QMainWindow):
         self._act_ref_difficulty.triggered.connect(self._edit_difficulty_levels)
         ref_menu.addAction(self._act_ref_difficulty)
 
-        # Tools
-        tools_menu = menu_bar.addMenu("&Outils")
+        ref_menu.addSeparator()
         self._act_consistency = QAction("&Vérifier la cohérence", self)
         self._act_consistency.setStatusTip(
             "Vérifier la cohérence des recettes et des techniques"
         )
         self._act_consistency.triggered.connect(self._check_consistency)
-        tools_menu.addAction(self._act_consistency)
+        ref_menu.addAction(self._act_consistency)
 
         # Help
         help_menu = menu_bar.addMenu("&Aide")
@@ -236,6 +242,7 @@ class MainWindow(QMainWindow):
             return QIcon(str(icons_dir / f"{name}.svg"))
 
         self._act_settings.setIcon(_icon("db_settings"))
+        self._act_globals.setIcon(_icon("db_globals"))
         self._act_export_php.setIcon(_icon("export_php"))
         self._act_export_php_as.setIcon(_icon("export_php_as"))
         self._act_export_yaml.setIcon(_icon("export_yaml"))
@@ -260,28 +267,43 @@ class MainWindow(QMainWindow):
         self._act_ref_sources.setToolTip("Sources")
         self._act_ref_difficulty.setToolTip("Niveaux de difficulté")
 
-        tb: QToolBar = self.addToolBar("Barre d'outils")
-        tb.setMovable(False)
-        tb.addAction(self._act_settings)
-        tb.addAction(self._act_export_php)
-        tb.addAction(self._act_export_php_as)
-        tb.addSeparator()
-        tb.addAction(self._act_export_yaml)
-        tb.addAction(self._act_export_yaml_as)
-        tb.addAction(self._act_import_yaml)
-        tb.addSeparator()
-        tb.addAction(self._act_consistency)
-        tb.addSeparator()
-        tb.addAction(self._act_new_recipe)
-        tb.addAction(self._act_copy_recipe)
-        tb.addAction(self._act_del_recipe)
-        tb.addSeparator()
-        tb.addAction(self._act_ref_categories)
-        tb.addAction(self._act_ref_ingredients)
-        tb.addAction(self._act_ref_units)
-        tb.addAction(self._act_ref_techniques)
-        tb.addAction(self._act_ref_sources)
-        tb.addAction(self._act_ref_difficulty)
+        def _tb(name: str, object_name: str) -> QToolBar:
+            tb = QToolBar(name, self)
+            tb.setObjectName(object_name)
+            self.addToolBar(tb)
+            return tb
+
+        tb_db = _tb("Base de données", "tb_db")
+        tb_db.addAction(self._act_settings)
+        tb_db.addAction(self._act_globals)
+
+        tb_php = _tb("Export PHP", "tb_php")
+        tb_php.addAction(self._act_export_php)
+        tb_php.addAction(self._act_export_php_as)
+
+        tb_yaml = _tb("Export/Import YAML", "tb_yaml")
+        tb_yaml.addAction(self._act_export_yaml)
+        tb_yaml.addAction(self._act_export_yaml_as)
+        tb_yaml.addAction(self._act_import_yaml)
+
+        tb_recipe = _tb("Recettes", "tb_recipe")
+        tb_recipe.addAction(self._act_new_recipe)
+        tb_recipe.addAction(self._act_copy_recipe)
+        tb_recipe.addAction(self._act_del_recipe)
+
+        tb_ref = _tb("Référentiels", "tb_ref")
+        tb_ref.addAction(self._act_ref_categories)
+        tb_ref.addAction(self._act_ref_ingredients)
+        tb_ref.addAction(self._act_ref_units)
+        tb_ref.addAction(self._act_ref_techniques)
+        tb_ref.addAction(self._act_ref_sources)
+        tb_ref.addAction(self._act_ref_difficulty)
+        tb_ref.addAction(self._act_consistency)
+
+        if self._app_config.toolbar_state:
+            self.restoreState(
+                QByteArray.fromBase64(self._app_config.toolbar_state.encode())
+            )
 
     def _rebuild_recent_menu(self) -> None:
         self._recent_menu.clear()
@@ -397,6 +419,13 @@ class MainWindow(QMainWindow):
                 except Exception as exc:  # noqa: BLE001
                     QMessageBox.critical(self, "Erreur de connexion", str(exc))
             _log.info("Paramètres de la base mis à jour : «%s»", self._config.name)
+
+    def _edit_globals(self) -> None:
+        if self._db is None:
+            return
+        from pbrecipe.ui.globals_dialog import GlobalsDialog
+
+        GlobalsDialog(self._db, self).exec()
 
     def _edit_preferences(self) -> None:
         from pbrecipe.ui.preferences_dialog import PreferencesDialog
@@ -606,7 +635,10 @@ class MainWindow(QMainWindow):
     def _on_recipe_saved(self, recipe: Recipe) -> None:
         _log.debug("Signal sauvegarde reçu : %s", recipe.code)
         if self._db:
-            self._db.save_recipe(recipe)
+            original = self._recipe_editor._original_code
+            self._db.save_recipe(
+                recipe, original_code=original if original != recipe.code else None
+            )
         self._refresh_recipe_list(select_code=recipe.code)
 
     # ------------------------------------------------------------------
@@ -810,6 +842,9 @@ class MainWindow(QMainWindow):
                 return
             dd.record("export_php", target, is_dir=True)
 
+        if not self._consistency_check_before_export():
+            return
+
         from pbrecipe.export.php_export import PhpExport
 
         _log.info("Export PHP → %s", target)
@@ -843,6 +878,9 @@ class MainWindow(QMainWindow):
         if not target:
             return
         dd.record("export_php", target, is_dir=True)
+
+        if not self._consistency_check_before_export():
+            return
 
         from pbrecipe.export.php_export import PhpExport
 
@@ -879,13 +917,46 @@ class MainWindow(QMainWindow):
             run_check,
         )
 
-        recipe_issues, tech_issues = run_check(self._db)
-        if not recipe_issues and not tech_issues:
+        recipe_issues, tech_issues, pres_issues = run_check(self._db)
+        if not recipe_issues and not tech_issues and not pres_issues:
             QMessageBox.information(self, "Cohérence", "Aucun problème détecté.")
             return
-        html = build_report(recipe_issues, tech_issues)
+        html = build_report(recipe_issues, tech_issues, pres_issues)
         self._consistency_dialog = ConsistencyReportDialog(html, self)
         self._consistency_dialog.show()
+
+    def _consistency_check_before_export(self) -> bool:
+        """Vérifie la cohérence. Retourne True si l'export peut continuer."""
+        from pbrecipe.ui.consistency_dialog import (
+            ConsistencyReportDialog,
+            build_report,
+            run_check,
+        )
+
+        recipe_issues, tech_issues, pres_issues = run_check(self._db)
+        if not recipe_issues and not tech_issues and not pres_issues:
+            return True
+
+        n = (
+            sum(len(r.refs) for r in recipe_issues)
+            + sum(len(t.refs) for t in tech_issues)
+            + len(pres_issues)
+        )
+        reply = QMessageBox.warning(
+            self,
+            "Problèmes de cohérence détectés",
+            f"{n} problème(s) détecté(s) dans la base.\n"
+            "L'export PHP peut produire des liens cassés.\n\n"
+            "Voulez-vous afficher le rapport et annuler l'export ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            html = build_report(recipe_issues, tech_issues, pres_issues)
+            self._consistency_dialog = ConsistencyReportDialog(html, self)
+            self._consistency_dialog.show()
+            return False
+        return True
 
     # ------------------------------------------------------------------
     # Helpers
@@ -941,6 +1012,7 @@ class MainWindow(QMainWindow):
             "height": size.height(),
         }
         self._app_config.splitter_sizes = self._splitter.sizes()
+        self._app_config.toolbar_state = self.saveState().toBase64().data().decode()
         self._app_config.save()
         _log.debug("Fermeture de l'application")
         if self._db:

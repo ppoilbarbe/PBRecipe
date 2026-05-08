@@ -7,6 +7,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 from sqlalchemy import (
+    String,
     and_,
     create_engine,
     delete,
@@ -19,10 +20,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Connection, Engine
 
+from pbrecipe.constants import MAX_DIFFICULTY, MIN_DIFFICULTY
 from pbrecipe.database.schema import (
     metadata,
     t_categories,
     t_difficulty_levels,
+    t_globals,
     t_ingredients,
     t_recipe_categories,
     t_recipe_ingredients,
@@ -116,7 +119,8 @@ class Database:
         metadata.create_all(self._engine)
         with self._engine.begin() as conn:
             self._migrate(conn)
-        _log.debug("Schéma vérifié/créé")
+            self._ensure_all_varchar_sizes(conn)
+        _log.info("Schéma vérifié/créé")
 
     def clear_all_data(self) -> None:
         """Delete all rows from every table, preserving the schema."""
@@ -133,6 +137,7 @@ class Database:
                 t_units,
                 t_categories,
                 t_difficulty_levels,
+                t_globals,
             ):
                 conn.execute(delete(tbl))
         _log.debug("Base vidée")
@@ -161,23 +166,65 @@ class Database:
                 )
                 _log.info("Niveau de difficulté créé : %d — «%s»", dl.level, dl.label)
 
-        # v2 : ajout de cook_time
-        existing_cols = {c["name"] for c in inspect(conn).get_columns("recipes")}
-        if "cook_time" not in existing_cols:
-            conn.execute(text("ALTER TABLE recipes ADD COLUMN cook_time INTEGER"))
-            _log.info("Migration : colonne recipes.cook_time ajoutée")
+    def _ensure_all_varchar_sizes(self, conn: Connection) -> None:
+        """Ajuste toutes les colonnes String du schéma à leur longueur déclarée."""
+        for table in metadata.tables.values():
+            for col in table.columns:
+                if not isinstance(col.type, String) or col.type.length is None:
+                    continue
+                default = (
+                    str(col.default.arg)
+                    if col.default is not None and not callable(col.default.arg)
+                    else ""
+                )
+                self._ensure_varchar_size(
+                    conn,
+                    table.name,
+                    col.name,
+                    col.type.length,
+                    not_null=not col.nullable,
+                    default=default,
+                )
 
-        # v3 : formes plurielles pour unités/ingrédients, flags pluriel par ligne
-        for table, col, definition in [
-            ("units", "name_plural", "VARCHAR(15) NOT NULL DEFAULT ''"),
-            ("ingredients", "name_plural", "VARCHAR(50) NOT NULL DEFAULT ''"),
-            ("recipe_ingredients", "unit_plural", "INTEGER NOT NULL DEFAULT 0"),
-            ("recipe_ingredients", "ingredient_plural", "INTEGER NOT NULL DEFAULT 0"),
-        ]:
-            cols = {c["name"] for c in inspect(conn).get_columns(table)}
-            if col not in cols:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {definition}"))
-                _log.info("Migration : colonne %s.%s ajoutée", table, col)
+    def _ensure_varchar_size(
+        self,
+        conn: Connection,
+        table: str,
+        col: str,
+        min_size: int,
+        *,
+        not_null: bool = True,
+        default: str = "",
+    ) -> None:
+        """Élargit une colonne VARCHAR si sa taille déclarée est trop petite."""
+        cols = {c["name"]: c for c in inspect(conn).get_columns(table)}
+        if col not in cols:
+            return
+        current_size = getattr(cols[col]["type"], "length", None)
+        if current_size is not None and current_size >= min_size:
+            return
+        dialect = conn.dialect.name
+        if dialect == "sqlite":
+            return  # SQLite n'applique pas les tailles VARCHAR
+        nn = "NOT NULL" if not_null else ""
+        df = f"DEFAULT '{default}'"
+        if dialect == "mysql":  # MariaDB
+            conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
+            conn.execute(
+                text(
+                    f"ALTER TABLE `{table}`"
+                    f" MODIFY COLUMN `{col}` VARCHAR({min_size}) {nn} {df}"
+                )
+            )
+            conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
+        elif dialect == "postgresql":
+            conn.execute(
+                text(
+                    f'ALTER TABLE "{table}"'
+                    f' ALTER COLUMN "{col}" TYPE VARCHAR({min_size})'
+                )
+            )
+        _log.info("Migration : %s.%s étendu à VARCHAR(%d)", table, col, min_size)
 
     @staticmethod
     def _enable_sqlite_fk(dbapi_conn, _record) -> None:
@@ -429,9 +476,10 @@ class Database:
         )
 
     def save_difficulty_level(self, dl: DifficultyLevel) -> DifficultyLevel:
-        if not (0 <= dl.level <= 3):
+        if not (MIN_DIFFICULTY <= dl.level <= MAX_DIFFICULTY):
             raise ValueError(
-                f"Niveau de difficulté invalide : {dl.level} (attendu 0–3)"
+                f"Niveau de difficulté invalide : {dl.level}"
+                f" (attendu {MIN_DIFFICULTY}–{MAX_DIFFICULTY})"
             )
         vals = {"label": dl.label, "mime_type": dl.mime_type, "data": dl.data}
         with self._tx() as conn:
@@ -485,6 +533,18 @@ class Database:
             ],
             key=lambda x: _sort_key(x.name),
         )
+
+    def list_all_media(self) -> list[tuple[str, str, bytes]]:
+        """Return (recipe_code, img_code, data) for every image in the database."""
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(
+                    t_recipe_media.c.recipe_code,
+                    t_recipe_media.c.code,
+                    t_recipe_media.c.data,
+                ).order_by(t_recipe_media.c.recipe_code, t_recipe_media.c.position)
+            ).fetchall()
+        return [(r.recipe_code, r.code, bytes(r.data) if r.data else b"") for r in rows]
 
     def get_recipe(self, code: str) -> Recipe | None:
         with self._tx() as conn:
@@ -559,7 +619,7 @@ class Database:
         )
         return recipe
 
-    def save_recipe(self, recipe: Recipe) -> Recipe:
+    def save_recipe(self, recipe: Recipe, original_code: str | None = None) -> Recipe:
         vals = dict(
             name=recipe.name,
             difficulty=recipe.difficulty,
@@ -571,25 +631,52 @@ class Database:
             comments=recipe.comments,
             source_id=recipe.source_id,
         )
+        lookup_code = (
+            original_code
+            if (original_code and original_code != recipe.code)
+            else recipe.code
+        )
         with self._tx() as conn:
             exists = conn.execute(
-                select(t_recipes.c.code).where(t_recipes.c.code == recipe.code)
+                select(t_recipes.c.code).where(t_recipes.c.code == lookup_code)
             ).fetchone()
             if exists:
-                conn.execute(
-                    update(t_recipes)
-                    .where(t_recipes.c.code == recipe.code)
-                    .values(**vals)
-                )
-                _log.info(
-                    "Recette mise à jour : %s — «%s»"
-                    " (%d catégories, %d ingrédients, %d médias)",
-                    recipe.code,
-                    recipe.name,
-                    len(recipe.categories),
-                    len(recipe.ingredients),
-                    len(recipe.media),
-                )
+                if lookup_code != recipe.code:
+                    # Code renamed: delete old sub-tables then update PK
+                    for tbl in (
+                        t_recipe_categories,
+                        t_recipe_ingredients,
+                        t_recipe_media,
+                    ):
+                        conn.execute(
+                            delete(tbl).where(tbl.c.recipe_code == lookup_code)
+                        )
+                    conn.execute(
+                        update(t_recipes)
+                        .where(t_recipes.c.code == lookup_code)
+                        .values(code=recipe.code, **vals)
+                    )
+                    _log.info(
+                        "Recette renommée : %s → %s — «%s»",
+                        lookup_code,
+                        recipe.code,
+                        recipe.name,
+                    )
+                else:
+                    conn.execute(
+                        update(t_recipes)
+                        .where(t_recipes.c.code == recipe.code)
+                        .values(**vals)
+                    )
+                    _log.info(
+                        "Recette mise à jour : %s — «%s»"
+                        " (%d catégories, %d ingrédients, %d médias)",
+                        recipe.code,
+                        recipe.name,
+                        len(recipe.categories),
+                        len(recipe.ingredients),
+                        len(recipe.media),
+                    )
             else:
                 conn.execute(insert(t_recipes).values(code=recipe.code, **vals))
                 _log.info(
@@ -728,3 +815,21 @@ class Database:
             ],
             key=lambda x: _sort_key(x.name),
         )
+
+    # ------------------------------------------------------------------
+    # Globals
+    # ------------------------------------------------------------------
+
+    def get_globals(self) -> dict[str, str]:
+        """Retourne tous les paramètres globaux stockés dans la base."""
+        with self._tx() as conn:
+            rows = conn.execute(select(t_globals)).fetchall()
+        return {r.key: r.value for r in rows}
+
+    def set_globals(self, data: dict[str, str]) -> None:
+        """Remplace tous les paramètres globaux par ceux fournis."""
+        with self._tx() as conn:
+            conn.execute(delete(t_globals))
+            for key, value in data.items():
+                conn.execute(insert(t_globals).values(key=key, value=value))
+        _log.info("Paramètres globaux mis à jour : %d clé(s)", len(data))

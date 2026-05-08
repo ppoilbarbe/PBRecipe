@@ -43,8 +43,10 @@ class YamlExport:
             yaml.dump(doc, fh)
         recipes = len(doc.get("recipes", []))
         _log.info(
-            "Export YAML terminé : %d recettes, %d catégories, %d ingrédients, "
-            "%d unités, %d sources, %d techniques, %d niveaux de difficulté",
+            "Export YAML terminé : %d globals, %d recettes, %d catégories,"
+            " %d ingrédients, %d unités, %d sources, %d techniques,"
+            " %d niveaux de difficulté",
+            len(doc.get("globals", {})),
             recipes,
             len(doc.get("categories", [])),
             len(doc.get("ingredients", [])),
@@ -64,6 +66,7 @@ class YamlExport:
         techniques = self._db.list_techniques()
         difficulty_levels = self._db.list_difficulty_levels()
         recipe_stubs = self._db.list_recipes()
+        globals_data = self._db.get_globals()
 
         cat_by_id = {c.id: c.name for c in categories}
         unit_by_id = {u.id: u.name for u in units}
@@ -71,6 +74,7 @@ class YamlExport:
         src_by_id = {s.id: s.name for s in sources}
 
         return {
+            "globals": globals_data,
             "categories": [c.name for c in sorted(categories, key=lambda x: x.name)],
             "units": [
                 {"name": u.name, "name_plural": u.name_plural}
@@ -196,6 +200,7 @@ class YamlImport:
             )
 
         stats: dict[str, int] = {
+            "globals": 0,
             "categories": 0,
             "units": 0,
             "ingredients": 0,
@@ -206,6 +211,7 @@ class YamlImport:
             "recipes_updated": 0,
         }
 
+        self._import_globals(doc.get("globals", {}), stats)
         self._import_difficulty_levels(doc.get("difficulty_levels", []), stats)
 
         cat_map = self._import_simple_list(
@@ -233,9 +239,10 @@ class YamlImport:
             self._import_recipe(recipe_data, cat_map, unit_map, ing_map, src_map, stats)
 
         _log.info(
-            "Import YAML terminé : +%d cat, +%d unités, +%d ing,"
+            "Import YAML terminé : %d globals, +%d cat, +%d unités, +%d ing,"
             " +%d sources, +%d techniques, %d niveaux de difficulté,"
             " %d recettes créées, %d recettes mises à jour",
+            stats["globals"],
             stats["categories"],
             stats["units"],
             stats["ingredients"],
@@ -248,6 +255,14 @@ class YamlImport:
         return stats
 
     # ------------------------------------------------------------------
+
+    def _import_globals(self, raw: Any, stats: dict) -> None:
+        if not isinstance(raw, dict):
+            return
+        existing = self._db.get_globals()
+        merged = {**existing, **{k: str(v) for k, v in raw.items() if v is not None}}
+        self._db.set_globals(merged)
+        stats["globals"] = len(raw)
 
     def _import_units(self, entries: list, stats: dict) -> dict[str, int]:
         existing = {u.name: u for u in self._db.list_units()}

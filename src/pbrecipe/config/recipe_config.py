@@ -15,19 +15,24 @@ class DbConfig:
     type: str = "sqlite"
     # SQLite
     path: str = "~/recipes.db"
-    # MariaDB / PostgreSQL
+    # MariaDB / PostgreSQL — programme
     host: str = "localhost"
     port: int = 3306
     database: str = "recipes"
     user: str = ""
     password: str = ""
+    # MariaDB / PostgreSQL — export PHP (vide/0 = utiliser les valeurs programme)
+    php_host: str = ""
+    php_port: int = 0
+    php_user: str = ""
+    php_password: str = ""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DbConfig:
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "type": self.type,
             "path": self.path,
             "host": self.host,
@@ -36,6 +41,24 @@ class DbConfig:
             "user": self.user,
             "password": self.password,
         }
+        if self.php_host:
+            d["php_host"] = self.php_host
+        if self.php_port:
+            d["php_port"] = self.php_port
+        if self.php_user:
+            d["php_user"] = self.php_user
+        if self.php_password:
+            d["php_password"] = self.php_password
+        return d
+
+    def php_credentials(self) -> tuple[str, int, str, str]:
+        """Credentials effectifs pour l'export PHP (fallback sur valeurs programme)."""
+        return (
+            self.php_host or self.host,
+            self.php_port or self.port,
+            self.php_user or self.user,
+            self.php_password or self.password,
+        )
 
 
 _DEFAULT_STRINGS: dict[str, str] = {
@@ -73,7 +96,6 @@ _DEFAULT_STRINGS: dict[str, str] = {
 class RecipeConfig:
     name: str = "Mes Recettes"
     db: DbConfig = field(default_factory=DbConfig)
-    strings: dict[str, str] = field(default_factory=lambda: dict(_DEFAULT_STRINGS))
     php_export_dir: str = ""
     yaml_export_file: str = ""
     site_type: str = "recettes"
@@ -93,7 +115,6 @@ class RecipeConfig:
         cfg = cls(
             name=data.get("name", "Mes Recettes"),
             db=DbConfig.from_dict(data.get("db", {})),
-            strings={**_DEFAULT_STRINGS, **data.get("strings", {})},
             php_export_dir=data.get("php_export_dir", ""),
             yaml_export_file=data.get("yaml_export_file", ""),
             site_type=data.get("site_type", "recettes"),
@@ -120,7 +141,6 @@ class RecipeConfig:
         d: dict[str, Any] = {
             "name": self.name,
             "db": self.db.to_dict(),
-            "strings": self.strings,
         }
         if self.php_export_dir:
             d["php_export_dir"] = self.php_export_dir
@@ -129,13 +149,6 @@ class RecipeConfig:
         if self.site_type:
             d["site_type"] = self.site_type
         return d
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    def string(self, key: str) -> str:
-        return self.strings.get(key, _DEFAULT_STRINGS.get(key, key))
 
     @property
     def path(self) -> Path | None:

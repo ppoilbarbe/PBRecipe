@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QSpinBox,
     QStackedWidget,
     QVBoxLayout,
@@ -19,7 +18,8 @@ from PySide6.QtWidgets import (
 )
 
 from pbrecipe.config.dialog_dirs import DialogDirs
-from pbrecipe.config.recipe_config import _DEFAULT_STRINGS, DbConfig, RecipeConfig
+from pbrecipe.config.recipe_config import DbConfig, RecipeConfig
+from pbrecipe.constants import MAX_SITE_TYPE
 
 
 class ConfigDialog(QDialog):
@@ -71,7 +71,7 @@ class ConfigDialog(QDialog):
         # Site type (used by recipe_integration.lib.php when integrated)
         self._site_type_edit = QLineEdit()
         self._site_type_edit.setPlaceholderText("recettes")
-        self._site_type_edit.setMaxLength(40)
+        self._site_type_edit.setMaxLength(MAX_SITE_TYPE)
         form.addRow("Type de site :", self._site_type_edit)
 
         root.addLayout(form)
@@ -96,14 +96,24 @@ class ConfigDialog(QDialog):
         # SQLite panel
         sqlite_widget = QWidget()
         sqlite_form = QFormLayout(sqlite_widget)
+        sqlite_row = QHBoxLayout()
         self._sqlite_path = QLineEdit()
         self._sqlite_path.setPlaceholderText("~/recipes.db")
-        sqlite_form.addRow("Fichier :", self._sqlite_path)
+        browse_sqlite_btn = QPushButton("…")
+        browse_sqlite_btn.setFixedWidth(30)
+        browse_sqlite_btn.clicked.connect(self._browse_sqlite_path)
+        sqlite_row.addWidget(self._sqlite_path)
+        sqlite_row.addWidget(browse_sqlite_btn)
+        sqlite_form.addRow("Fichier :", sqlite_row)
         self._db_stack.addWidget(sqlite_widget)
 
         # Network DB panel (shared by MariaDB / PostgreSQL)
         net_widget = QWidget()
-        net_form = QFormLayout(net_widget)
+        net_layout = QVBoxLayout(net_widget)
+        net_layout.setContentsMargins(0, 0, 0, 0)
+
+        prog_group = QGroupBox("Accès programme")
+        prog_form = QFormLayout(prog_group)
         self._db_host = QLineEdit()
         self._db_port = QSpinBox()
         self._db_port.setRange(1, 65535)
@@ -111,35 +121,41 @@ class ConfigDialog(QDialog):
         self._db_user = QLineEdit()
         self._db_pass = QLineEdit()
         self._db_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        net_form.addRow("Hôte :", self._db_host)
-        net_form.addRow("Port :", self._db_port)
-        net_form.addRow("Base :", self._db_name)
-        net_form.addRow("Utilisateur :", self._db_user)
-        net_form.addRow("Mot de passe :", self._db_pass)
+        prog_form.addRow("Hôte :", self._db_host)
+        prog_form.addRow("Port :", self._db_port)
+        prog_form.addRow("Base :", self._db_name)
+        prog_form.addRow("Utilisateur :", self._db_user)
+        prog_form.addRow("Mot de passe :", self._db_pass)
         test_btn = QPushButton("Tester la connexion")
         test_btn.clicked.connect(self._test_connection)
-        net_form.addRow("", test_btn)
+        prog_form.addRow("", test_btn)
+        net_layout.addWidget(prog_group)
+
+        php_group = QGroupBox("Accès export PHP")
+        php_group.setToolTip(
+            "Laisser vide pour utiliser les mêmes paramètres que l'accès programme."
+        )
+        php_form = QFormLayout(php_group)
+        self._php_db_host = QLineEdit()
+        self._php_db_host.setPlaceholderText("(identique à l'accès programme)")
+        self._php_db_port = QSpinBox()
+        self._php_db_port.setRange(0, 65535)
+        self._php_db_port.setSpecialValueText("(par défaut)")
+        self._php_db_user = QLineEdit()
+        self._php_db_user.setPlaceholderText("(identique à l'accès programme)")
+        self._php_db_pass = QLineEdit()
+        self._php_db_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        self._php_db_pass.setPlaceholderText("(identique à l'accès programme)")
+        php_form.addRow("Hôte :", self._php_db_host)
+        php_form.addRow("Port :", self._php_db_port)
+        php_form.addRow("Utilisateur :", self._php_db_user)
+        php_form.addRow("Mot de passe :", self._php_db_pass)
+        net_layout.addWidget(php_group)
+
         self._db_stack.addWidget(net_widget)
 
         db_layout.addWidget(self._db_stack)
         root.addWidget(db_group)
-
-        # Strings
-        strings_group = QGroupBox("Textes spécifiques au type de recettes")
-        strings_layout = QVBoxLayout(strings_group)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        inner = QWidget()
-        self._strings_form = QFormLayout(inner)
-        self._string_edits: dict[str, QLineEdit] = {}
-        for key, default in _DEFAULT_STRINGS.items():
-            edit = QLineEdit()
-            edit.setPlaceholderText(default)
-            self._string_edits[key] = edit
-            self._strings_form.addRow(f"{key} :", edit)
-        scroll.setWidget(inner)
-        strings_layout.addWidget(scroll)
-        root.addWidget(strings_group)
 
         # Buttons
         buttons = QDialogButtonBox(
@@ -191,6 +207,20 @@ class ConfigDialog(QDialog):
                 self, "Test de connexion", f"Échec de la connexion :\n{exc}"
             )
 
+    def _browse_sqlite_path(self) -> None:
+        start = self._sqlite_path.text()
+        if not start and self._dialog_dirs is not None:
+            start = self._dialog_dirs.get("sqlite_path")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Fichier de base SQLite", start, "SQLite (*.db)"
+        )
+        if path:
+            if not path.lower().endswith(".db"):
+                path += ".db"
+            self._sqlite_path.setText(path)
+            if self._dialog_dirs is not None:
+                self._dialog_dirs.record("sqlite_path", path)
+
     def _browse_php_export_dir(self) -> None:
         if self._dialog_dirs is not None:
             start = self._dialog_dirs.get(
@@ -234,8 +264,10 @@ class ConfigDialog(QDialog):
         self._db_name.setText(db.database)
         self._db_user.setText(db.user)
         self._db_pass.setText(db.password)
-        for key, edit in self._string_edits.items():
-            edit.setText(self._config.strings.get(key, ""))
+        self._php_db_host.setText(db.php_host)
+        self._php_db_port.setValue(db.php_port)
+        self._php_db_user.setText(db.php_user)
+        self._php_db_pass.setText(db.php_password)
 
     def _accept(self) -> None:
         self._config.name = self._name_edit.text().strip() or "Mes Recettes"
@@ -252,11 +284,11 @@ class ConfigDialog(QDialog):
             db.database = self._db_name.text().strip()
             db.user = self._db_user.text().strip()
             db.password = self._db_pass.text()
+            db.php_host = self._php_db_host.text().strip()
+            db.php_port = self._php_db_port.value()
+            db.php_user = self._php_db_user.text().strip()
+            db.php_password = self._php_db_pass.text()
         self._config.db = db
-        for key, edit in self._string_edits.items():
-            val = edit.text()
-            if val:
-                self._config.strings[key] = val
         self.accept()
 
     @property

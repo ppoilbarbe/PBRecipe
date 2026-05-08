@@ -14,6 +14,7 @@ from PySide6.QtGui import (
     QTextCursor,
 )
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -304,20 +305,30 @@ class _RefPickerDialog(QDialog):
 
 
 class _ImgPickerDialog(QDialog):
-    """Dialogue de sélection d'une image : liste filtrée + prévisualisation."""
+    """Dialogue de sélection d'une image : liste filtrée + prévisualisation.
+
+    items         : liste de (recipe_code, img_code, data)
+    current_recipe: code de la recette courante (pour le filtre)
+    show_filter   : si True, affiche une case "Recette courante uniquement"
+    """
 
     _PREVIEW_SIZE = 240
 
     def __init__(
         self,
-        items: list[tuple[str, bytes]],
+        items: list[tuple[str, str, bytes]],
+        current_recipe: str = "",
+        show_filter: bool = False,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Sélectionner une image")
         self.setMinimumSize(580, 360)
         self._all_items = items
-        self._selected_code: str | None = None
+        self._current_recipe = current_recipe.upper()
+        self._show_filter = show_filter
+        self._selected_recipe_code: str | None = None
+        self._selected_img_code: str | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -326,6 +337,13 @@ class _ImgPickerDialog(QDialog):
         content = QHBoxLayout()
 
         left = QVBoxLayout()
+
+        if self._show_filter:
+            self._filter_cb = QCheckBox("Recette courante uniquement")
+            self._filter_cb.setChecked(True)
+            self._filter_cb.toggled.connect(self._apply_filter)
+            left.addWidget(self._filter_cb)
+
         self._filter = QLineEdit()
         self._filter.setPlaceholderText("Filtrer…")
         self._filter.textChanged.connect(self._apply_filter)
@@ -345,7 +363,7 @@ class _ImgPickerDialog(QDialog):
 
         root.addLayout(content)
 
-        self._populate(self._all_items)
+        self._apply_filter()
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -354,27 +372,46 @@ class _ImgPickerDialog(QDialog):
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
 
-    def _populate(self, items: list[tuple[str, bytes]]) -> None:
+    def _visible_items(self) -> list[tuple[str, str, bytes]]:
+        """Return items visible selon le filtre recette courante (si activé)."""
+        items = self._all_items
+        if self._show_filter and self._filter_cb.isChecked():
+            items = [i for i in items if i[0].upper() == self._current_recipe]
+        return items
+
+    def _populate(self, items: list[tuple[str, str, bytes]]) -> None:
         self._list.clear()
-        for code, _data in items:
-            item = QListWidgetItem(code)
-            item.setData(0x0100, code)
+        current_only = self._show_filter and self._filter_cb.isChecked()
+        for recipe_code, img_code, _data in items:
+            label = img_code if current_only else f"{recipe_code} / {img_code}"
+            item = QListWidgetItem(label)
+            item.setData(0x0100, (recipe_code, img_code))
             self._list.addItem(item)
         if self._list.count():
             self._list.setCurrentRow(0)
 
-    def _apply_filter(self, text: str) -> None:
-        low = text.lower()
-        self._populate(
-            [(code, data) for code, data in self._all_items if low in code.lower()]
-        )
+    def _apply_filter(self) -> None:
+        text = self._filter.text().lower()
+        visible = self._visible_items()
+        if text:
+            visible = [
+                i for i in visible if text in i[0].lower() or text in i[1].lower()
+            ]
+        self._populate(visible)
 
     def _on_selection_changed(self, current: QListWidgetItem | None, _prev) -> None:
         if current is None:
             self._preview.clear()
             return
-        code = current.data(0x0100)
-        data = next((d for c, d in self._all_items if c == code), b"")
+        recipe_code, img_code = current.data(0x0100)
+        data = next(
+            (
+                d
+                for rc, ic, d in self._all_items
+                if rc.upper() == recipe_code.upper() and ic.upper() == img_code.upper()
+            ),
+            b"",
+        )
         if data:
             pix = QPixmap()
             pix.loadFromData(data)
@@ -390,36 +427,49 @@ class _ImgPickerDialog(QDialog):
             self._preview.clear()
 
     def _accept_item(self, item: QListWidgetItem) -> None:
-        self._selected_code = item.data(0x0100)
+        recipe_code, img_code = item.data(0x0100)
+        self._selected_recipe_code = recipe_code
+        self._selected_img_code = img_code
         self.accept()
 
     def _accept_selection(self) -> None:
         item = self._list.currentItem()
         if item:
-            self._selected_code = item.data(0x0100)
+            recipe_code, img_code = item.data(0x0100)
+            self._selected_recipe_code = recipe_code
+            self._selected_img_code = img_code
             self.accept()
 
     @property
-    def selected_code(self) -> str | None:
-        return self._selected_code
+    def selected_recipe_code(self) -> str | None:
+        return self._selected_recipe_code
+
+    @property
+    def selected_img_code(self) -> str | None:
+        return self._selected_img_code
 
 
 class HtmlEditor(QWidget):
     """Minimal WYSIWYG HTML editor with special-marker insertion.
 
     Special markers stored in the HTML content:
-      [RECIPE:CODE]    — link to another recipe
-      [IMG:filename]   — inline image (hover preview on the web)
-      [TECH:CODE]      — inline technique reference
+      [RECIPE:CODE]            — link to another recipe
+      [IMG:RECIPE_CODE:CODE]   — inline image (hover preview on the web)
+      [TECH:CODE]              — inline technique reference
     """
 
     changed = Signal()
 
-    def __init__(self, show_img: bool = True, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        current_recipe_mode: bool = False,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
-        self._show_img = show_img
+        self._current_recipe_mode = current_recipe_mode
+        self._current_recipe_code: str = ""
         self._recipes: list[tuple[str, str]] = []
-        self._images: list[tuple[str, bytes]] = []
+        self._images: list[tuple[str, str, bytes]] = []
         self._techniques: list[tuple[str, str]] = []
         self._setup_ui()
 
@@ -458,8 +508,7 @@ class HtmlEditor(QWidget):
             self._insert_recipe_marker,
             "Insérer un lien vers une autre recette",
         )
-        if self._show_img:
-            _fmt_action("[IMG]", self._insert_img_marker, "Insérer une image")
+        _fmt_action("[IMG]", self._insert_img_marker, "Insérer une image")
         _fmt_action(
             "[TECH]",
             self._insert_tech_marker,
@@ -500,10 +549,14 @@ class HtmlEditor(QWidget):
     def clear(self) -> None:
         self._edit.clear()
 
+    def set_current_recipe(self, code: str) -> None:
+        """Définit le code de la recette courante pour le picker d'images."""
+        self._current_recipe_code = code
+
     def set_references(
         self,
         recipes: list[tuple[str, str]],
-        images: list[tuple[str, bytes]],
+        images: list[tuple[str, str, bytes]],
         techniques: list[tuple[str, str]],
     ) -> None:
         """Fournit les listes de références disponibles pour les pickers."""
@@ -511,7 +564,7 @@ class HtmlEditor(QWidget):
         self._images = images
         self._techniques = techniques
 
-    def set_images(self, images: list[tuple[str, bytes]]) -> None:
+    def set_images(self, images: list[tuple[str, str, bytes]]) -> None:
         self._images = images
 
     # ------------------------------------------------------------------
@@ -611,9 +664,16 @@ class HtmlEditor(QWidget):
             self._insert_marker(f"[RECIPE:{code}]")
 
     def _insert_img_marker(self) -> None:
-        dlg = _ImgPickerDialog(self._images, self)
-        if dlg.exec() and dlg.selected_code:
-            self._insert_marker(f"[IMG:{dlg.selected_code}]")
+        dlg = _ImgPickerDialog(
+            self._images,
+            current_recipe=self._current_recipe_code,
+            show_filter=self._current_recipe_mode,
+            parent=self,
+        )
+        if dlg.exec() and dlg.selected_recipe_code and dlg.selected_img_code:
+            self._insert_marker(
+                f"[IMG:{dlg.selected_recipe_code}:{dlg.selected_img_code}]"
+            )
 
     def _insert_tech_marker(self) -> None:
         code = self._pick_ref("Sélectionner une technique", self._techniques)

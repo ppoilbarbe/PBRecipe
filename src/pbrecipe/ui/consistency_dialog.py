@@ -8,14 +8,18 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextBrowser, QVBoxLayo
 
 from pbrecipe.database import Database
 
-_MARKER_RE = re.compile(r"\[(IMG|RECIPE|TECH):([A-Z0-9_]+)\]", re.IGNORECASE)
+_IMG_RE = re.compile(r"\[IMG:([A-Z0-9_]+):([A-Z0-9_]+)\]", re.IGNORECASE)
+_IMG_OLD_RE = re.compile(
+    r"\[IMG:([A-Z0-9_]+)\]", re.IGNORECASE
+)  # ancien format sans recette
+_OTHER_RE = re.compile(r"\[(RECIPE|TECH):([A-Z0-9_]+)\]", re.IGNORECASE)
 
 
 @dataclass
 class _BrokenRef:
     kind: str  # 'IMG', 'RECIPE', 'TECH'
     code: str
-    field: str  # 'description', 'commentaires'
+    field: str  # 'description', 'commentaires', 'présentation'…
     label: str = ""  # nom/titre résolu (vide si introuvable)
 
 
@@ -33,7 +37,9 @@ class _TechIssues:
     refs: list[_BrokenRef] = field(default_factory=list)
 
 
-def run_check(db: Database) -> tuple[list[_RecipeIssues], list[_TechIssues]]:
+def run_check(
+    db: Database,
+) -> tuple[list[_RecipeIssues], list[_TechIssues], list[_BrokenRef]]:
     recipe_stubs = db.list_recipes()
     tech_stubs = db.list_techniques()
 
@@ -51,16 +57,22 @@ def run_check(db: Database) -> tuple[list[_RecipeIssues], list[_TechIssues]]:
             full_recipes.append(r)
             for m in r.media:
                 if m.code:
-                    media_codes.add(m.code.upper())
+                    media_codes.add(f"{stub.code.upper()}:{m.code.upper()}")
 
     def _check(text: str, field_name: str) -> list[_BrokenRef]:
         broken = []
-        for m in _MARKER_RE.finditer(text or ""):
+        for m in _IMG_OLD_RE.finditer(text or ""):
+            broken.append(_BrokenRef("IMG_OLD", m.group(1), field_name))
+        for m in _IMG_RE.finditer(text or ""):
+            recipe_code = m.group(1).upper()
+            img_code = m.group(2).upper()
+            key = f"{recipe_code}:{img_code}"
+            if key not in media_codes:
+                broken.append(_BrokenRef("IMG", key, field_name))
+        for m in _OTHER_RE.finditer(text or ""):
             kind = m.group(1).upper()
             code = m.group(2).upper()
-            if kind == "IMG" and code not in media_codes:
-                broken.append(_BrokenRef(kind, code, field_name))
-            elif kind == "RECIPE" and code not in recipe_codes:
+            if kind == "RECIPE" and code not in recipe_codes:
                 broken.append(
                     _BrokenRef(kind, code, field_name, recipe_name.get(code, ""))
                 )
@@ -82,13 +94,17 @@ def run_check(db: Database) -> tuple[list[_RecipeIssues], list[_TechIssues]]:
         if refs:
             tech_issues.append(_TechIssues(t.code, t.title, refs))
 
-    return recipe_issues, tech_issues
+    presentation = db.get_globals().get("presentation", "")
+    pres_issues = _check(presentation, "présentation")
+
+    return recipe_issues, tech_issues, pres_issues
 
 
-# ── HTML report ───────────────────────────────────────────────────────────────
+# -- HTML report --------------------------------------------------------------
 
 _KIND_META = {
     "IMG": ("image introuvable", "#c05000"),
+    "IMG_OLD": ("format obsolète — utiliser [IMG:RECETTE:IMAGE]", "#c05000"),
     "RECIPE": ("recette introuvable", "#2e6b2e"),
     "TECH": ("technique introuvable", "#8a4a00"),
 }
@@ -100,10 +116,11 @@ def _h(s: str) -> str:
 
 def _ref_line(ref: _BrokenRef) -> str:
     label, color = _KIND_META.get(ref.kind, ("?", "#888"))
+    badge_text = ref.kind.split("_")[0]  # IMG_OLD → IMG
     display = _h(ref.label) if ref.label else f"<code>{_h(ref.code)}</code>"
     return (
         f'<div class="item">'
-        f'<span class="badge" style="background:{color}">{ref.kind}</span>'
+        f'<span class="badge" style="background:{color}">{badge_text}</span>'
         f"{display} — {label}"
         f' <span class="field">[{ref.field}]</span>'
         f"</div>"
@@ -111,9 +128,15 @@ def _ref_line(ref: _BrokenRef) -> str:
 
 
 def build_report(
-    recipe_issues: list[_RecipeIssues], tech_issues: list[_TechIssues]
+    recipe_issues: list[_RecipeIssues],
+    tech_issues: list[_TechIssues],
+    pres_issues: list[_BrokenRef],
 ) -> str:
-    n = sum(len(r.refs) for r in recipe_issues) + sum(len(t.refs) for t in tech_issues)
+    n = (
+        sum(len(r.refs) for r in recipe_issues)
+        + sum(len(t.refs) for t in tech_issues)
+        + len(pres_issues)
+    )
     parts = [
         '<html><head><meta charset="utf-8"><style>'
         "body{font-family:sans-serif;font-size:13px;margin:10px;color:#222}"
@@ -127,8 +150,13 @@ def build_report(
         "code{font-family:monospace;font-size:12px}"
         ".field{color:#999;font-style:italic;font-size:11px}"
         "</style></head><body>"
-        f"<h1>Rapport de cohérence — {n} problème(s) détecté(s)</h1>"
+        f"<h1>Rapport de cohérence — {n} problème(s) détecté(s)</h1>"
     ]
+
+    if pres_issues:
+        parts.append("<h2>Présentation</h2>")
+        for ref in pres_issues:
+            parts.append(_ref_line(ref))
 
     if recipe_issues:
         parts.append("<h2>Recettes</h2>")
@@ -148,7 +176,7 @@ def build_report(
     return "".join(parts)
 
 
-# ── Report dialog (non-modal) ─────────────────────────────────────────────────
+# -- Report dialog (non-modal) ------------------------------------------------
 
 
 class ConsistencyReportDialog(QDialog):

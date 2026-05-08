@@ -8,12 +8,6 @@ def test_defaults():
     cfg = RecipeConfig()
     assert cfg.name == "Mes Recettes"
     assert cfg.db.type == "sqlite"
-    assert cfg.string("window_title") == "Mes Recettes"
-
-
-def test_string_fallback():
-    cfg = RecipeConfig()
-    assert cfg.string("nonexistent_key") == "nonexistent_key"
 
 
 def test_roundtrip(tmp_path: Path):
@@ -21,7 +15,6 @@ def test_roundtrip(tmp_path: Path):
         name="Cocktails",
         db=DbConfig(type="mariadb", host="db.example.com", database="cocktails"),
     )
-    cfg.strings["recipe_singular"] = "Cocktail"
     path = tmp_path / "test.yaml"
     cfg.save(path)
 
@@ -29,4 +22,3 @@ def test_roundtrip(tmp_path: Path):
     assert loaded.name == "Cocktails"
     assert loaded.db.type == "mariadb"
     assert loaded.db.host == "db.example.com"
-    assert loaded.string("recipe_singular") == "Cocktail"

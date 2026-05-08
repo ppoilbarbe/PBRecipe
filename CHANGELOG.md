@@ -5,6 +5,54 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
 
+## [2026.3] — 2026-05-08
+
+### Added
+
+- Dialogue **Présentation et libellés** (`GlobalsDialog`) : édition de la présentation HTML du
+  site et des libellés de l'application, sauvegardés en base dans la table `globals` ;
+  accessible depuis le menu Fichier et la barre d'outils.
+- `DbConfig` : champs `php_host`, `php_port`, `php_user`, `php_password` pour des identifiants
+  d'accès export PHP distincts des identifiants programme (fallback sur valeurs programme si vides) ;
+  panneau dédié « Accès export PHP » dans le dialogue de paramètres.
+- Argument CLI `--check-connect` : diagnostique la connexion à la base de données en 6 étapes
+  (lecture config, paramètres, construction URL, connexion, vérification schéma) sans ouvrir
+  l'interface graphique.
+- Format d'image dual `[IMG:CODE_RECETTE:CODE_IMAGE]` dans l'éditeur HTML : évite les collisions
+  de codes entre recettes ; le sélecteur d'images propose un filtre « recette courante seulement ».
+- Module `pbrecipe/constants.py` : toutes les longueurs de colonnes SQL et les règles métier
+  centralisées en constantes ; `schema.py` et les widgets UI (`setMaxLength`, `setRange`) les
+  importent directement.
+- `Database.get_globals()` / `set_globals()` : CRUD pour la table `globals`.
+- `Database.list_all_media()` : liste tous les médias toutes recettes confondues.
+- Export/import YAML : la table `globals` est incluse dans le document exporté (clé `globals`)
+  et rechargée à l'import.
+- `SITE_PRESENTATION` dans `config.php.tpl` / `index.php` : le texte de présentation saisi dans
+  le dialogue est affiché en haut de la page de recherche PHP.
+- CSS `.site-presentation` dans `recipes.css` pour le bloc de présentation.
+- Persistance de l'état des barres d'outils (`AppConfig.toolbar_state`).
+- Vérification de cohérence étendue à la présentation globale (liens cassés dans `globals.presentation`).
+
+### Changed
+
+- Les libellés de l'application (`strings`) ne sont plus stockés dans le fichier YAML de
+  configuration ; ils sont exclusivement gérés en base via le dialogue Présentation et libellés.
+  `RecipeConfig` : champ `strings` et méthode `string()` supprimés.
+- `save_recipe()` accepte un paramètre `original_code` pour gérer le renommage de recette :
+  les sous-tables (catégories, ingrédients, médias) sont migrées vers le nouveau code.
+- PHP `media.php` : paramètres `?recipe=CODE_RECETTE&code=CODE_IMAGE` (au lieu de `?code=CODE`) ;
+  clé de cache composite pour éviter les collisions.
+- PHP `display.php` : `parse_markers()` utilise des appels dynamiques à `media.php` pour les
+  images ; paramètre `$tech_standalone` remplace l'ancien `$url_map`.
+- Barres d'outils réorganisées en 5 groupes nommés (Base de données, Export PHP, YAML, Recettes,
+  Référentiels) ; l'action « Vérifier la cohérence » déplacée dans Référentiels.
+- Vérification de cohérence proposée automatiquement avant un export PHP si des problèmes sont
+  détectés.
+- `_ensure_all_varchar_sizes()` : parcourt le metadata SQLAlchemy pour ajuster automatiquement
+  toutes les colonnes `VARCHAR` à leur longueur déclarée (MariaDB, PostgreSQL) ; SQLite ignoré.
+- `clear_all_data()` vide désormais aussi la table `globals`.
+- `_migrate()` : historique de migration (v2, v3) retiré, toutes les bases étant à jour.
+
 ## [2026.2] — 2026-05-07
 
 ### Added

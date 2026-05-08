@@ -434,6 +434,12 @@ details:not([open]) .category-name::before { content: '▸ '; }
 .no-results { color: var(--clr-muted); font-style: italic; padding: 1rem 0; }
 .error      { color: var(--clr-accent); font-family: var(--font-ui); padding: 1rem 0; }
 
+.site-presentation {
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+}
+.site-presentation p + p { margin-top: .6rem; }
+
 
 /* ══════════════════════════════════════════════════════════════════════════════
    7. IMPRESSION (@media print) — règles spécifiques aux recettes

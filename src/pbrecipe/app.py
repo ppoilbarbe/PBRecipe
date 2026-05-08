@@ -69,6 +69,15 @@ def main() -> None:
             " dans la configuration (nom de fichier généré automatiquement)."
         ),
     )
+    parser.add_argument(
+        "--check-connect",
+        action="store_true",
+        dest="check_connect",
+        help=(
+            "Tester la connexion définie dans le fichier YAML"
+            " (affiche le détail de chaque étape, puis quitte)."
+        ),
+    )
 
     log_group = parser.add_mutually_exclusive_group()
     log_group.add_argument(
@@ -97,6 +106,10 @@ def main() -> None:
     args, qt_args = parser.parse_known_args()
     apply_log_level(args.log_level)
 
+    if args.check_connect:
+        _check_connect(args.config)
+        return
+
     if args.export_php is not None:
         _headless_export(args.config, args.export_php)
         return
@@ -119,6 +132,93 @@ def main() -> None:
     window = MainWindow(initial_path=args.config, app_config=app_config)
     window.show()
     sys.exit(app.exec())
+
+
+def _check_connect(config_path: str | None) -> None:
+    from pbrecipe.config import AppConfig, RecipeConfig
+    from pbrecipe.database import create_database
+
+    ok = "[OK]"
+    ko = "[ERREUR]"
+
+    # --- Étape 1 : résolution du fichier de configuration ---
+    if config_path:
+        yaml_path = Path(config_path).expanduser()
+    else:
+        app_config = AppConfig.load()
+        last = app_config.last_file
+        if not last:
+            print(
+                f"{ko} Aucun fichier de configuration spécifié"
+                " et aucun fichier récent trouvé."
+            )
+            sys.exit(1)
+        yaml_path = Path(last).expanduser()
+        print(f"      Dernier fichier utilisé : {yaml_path}")
+
+    print(f"      Fichier de configuration : {yaml_path}")
+    if not yaml_path.exists():
+        print(f"{ko} Fichier introuvable : {yaml_path}")
+        sys.exit(1)
+    print(f"{ok} Fichier trouvé")
+
+    # --- Étape 2 : chargement de la configuration ---
+    try:
+        config = RecipeConfig.from_file(yaml_path)
+    except Exception as exc:  # noqa: BLE001
+        print(f"{ko} Impossible de lire la configuration : {exc}")
+        sys.exit(1)
+    print(f"{ok} Configuration chargée (base : {config.name!r})")
+
+    # --- Étape 3 : paramètres de connexion ---
+    db_cfg = config.db
+    print(f"      Type        : {db_cfg.type}")
+    if db_cfg.type == "sqlite":
+        resolved = Path(db_cfg.path).expanduser().resolve()
+        print(f"      Fichier     : {resolved}")
+        if not resolved.exists():
+            print(
+                "      (le fichier n'existe pas encore"
+                " — il sera créé à la première ouverture)"
+            )
+    else:
+        print(f"      Hôte        : {db_cfg.host}:{db_cfg.port}")
+        print(f"      Base        : {db_cfg.database}")
+        print(f"      Utilisateur : {db_cfg.user or '(aucun)'}")
+        print(f"      Mot de passe: {'(défini)' if db_cfg.password else '(vide)'}")
+
+    # --- Étape 4 : construction de l'URL ---
+    try:
+        db = create_database(config)
+    except ValueError as exc:
+        print(f"{ko} Type de base non supporté : {exc}")
+        sys.exit(1)
+    print(f"{ok} URL de connexion construite")
+
+    # --- Étape 5 : connexion ---
+    try:
+        db.connect()
+    except Exception as exc:  # noqa: BLE001
+        print(f"{ko} Connexion échouée : {exc}")
+        sys.exit(1)
+    print(f"{ok} Connexion établie")
+
+    # --- Étape 6 : état du schéma ---
+    try:
+        status = db.check_schema()
+    except Exception as exc:  # noqa: BLE001
+        print(f"{ko} Vérification du schéma échouée : {exc}")
+        sys.exit(1)
+    finally:
+        db.disconnect()
+
+    schema_labels = {
+        "empty": "base vide (aucune table)",
+        "ok": "schéma valide",
+        "foreign": "tables présentes mais schéma incompatible",
+    }
+    print(f"{ok} Schéma : {schema_labels.get(status, status)}")
+    print(f"{ok} Connexion opérationnelle.")
 
 
 def _headless_export_yaml(config_path: str | None, export_file: str) -> None:

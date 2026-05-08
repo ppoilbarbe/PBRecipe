@@ -48,9 +48,9 @@ function get_difficulty_levels(): array {
 
 /**
  * Parse special markers in HTML recipe content:
- *   [RECIPE:CODE]   → clickable link to the recipe
- *   [IMG:CODE]      → image thumbnail with hover enlargement
- *   [TECH:CODE]     → anchor link to the technique panel
+ *   [RECIPE:CODE]          → lien cliquable vers la recette
+ *   [IMG:RECETTE:IMAGE]    → vignette avec agrandissement au survol
+ *   [TECH:CODE]            → ancre vers le panneau technique
  */
 /** Return code→name map for all recipes (loaded once per request). */
 function recipe_name_map(): array {
@@ -76,8 +76,11 @@ function tech_title_map(): array {
     return $map;
 }
 
-/** $url_map : ['CODE' => 'media/CODE.jpg', …] — URLs précalculées pour les médias de la recette. */
-function parse_markers(string $html, array $url_map = []): string {
+/**
+ * $tech_standalone: true  → [TECH:CODE] produit un lien de page (?tech=CODE)
+ *                   false → [TECH:CODE] produit une ancre interne (#tech-CODE, défaut)
+ */
+function parse_markers(string $html, bool $tech_standalone = false): string {
     // [RECIPE:CODE] — affiche le nom de la recette
     $html = preg_replace_callback(
         '/\[RECIPE:([A-Z0-9_]+)\]/i',
@@ -89,28 +92,32 @@ function parse_markers(string $html, array $url_map = []): string {
         $html
     );
 
-    // [IMG:CODE]
+    // [IMG:RECETTE:IMAGE] → vignette avec agrandissement au survol
     $html = preg_replace_callback(
-        '/\[IMG:([A-Z0-9_]+)\]/i',
-        function ($m) use ($url_map) {
-            $code = strtoupper($m[1]);
-            $src  = $url_map[$code] ?? '';
-            if ($src === '') return '<span class="img-missing">[IMG:' . h($code) . ']</span>';
+        '/\[IMG:([A-Z0-9_]+):([A-Z0-9_]+)\]/i',
+        function ($m) {
+            $recipe_code = strtoupper($m[1]);
+            $img_code    = strtoupper($m[2]);
+            $src = 'lib/media.php?recipe=' . urlencode($recipe_code)
+                 . '&code=' . urlencode($img_code);
             return '<span class="recipe-img-ref">'
-                 . '<img src="' . h($src) . '" alt="' . h($code) . '" class="recipe-thumb" loading="lazy">'
-                 . '<span class="recipe-img-preview"><img src="' . h($src) . '" alt="' . h($code) . '"></span>'
+                 . '<img src="' . h($src) . '" alt="' . h($img_code) . '" class="recipe-thumb" loading="lazy">'
+                 . '<span class="recipe-img-preview"><img src="' . h($src) . '" alt="' . h($img_code) . '"></span>'
                  . '</span>';
         },
         $html
     );
 
-    // [TECH:CODE] — affiche le titre de la technique
+    // [TECH:CODE] — lien vers la technique
     $html = preg_replace_callback(
         '/\[TECH:([A-Z0-9_]+)\]/i',
-        function ($m) {
+        function ($m) use ($tech_standalone) {
             $code  = strtoupper($m[1]);
             $title = tech_title_map()[$code] ?? $code;
-            return '<a href="#tech-' . h($code) . '" class="tech-link">' . h($title) . '</a>';
+            $href  = $tech_standalone
+                ? '?tech=' . urlencode($code)
+                : '#tech-' . h($code);
+            return '<a href="' . $href . '" class="tech-link">' . h($title) . '</a>';
         },
         $html
     );
@@ -150,15 +157,13 @@ function render_duration(int $minutes): string {
 
 /** Render the full recipe page HTML (body content only). */
 function render_recipe(array $recipe, array $strings): string {
-    // Build code→URL map from recipe media (url is already computed in recipe.php).
-    $url_map   = [];
+    // Construction de l'image héro et de la galerie depuis les médias de la recette.
     $hero_src  = '';
     $hero_code = '';
     $gallery   = [];
     foreach ($recipe['media'] ?? [] as $item) {
-        $code = $item['code'];
         $src  = $item['url'];
-        $url_map[$code] = $src;
+        $code = $item['code'];
         if ($hero_src === '') { $hero_src = $src; $hero_code = $code; }
         else                  { $gallery[] = ['code' => $code, 'src' => $src]; }
     }
@@ -295,7 +300,7 @@ function render_recipe(array $recipe, array $strings): string {
     if (has_visible_text($recipe['description'])) {
         $html .= "    <section class=\"recipe-description recipe-section\">\n";
         $html .= "      <h2>" . h($strings['description_label'] ?? 'Réalisation') . "</h2>\n";
-        $html .= "      <div class=\"recipe-body\">" . parse_markers($recipe['description'], $url_map) . "</div>\n";
+        $html .= "      <div class=\"recipe-body\">" . parse_markers($recipe['description']) . "</div>\n";
         $html .= "    </section>\n";
     }
 
@@ -303,7 +308,7 @@ function render_recipe(array $recipe, array $strings): string {
     if (has_visible_text($recipe['comments'])) {
         $html .= "    <section class=\"recipe-comments recipe-section\">\n";
         $html .= "      <h2>" . h($strings['comments_label'] ?? 'Commentaires') . "</h2>\n";
-        $html .= "      <div class=\"recipe-body\">" . parse_markers($recipe['comments'], $url_map) . "</div>\n";
+        $html .= "      <div class=\"recipe-body\">" . parse_markers($recipe['comments']) . "</div>\n";
         $html .= "    </section>\n";
     }
 

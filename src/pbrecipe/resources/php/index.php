@@ -51,6 +51,11 @@ if ($recipe_code !== '') {
     $ingredients = get_all_ingredients();
     $techniques  = get_all_techniques();
 
+    $pres = SITE_PRESENTATION;
+    if ($pres !== '') {
+        $body .= "<div class=\"site-presentation\">" . parse_markers($pres, true) . "</div>\n";
+    }
+
     $body .= render_search_form(
         $categories, $ingredients, $techniques, $STRINGS,
         ['q' => $q, 'cat' => $cat_id, 'ing' => $ing_id, 'diff' => $diff, 'tech' => $tech_code]

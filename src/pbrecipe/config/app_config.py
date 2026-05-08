@@ -30,6 +30,7 @@ class AppConfig:
     dialog_dirs: DialogDirs = field(default_factory=DialogDirs.load)
     window_geometry: dict = field(default_factory=dict)
     splitter_sizes: list[int] = field(default_factory=list)
+    toolbar_state: str = ""
 
     # ------------------------------------------------------------------
     # Persistence
@@ -61,11 +62,13 @@ class AppConfig:
         splitter_sizes = (
             [int(s) for s in raw_sizes] if isinstance(raw_sizes, list) else []
         )
+        toolbar_state = str(data.get("toolbar_state", ""))
         cfg = cls(
             recent_files=list(data.get("recent_files", [])),
             log_level=log_level,
             window_geometry=window_geometry,
             splitter_sizes=splitter_sizes,
+            toolbar_state=toolbar_state,
         )
         _log.debug("Configuration programme chargée : %s (log=%s)", path, cfg.log_level)
         return cfg
@@ -83,6 +86,7 @@ class AppConfig:
                     "log_level": self.log_level,
                     "window_geometry": self.window_geometry,
                     "splitter_sizes": self.splitter_sizes,
+                    "toolbar_state": self.toolbar_state,
                 },
                 fh,
             )

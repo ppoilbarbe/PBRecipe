@@ -14,6 +14,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pbrecipe.constants import (
+    MAX_INGREDIENT_PREFIX,
+    MAX_INGREDIENT_QUANTITY,
+    MAX_INGREDIENT_SEPARATOR,
+    MAX_INGREDIENT_SUFFIX,
+)
 from pbrecipe.database import Database
 from pbrecipe.models import RecipeIngredient
 
@@ -90,13 +96,13 @@ class IngredientRow(QWidget):
         layout.addWidget(handle)
 
         self._prefix = QLineEdit(row.prefix)
-        self._prefix.setMaxLength(10)
+        self._prefix.setMaxLength(MAX_INGREDIENT_PREFIX)
         self._prefix.setFixedWidth(70)
         self._prefix.setPlaceholderText("Préfixe")
         layout.addWidget(self._prefix)
 
         self._qty = QLineEdit(row.quantity)
-        self._qty.setMaxLength(10)
+        self._qty.setMaxLength(MAX_INGREDIENT_QUANTITY)
         self._qty.setFixedWidth(60)
         self._qty.setPlaceholderText("Qté")
         layout.addWidget(self._qty)
@@ -119,7 +125,7 @@ class IngredientRow(QWidget):
         layout.addWidget(self._unit_plural)
 
         self._sep = QLineEdit(row.separator)
-        self._sep.setMaxLength(20)
+        self._sep.setMaxLength(MAX_INGREDIENT_SEPARATOR)
         self._sep.setFixedWidth(90)
         self._sep.setPlaceholderText("Sépar.")
         layout.addWidget(self._sep)
@@ -142,7 +148,7 @@ class IngredientRow(QWidget):
         layout.addWidget(self._ingredient_plural)
 
         self._suffix = QLineEdit(row.suffix)
-        self._suffix.setMaxLength(20)
+        self._suffix.setMaxLength(MAX_INGREDIENT_SUFFIX)
         self._suffix.setFixedWidth(90)
         self._suffix.setPlaceholderText("Suffixe")
         layout.addWidget(self._suffix)
