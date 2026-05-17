@@ -41,8 +41,8 @@ def _plural_dialog(
 
 
 class UnitDialog(BaseListDialog):
-    def __init__(self, db, parent=None):
-        super().__init__("Unités", db, parent)
+    def __init__(self, db, app_config=None, parent=None):
+        super().__init__("Unités", db, app_config=app_config, parent=parent)
 
     def _load_items(self):
         return self._db.list_units()

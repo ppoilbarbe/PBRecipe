@@ -86,6 +86,7 @@ _DEFAULT_STRINGS: dict[str, str] = {
     "search_placeholder": "Rechercher une recette...",
     "all_categories": "Toutes catégories",
     "all_difficulties": "Toutes difficultés",
+    "all_sources": "Toutes sources",
     "search_by_ingredient": "Par ingrédient",
     "show_techniques": "Afficher une technique",
     "no_results": "Aucune recette trouvée.",

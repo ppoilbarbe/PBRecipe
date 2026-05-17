@@ -211,15 +211,21 @@ class ConfigDialog(QDialog):
         start = self._sqlite_path.text()
         if not start and self._dialog_dirs is not None:
             start = self._dialog_dirs.get("sqlite_path")
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Fichier de base SQLite", start, "SQLite (*.db)"
-        )
-        if path:
-            if not path.lower().endswith(".db"):
-                path += ".db"
-            self._sqlite_path.setText(path)
-            if self._dialog_dirs is not None:
-                self._dialog_dirs.record("sqlite_path", path)
+        dlg = QFileDialog(self, "Fichier de base SQLite", start, "SQLite (*.db)")
+        dlg.setOption(QFileDialog.Option.DontUseNativeDialog, True)
+        dlg.setFileMode(QFileDialog.FileMode.AnyFile)
+        dlg.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        if not dlg.exec():
+            return
+        files = dlg.selectedFiles()
+        if not files:
+            return
+        path = files[0]
+        if not path.lower().endswith(".db"):
+            path += ".db"
+        self._sqlite_path.setText(path)
+        if self._dialog_dirs is not None:
+            self._dialog_dirs.record("sqlite_path", path)
 
     def _browse_php_export_dir(self) -> None:
         if self._dialog_dirs is not None:

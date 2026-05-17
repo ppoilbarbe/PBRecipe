@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 from pbrecipe.constants import MAX_DIFFICULTY_LABEL
 from pbrecipe.database import Database
 from pbrecipe.models import DifficultyLevel
+from pbrecipe.ui.dialogs._geometry_mixin import GeometryMixin
 
 _log = logging.getLogger(__name__)
 
@@ -44,8 +45,10 @@ def _pixmap_from_bytes(data: bytes) -> QPixmap:
     return px
 
 
-class DifficultyDialog(QDialog):
-    def __init__(self, db: Database, parent: QWidget | None = None) -> None:
+class DifficultyDialog(GeometryMixin, QDialog):
+    def __init__(
+        self, db: Database, app_config=None, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self._db = db
         self._levels: list[DifficultyLevel] = []
@@ -57,6 +60,7 @@ class DifficultyDialog(QDialog):
         self._reload_levels()
         if self._list.count():
             self._list.setCurrentRow(0)
+        self._init_geometry(app_config, "DifficultyDialog")
 
     # ------------------------------------------------------------------
     # UI

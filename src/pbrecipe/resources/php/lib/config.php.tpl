@@ -11,11 +11,7 @@ define('DB_USER', '$DB_USER');
 define('DB_PASS', '$DB_PASS');
 define('DB_PATH', '$DB_PATH');  // SQLite only: path to the .db file
 
-// ── Recipe-type-specific strings ─────────────────────────────────────────────
-$STRINGS = [
-$STRINGS_PHP
-];
+define('SITE_TYPE', '$SITE_TYPE');
 
-define('SITE_TITLE',         '$SITE_TITLE');
-define('SITE_TYPE',          '$SITE_TYPE');
-define('SITE_PRESENTATION',  '$SITE_PRESENTATION');
+// ── Debug ─────────────────────────────────────────────────────────────────────
+define('SITE_DEBUG', $SITE_DEBUG);

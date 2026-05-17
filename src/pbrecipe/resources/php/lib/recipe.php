@@ -127,7 +127,8 @@ function search_recipes(
     string $name = '',
     int $category_id = 0,
     int $ingredient_id = 0,
-    int $difficulty = -1
+    int $difficulty = -1,
+    int $source_id = 0
 ): array {
     $pdo = db_connect();
     $sql  = 'SELECT DISTINCT r.code, r.name, r.difficulty FROM recipes r';
@@ -152,6 +153,10 @@ function search_recipes(
     if ($difficulty >= 0) {
         $where[]  = 'r.difficulty = ?';
         $params[] = $difficulty;
+    }
+    if ($source_id > 0) {
+        $where[]  = 'r.source_id = ?';
+        $params[] = $source_id;
     }
 
     if ($joins)  $sql .= ' ' . implode(' ', $joins);
@@ -178,5 +183,26 @@ function get_all_ingredients(): array {
 function get_all_techniques(): array {
     $rows = db_connect()->query('SELECT code, title FROM techniques')->fetchAll();
     usort($rows, fn($a, $b) => strcmp(sort_key($a['title']), sort_key($b['title'])));
+    return $rows;
+}
+
+/** Return all globals as a key → value map (loaded once per request). */
+function get_globals_map(): array {
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $cache = [];
+    foreach (db_connect()->query('SELECT `key`, value FROM globals')->fetchAll() as $r) {
+        $cache[$r['key']] = $r['value'];
+    }
+    return $cache;
+}
+
+/** Return sources used by at least one recipe, ordered by name. */
+function get_all_sources(): array {
+    $rows = db_connect()->query(
+        'SELECT DISTINCT s.id, s.name FROM sources s
+         JOIN recipes r ON r.source_id = s.id'
+    )->fetchAll();
+    usort($rows, fn($a, $b) => strcmp(sort_key($a['name']), sort_key($b['name'])));
     return $rows;
 }

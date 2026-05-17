@@ -21,7 +21,7 @@ PY_SOURCES := $(shell find $(SRC)/pbrecipe -name "*.py" ! -path "*/__pycache__/*
 
 .DEFAULT_GOAL := help
 .PHONY: all help icons venv venv-update install run test test-php coverage lint format \
-        dist clean hooks
+        dist srcdist clean hooks
 
 all: icons ## Génère tous les artefacts (icônes)
 
@@ -90,12 +90,22 @@ format: ## Auto-format source code
 designer: ## Launch Qt Designer
 	$(CONDA_RUN) pyside6-designer
 
-dist: ## Build a standalone executable for the current platform
-	@printf "$(C)PyInstaller — platform: $(shell $(CONDA_RUN) python -c 'import sys; print(sys.platform)')$(R)\n"
+dist: ## Build a standalone executable for the current platform (pbrecipe-version-os-arch)
+	$(eval _VER  := $(shell bash tools/git_version.sh))
+	$(eval _OS   := $(shell uname -s | tr A-Z a-z | sed 's/darwin/macos/'))
+	$(eval _ARCH := $(shell uname -m))
+	@printf "$(C)PyInstaller — version $(_VER), platform $(_OS)-$(_ARCH)$(R)\n"
 	$(CONDA_RUN) pyinstaller --clean --noconfirm \
 	    --distpath dist --workpath build/pyinstaller \
 	    pbrecipe.spec
-	@printf "$(G)Done.$(R) Executable in $(Y)dist/$(R)\n"
+	mv dist/pbrecipe dist/pbrecipe-$(_VER)-$(_OS)-$(_ARCH)
+	@printf "$(G)Done.$(R) Exécutable : $(Y)dist/pbrecipe-$(_VER)-$(_OS)-$(_ARCH)$(R)\n"
+
+srcdist: ## Build a source distribution (archive dans dist/)
+	$(eval _VER := $(shell bash tools/git_version.sh))
+	@printf "$(C)Source distribution — version $(_VER)$(R)\n"
+	$(CONDA_RUN) python -m build --sdist --outdir dist/
+	@printf "$(G)Done.$(R) Archive dans $(Y)dist/$(R)\n"
 
 clean: ## Remove all build/cache artifacts
 	rm -rf build dist *.egg-info .pytest_cache .coverage htmlcov vendor composer.phar

@@ -38,7 +38,7 @@ class YamlExport:
         doc = self._build_document()
         yaml = YAML()
         yaml.default_flow_style = False
-        yaml.width = 120
+        yaml.width = 2**31 - 1
         with open(path, "w", encoding="utf-8") as fh:
             yaml.dump(doc, fh)
         recipes = len(doc.get("recipes", []))

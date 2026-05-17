@@ -650,7 +650,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.category_dialog import CategoryDialog
 
-        CategoryDialog(self._db, self).exec()
+        CategoryDialog(self._db, app_config=self._app_config, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_ingredients(self) -> None:
@@ -658,7 +658,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.ingredient_dialog import IngredientDialog
 
-        IngredientDialog(self._db, self).exec()
+        IngredientDialog(self._db, app_config=self._app_config, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_units(self) -> None:
@@ -666,7 +666,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.unit_dialog import UnitDialog
 
-        UnitDialog(self._db, self).exec()
+        UnitDialog(self._db, app_config=self._app_config, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_techniques(self) -> None:
@@ -674,7 +674,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.technique_dialog import TechniqueDialog
 
-        TechniqueDialog(self._db, self).exec()
+        TechniqueDialog(self._db, app_config=self._app_config, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_sources(self) -> None:
@@ -682,7 +682,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.source_dialog import SourceDialog
 
-        SourceDialog(self._db, self).exec()
+        SourceDialog(self._db, app_config=self._app_config, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_difficulty_levels(self) -> None:
@@ -690,7 +690,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.difficulty_dialog import DifficultyDialog
 
-        DifficultyDialog(self._db, self).exec()
+        DifficultyDialog(self._db, app_config=self._app_config, parent=self).exec()
 
     # ------------------------------------------------------------------
     # YAML export / import
@@ -849,7 +849,12 @@ class MainWindow(QMainWindow):
 
         _log.info("Export PHP → %s", target)
         try:
-            exporter = PhpExport(self._config, self._db, Path(target))
+            exporter = PhpExport(
+                self._config,
+                self._db,
+                Path(target),
+                php_debug=self._app_config.php_debug,
+            )
             exporter.run()
             self._config.php_export_dir = target
             self._config.save()
@@ -886,7 +891,12 @@ class MainWindow(QMainWindow):
 
         _log.info("Export PHP (sous) → %s", target)
         try:
-            exporter = PhpExport(self._config, self._db, Path(target))
+            exporter = PhpExport(
+                self._config,
+                self._db,
+                Path(target),
+                php_debug=self._app_config.php_debug,
+            )
             exporter.run()
             self._config.php_export_dir = target
             self._config.save()

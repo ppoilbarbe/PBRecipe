@@ -15,10 +15,12 @@ from PySide6.QtWidgets import (
 )
 
 from pbrecipe.constants import (
+    MAX_INGREDIENT_NAME,
     MAX_INGREDIENT_PREFIX,
     MAX_INGREDIENT_QUANTITY,
     MAX_INGREDIENT_SEPARATOR,
     MAX_INGREDIENT_SUFFIX,
+    MAX_UNIT_NAME,
 )
 from pbrecipe.database import Database
 from pbrecipe.models import RecipeIngredient
@@ -97,15 +99,13 @@ class IngredientRow(QWidget):
 
         self._prefix = QLineEdit(row.prefix)
         self._prefix.setMaxLength(MAX_INGREDIENT_PREFIX)
-        self._prefix.setFixedWidth(70)
         self._prefix.setPlaceholderText("Préfixe")
-        layout.addWidget(self._prefix)
+        layout.addWidget(self._prefix, MAX_INGREDIENT_PREFIX)
 
         self._qty = QLineEdit(row.quantity)
         self._qty.setMaxLength(MAX_INGREDIENT_QUANTITY)
-        self._qty.setFixedWidth(60)
         self._qty.setPlaceholderText("Qté")
-        layout.addWidget(self._qty)
+        layout.addWidget(self._qty, MAX_INGREDIENT_QUANTITY)
 
         self._unit = QComboBox()
         self._unit.addItem("", None)
@@ -113,8 +113,7 @@ class IngredientRow(QWidget):
             self._unit.addItem(u.name, u.id)
             if u.id == row.unit_id:
                 self._unit.setCurrentIndex(self._unit.count() - 1)
-        self._unit.setFixedWidth(90)
-        layout.addWidget(self._unit)
+        layout.addWidget(self._unit, MAX_UNIT_NAME)
 
         self._unit_plural = QCheckBox()
         self._unit_plural.setChecked(row.unit_plural)
@@ -126,9 +125,8 @@ class IngredientRow(QWidget):
 
         self._sep = QLineEdit(row.separator)
         self._sep.setMaxLength(MAX_INGREDIENT_SEPARATOR)
-        self._sep.setFixedWidth(90)
         self._sep.setPlaceholderText("Sépar.")
-        layout.addWidget(self._sep)
+        layout.addWidget(self._sep, MAX_INGREDIENT_SEPARATOR)
 
         self._ingredient = QComboBox()
         self._ingredient.addItem("— aucun —", None)
@@ -136,8 +134,7 @@ class IngredientRow(QWidget):
             self._ingredient.addItem(ing.name, ing.id)
             if ing.id == row.ingredient_id:
                 self._ingredient.setCurrentIndex(self._ingredient.count() - 1)
-        self._ingredient.setMinimumWidth(150)
-        layout.addWidget(self._ingredient)
+        layout.addWidget(self._ingredient, MAX_INGREDIENT_NAME)
 
         self._ingredient_plural = QCheckBox()
         self._ingredient_plural.setChecked(row.ingredient_plural)
@@ -149,11 +146,8 @@ class IngredientRow(QWidget):
 
         self._suffix = QLineEdit(row.suffix)
         self._suffix.setMaxLength(MAX_INGREDIENT_SUFFIX)
-        self._suffix.setFixedWidth(90)
         self._suffix.setPlaceholderText("Suffixe")
-        layout.addWidget(self._suffix)
-
-        layout.addStretch()
+        layout.addWidget(self._suffix, MAX_INGREDIENT_SUFFIX)
 
         _action_btn_style = (
             "QPushButton { font-weight: bold; }"
@@ -247,21 +241,22 @@ class IngredientListEditor(QWidget):
         root = QVBoxLayout(self)
 
         header = QHBoxLayout()
-        for label, width in [
-            ("", 20),  # drag handle
-            ("Préfixe", 70),
-            ("Qté", 60),
-            ("Unité", 90),
-            ("Pl.", 24),
-            ("Sépar.", 90),
-            ("Ingrédient", 150),
-            ("Pl.", 24),
-            ("Suffixe", 90),
+        for label, fixed_w, stretch in [
+            ("", 20, None),
+            ("Préfixe", None, MAX_INGREDIENT_PREFIX),
+            ("Qté", None, MAX_INGREDIENT_QUANTITY),
+            ("Unité", None, MAX_UNIT_NAME),
+            ("Pl.", 24, None),
+            ("Sépar.", None, MAX_INGREDIENT_SEPARATOR),
+            ("Ingrédient", None, MAX_INGREDIENT_NAME),
+            ("Pl.", 24, None),
+            ("Suffixe", None, MAX_INGREDIENT_SUFFIX),
         ]:
             lbl = QLabel(label)
-            lbl.setFixedWidth(width)
-            header.addWidget(lbl)
-        header.addStretch()
+            if fixed_w is not None:
+                lbl.setFixedWidth(fixed_w)
+            header.addWidget(lbl, stretch or 0)
+        header.addSpacing(28 + 28)  # réserve l'espace des boutons +/−
         root.addLayout(header)
 
         scroll = QScrollArea()

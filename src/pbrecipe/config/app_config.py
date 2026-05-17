@@ -27,8 +27,10 @@ _VALID_LEVELS = {"DEBUG", "INFO", "WARNING"}
 class AppConfig:
     recent_files: list[str] = field(default_factory=list)
     log_level: str = "INFO"
+    php_debug: bool = False
     dialog_dirs: DialogDirs = field(default_factory=DialogDirs.load)
     window_geometry: dict = field(default_factory=dict)
+    dialog_geometries: dict = field(default_factory=dict)
     splitter_sizes: list[int] = field(default_factory=list)
     toolbar_state: str = ""
 
@@ -56,8 +58,11 @@ class AppConfig:
             return cls()
         raw_level = str(data.get("log_level", "INFO")).upper()
         log_level = raw_level if raw_level in _VALID_LEVELS else "INFO"
+        php_debug = bool(data.get("php_debug", False))
         raw_geom = data.get("window_geometry", {})
         window_geometry = raw_geom if isinstance(raw_geom, dict) else {}
+        raw_dlg_geom = data.get("dialog_geometries", {})
+        dialog_geometries = raw_dlg_geom if isinstance(raw_dlg_geom, dict) else {}
         raw_sizes = data.get("splitter_sizes", [])
         splitter_sizes = (
             [int(s) for s in raw_sizes] if isinstance(raw_sizes, list) else []
@@ -66,7 +71,9 @@ class AppConfig:
         cfg = cls(
             recent_files=list(data.get("recent_files", [])),
             log_level=log_level,
+            php_debug=php_debug,
             window_geometry=window_geometry,
+            dialog_geometries=dialog_geometries,
             splitter_sizes=splitter_sizes,
             toolbar_state=toolbar_state,
         )
@@ -84,7 +91,9 @@ class AppConfig:
                 {
                     "recent_files": self.recent_files,
                     "log_level": self.log_level,
+                    "php_debug": self.php_debug,
                     "window_geometry": self.window_geometry,
+                    "dialog_geometries": self.dialog_geometries,
                     "splitter_sizes": self.splitter_sizes,
                     "toolbar_state": self.toolbar_state,
                 },

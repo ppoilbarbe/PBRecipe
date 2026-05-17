@@ -120,6 +120,7 @@ class Database:
         with self._engine.begin() as conn:
             self._migrate(conn)
             self._ensure_all_varchar_sizes(conn)
+            self._ensure_mediumblob(conn)
         _log.info("Schéma vérifié/créé")
 
     def clear_all_data(self) -> None:
@@ -225,6 +226,41 @@ class Database:
                 )
             )
         _log.info("Migration : %s.%s étendu à VARCHAR(%d)", table, col, min_size)
+
+    # (table, column, NOT NULL constraint)
+    _BLOB_COLUMNS: list[tuple[str, str, str]] = [
+        ("recipe_media", "data", "NOT NULL"),
+        ("difficulty_levels", "data", "NULL"),
+    ]
+
+    def _ensure_mediumblob(self, conn: Connection) -> None:
+        """Pour MariaDB, promeut les colonnes BLOB en MEDIUMBLOB si nécessaire.
+
+        PostgreSQL utilise BYTEA (pas de limite pratique) — aucune action requise.
+        SQLite ignore les types de colonnes — aucune action requise.
+        """
+        if conn.dialect.name != "mysql":
+            return
+        for table, col, null_constraint in self._BLOB_COLUMNS:
+            row = conn.execute(
+                text(
+                    "SELECT DATA_TYPE FROM information_schema.COLUMNS"
+                    " WHERE TABLE_SCHEMA = DATABASE()"
+                    " AND TABLE_NAME = :tbl AND COLUMN_NAME = :col"
+                ),
+                {"tbl": table, "col": col},
+            ).fetchone()
+            if row is None or row[0].lower() != "blob":
+                continue  # Absent, déjà MEDIUMBLOB ou LONGBLOB
+            conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
+            conn.execute(
+                text(
+                    f"ALTER TABLE `{table}`"
+                    f" MODIFY COLUMN `{col}` MEDIUMBLOB {null_constraint}"
+                )
+            )
+            conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
+            _log.info("Migration : %s.%s promu de BLOB en MEDIUMBLOB", table, col)
 
     @staticmethod
     def _enable_sqlite_fk(dbapi_conn, _record) -> None:

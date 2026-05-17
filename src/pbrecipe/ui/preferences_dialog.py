@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -38,6 +39,12 @@ class PreferencesDialog(QDialog):
         for label, _name, _int in _LEVELS:
             self._level_combo.addItem(label, _name)
         form.addRow("Niveau de log par défaut :", self._level_combo)
+        self._php_debug_cb = QCheckBox("Activer le mode DEBUG PHP")
+        self._php_debug_cb.setToolTip(
+            "Génère define('SITE_DEBUG', true) dans config.php lors de l'export PHP.\n"
+            "Permet l'affichage des erreurs PHP sur le serveur."
+        )
+        form.addRow("Export PHP :", self._php_debug_cb)
         root.addLayout(form)
 
         buttons = QDialogButtonBox(
@@ -52,11 +59,13 @@ class PreferencesDialog(QDialog):
             if name == self._app_config.log_level:
                 self._level_combo.setCurrentIndex(i)
                 break
+        self._php_debug_cb.setChecked(self._app_config.php_debug)
 
     def _accept(self) -> None:
         name = self._level_combo.currentData()
         level_int = next(i for _l, n, i in _LEVELS if n == name)
         self._app_config.log_level = name
+        self._app_config.php_debug = self._php_debug_cb.isChecked()
         self._app_config.save()
         apply_log_level(level_int)
         self.accept()

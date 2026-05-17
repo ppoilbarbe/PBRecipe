@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from pbrecipe.constants import MAX_TECHNIQUE_CODE, MAX_TECHNIQUE_TITLE
 from pbrecipe.database import Database
 from pbrecipe.models import Technique
+from pbrecipe.ui.dialogs._geometry_mixin import GeometryMixin
 from pbrecipe.ui.html_editor import HtmlEditor
 
 _log = logging.getLogger(__name__)
@@ -74,14 +75,17 @@ class TechniqueEditDialog(QDialog):
         return self._technique
 
 
-class TechniqueDialog(QDialog):
-    def __init__(self, db: Database, parent: QWidget | None = None) -> None:
+class TechniqueDialog(GeometryMixin, QDialog):
+    def __init__(
+        self, db: Database, app_config=None, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self._db = db
         self.setWindowTitle("Techniques")
         self.setMinimumWidth(420)
         self._setup_ui()
         self._refresh()
+        self._init_geometry(app_config, "TechniqueDialog")
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)

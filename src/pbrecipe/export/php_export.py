@@ -6,7 +6,6 @@ from pathlib import Path
 from string import Template
 
 from pbrecipe.config import RecipeConfig
-from pbrecipe.config.recipe_config import _DEFAULT_STRINGS
 from pbrecipe.database import Database
 
 _log = logging.getLogger(__name__)
@@ -35,10 +34,13 @@ class PhpExport:
         media/          ← cache disque pour lib/media.php (créé vide à l'export)
     """
 
-    def __init__(self, config: RecipeConfig, db: Database, target: Path) -> None:
+    def __init__(
+        self, config: RecipeConfig, db: Database, target: Path, php_debug: bool = False
+    ) -> None:
         self._config = config
         self._db = db
         self._target = target
+        self._php_debug = php_debug
 
     def run(self) -> None:
         _log.info("Début de l'export PHP → %s", self._target)
@@ -89,13 +91,6 @@ class PhpExport:
             "postgresql": "pgsql",
         }.get(cfg_db.type, "mysql")
 
-        globals_data = self._db.get_globals()
-        strings = dict(_DEFAULT_STRINGS)
-        for key, value in globals_data.items():
-            if key in strings and value:
-                strings[key] = value
-        presentation = globals_data.get("presentation", "")
-
         php_host, php_port, php_user, php_pass = cfg_db.php_credentials()
         mapping = {
             "DB_TYPE": php_db_type,
@@ -107,24 +102,10 @@ class PhpExport:
             "DB_PATH": str(Path(cfg_db.path).expanduser())
             if cfg_db.path
             else cfg_db.path,
-            "STRINGS_PHP": self._strings_to_php(strings),
-            "SITE_TITLE": strings.get("site_title", _DEFAULT_STRINGS["site_title"]),
             "SITE_TYPE": self._config.site_type,
-            "SITE_PRESENTATION": self._escape_php_str(presentation),
+            "SITE_DEBUG": "true" if self._php_debug else "false",
         }
         tpl = Template(tpl_path.read_text(encoding="utf-8"))
         (self._target / "lib" / "config.php").write_text(
             tpl.safe_substitute(mapping), encoding="utf-8"
         )
-
-    @staticmethod
-    def _escape_php_str(value: str) -> str:
-        return value.replace("\\", "\\\\").replace("'", "\\'")
-
-    @staticmethod
-    def _strings_to_php(strings: dict[str, str]) -> str:
-        lines = []
-        for key, value in strings.items():
-            escaped = value.replace("'", "\\'")
-            lines.append(f"    '{key}' => '{escaped}',")
-        return "\n".join(lines)

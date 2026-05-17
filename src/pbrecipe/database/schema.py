@@ -138,7 +138,7 @@ t_recipe_media = Table(
         "code", String(MAX_MEDIA_CODE), nullable=False
     ),  # référence dans [IMG:RECIPE:CODE]
     Column("mime_type", String(MAX_MIME_TYPE), nullable=False, default="image/jpeg"),
-    Column("data", LargeBinary, nullable=False),
+    Column("data", LargeBinary(16_777_215), nullable=False),
 )
 
 t_difficulty_levels = Table(
@@ -147,7 +147,9 @@ t_difficulty_levels = Table(
     Column("level", SmallInteger, primary_key=True, autoincrement=False),
     Column("label", String(MAX_DIFFICULTY_LABEL), nullable=False, default=""),
     Column("mime_type", String(MAX_MIME_TYPE), nullable=False, default="image/jpeg"),
-    Column("data", LargeBinary, nullable=True),  # icône bitmap, None si non définie
+    Column(
+        "data", LargeBinary(16_777_215), nullable=True
+    ),  # icône bitmap, None si non définie
 )
 
 t_globals = Table(

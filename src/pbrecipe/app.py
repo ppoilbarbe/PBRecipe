@@ -285,11 +285,12 @@ def _headless_export(config_path: str | None, export_dir: str) -> None:
     from pbrecipe.database import create_database
     from pbrecipe.export.php_export import PhpExport
 
+    app_config = AppConfig.load()
+
     # Résolution du fichier de configuration
     if config_path:
         yaml_path = Path(config_path).expanduser()
     else:
-        app_config = AppConfig.load()
         last = app_config.last_file
         if not last:
             _log.error(
@@ -329,7 +330,7 @@ def _headless_export(config_path: str | None, export_dir: str) -> None:
     try:
         db.connect()
         _log.info("Export PHP vers %s…", target)
-        exporter = PhpExport(config, db, target)
+        exporter = PhpExport(config, db, target, php_debug=app_config.php_debug)
         exporter.run()
         _log.info("Export PHP terminé → %s", target)
     except Exception as exc:  # noqa: BLE001

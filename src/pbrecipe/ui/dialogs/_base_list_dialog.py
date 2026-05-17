@@ -18,15 +18,17 @@ from PySide6.QtWidgets import (
 )
 
 from pbrecipe.database import Database
+from pbrecipe.ui.dialogs._geometry_mixin import GeometryMixin
 
 _log = logging.getLogger(__name__)
 
 
-class BaseListDialog(QDialog):
+class BaseListDialog(GeometryMixin, QDialog):
     def __init__(
         self,
         title: str,
         db: Database,
+        app_config=None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -35,6 +37,7 @@ class BaseListDialog(QDialog):
         self.setMinimumWidth(360)
         self._setup_ui()
         self._refresh()
+        self._init_geometry(app_config, type(self).__name__)
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)

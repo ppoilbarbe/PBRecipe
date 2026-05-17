@@ -7,6 +7,7 @@ function render_search_form(
     array $ingredients,
     array $techniques,
     array $strings,
+    array $sources = [],
     array $current = []
 ): string {
     $html  = "<form class=\"search-form\" method=\"get\" action=\"\">\n";
@@ -16,34 +17,53 @@ function render_search_form(
     $html .= "  <input type=\"text\" name=\"q\" value=\"" . $qval . "\"\n";
     $html .= "         placeholder=\"" . h($strings['search_placeholder'] ?? 'Rechercher…') . "\">\n";
 
-    // Category
-    $html .= "  <select name=\"cat\">\n";
-    $html .= "    <option value=\"0\">" . h($strings['all_categories'] ?? 'Toutes catégories') . "</option>\n";
-    foreach ($categories as $c) {
-        $sel   = ($current['cat'] ?? 0) == $c['id'] ? ' selected' : '';
-        $html .= "    <option value=\"" . (int)$c['id'] . "\"" . $sel . ">" . h($c['name']) . "</option>\n";
+    // Category (only if at least one exists)
+    if (!empty($categories)) {
+        $html .= "  <select name=\"cat\">\n";
+        $html .= "    <option value=\"0\">" . h($strings['all_categories'] ?? 'Toutes catégories') . "</option>\n";
+        foreach ($categories as $c) {
+            $sel   = ($current['cat'] ?? 0) == $c['id'] ? ' selected' : '';
+            $html .= "    <option value=\"" . (int)$c['id'] . "\"" . $sel . ">" . h($c['name']) . "</option>\n";
+        }
+        $html .= "  </select>\n";
     }
-    $html .= "  </select>\n";
 
-    // Ingredient
-    $html .= "  <select name=\"ing\">\n";
-    $html .= "    <option value=\"0\">" . h($strings['search_by_ingredient'] ?? 'Par ingrédient') . "</option>\n";
-    foreach ($ingredients as $i) {
-        $sel   = ($current['ing'] ?? 0) == $i['id'] ? ' selected' : '';
-        $html .= "    <option value=\"" . (int)$i['id'] . "\"" . $sel . ">" . h($i['name']) . "</option>\n";
+    // Ingredient (only if at least one exists)
+    if (!empty($ingredients)) {
+        $html .= "  <select name=\"ing\">\n";
+        $html .= "    <option value=\"0\">" . h($strings['search_by_ingredient'] ?? 'Par ingrédient') . "</option>\n";
+        foreach ($ingredients as $i) {
+            $sel   = ($current['ing'] ?? 0) == $i['id'] ? ' selected' : '';
+            $html .= "    <option value=\"" . (int)$i['id'] . "\"" . $sel . ">" . h($i['name']) . "</option>\n";
+        }
+        $html .= "  </select>\n";
     }
-    $html .= "  </select>\n";
 
-    // Difficulty
-    $html .= "  <select name=\"diff\">\n";
-    $html .= "    <option value=\"-1\">" . h($strings['all_difficulties'] ?? 'Toutes difficultés') . "</option>\n";
+    // Difficulty (only if at least one level > 0 is defined)
+    $diff_options = '';
     foreach (get_difficulty_levels() as $d => $info) {
         if ($d <= 0) continue;
-        $sel   = ($current['diff'] ?? -1) == $d ? ' selected' : '';
-        $label = $info['label'] !== '' ? $info['label'] : "Niveau $d";
-        $html .= "    <option value=\"" . (int)$d . "\"" . $sel . ">" . h($label) . "</option>\n";
+        $sel          = ($current['diff'] ?? -1) == $d ? ' selected' : '';
+        $label        = $info['label'] !== '' ? $info['label'] : "Niveau $d";
+        $diff_options .= "    <option value=\"" . (int)$d . "\"" . $sel . ">" . h($label) . "</option>\n";
     }
-    $html .= "  </select>\n";
+    if ($diff_options !== '') {
+        $html .= "  <select name=\"diff\">\n";
+        $html .= "    <option value=\"-1\">" . h($strings['all_difficulties'] ?? 'Toutes difficultés') . "</option>\n";
+        $html .= $diff_options;
+        $html .= "  </select>\n";
+    }
+
+    // Source (only if at least one exists)
+    if (!empty($sources)) {
+        $html .= "  <select name=\"src\">\n";
+        $html .= "    <option value=\"0\">" . h($strings['all_sources'] ?? 'Toutes sources') . "</option>\n";
+        foreach ($sources as $s) {
+            $sel   = ($current['src'] ?? 0) == $s['id'] ? ' selected' : '';
+            $html .= "    <option value=\"" . (int)$s['id'] . "\"" . $sel . ">" . h(strip_tags($s['name'])) . "</option>\n";
+        }
+        $html .= "  </select>\n";
+    }
 
     $html .= "  <button type=\"submit\">Rechercher</button>\n";
 
