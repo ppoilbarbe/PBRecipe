@@ -27,6 +27,7 @@ MAX_INGREDIENT_SUFFIX = 30
 
 # recipe_media
 MAX_MEDIA_CODE = 20
+MAX_MEDIA_BYTES = 16_777_215  # MEDIUMBLOB limit on MariaDB/MySQL
 
 # shared
 MAX_MIME_TYPE = 50  # recipe_media.mime_type, difficulty_levels.mime_type

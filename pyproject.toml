@@ -29,6 +29,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+spellcheck = [
+    "language-tool-python>=2.7",
+]
+grammalecte = [
+    "pygrammalecte>=2.0",
+]
 dev = [
     "ruff>=0.4",
     "pre-commit>=3.7",

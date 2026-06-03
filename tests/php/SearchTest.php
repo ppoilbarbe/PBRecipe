@@ -75,10 +75,11 @@ class SearchTest extends TestCase
 
     public function test_render_search_form_contains_selects(): void
     {
-        $html = render_search_form([], [], [], $this->strings);
+        $cats  = [['id' => 1, 'name' => 'Dessert']];
+        $ings  = [['id' => 1, 'name' => 'Farine']];
+        $html  = render_search_form($cats, $ings, [], $this->strings);
         $this->assertStringContainsString('name="cat"', $html);
         $this->assertStringContainsString('name="ing"', $html);
-        $this->assertStringContainsString('name="diff"', $html);
     }
 
     public function test_render_search_form_populates_categories(): void
@@ -92,13 +93,13 @@ class SearchTest extends TestCase
     public function test_render_search_form_marks_selected_category(): void
     {
         $cats = [['id' => 1, 'name' => 'Dessert']];
-        $html = render_search_form($cats, [], [], $this->strings, ['cat' => 1]);
+        $html = render_search_form($cats, [], [], $this->strings, [], ['cat' => 1]);
         $this->assertMatchesRegularExpression('/value="1"\s+selected/', $html);
     }
 
     public function test_render_search_form_preserves_search_text(): void
     {
-        $html = render_search_form([], [], [], $this->strings, ['q' => 'chocolat']);
+        $html = render_search_form([], [], [], $this->strings, [], ['q' => 'chocolat']);
         $this->assertStringContainsString('value="chocolat"', $html);
     }
 
@@ -120,7 +121,7 @@ class SearchTest extends TestCase
     public function test_render_search_form_marks_selected_technique(): void
     {
         $techs = [['code' => 'BRUNOISE', 'title' => 'Brunoise']];
-        $html  = render_search_form([], [], $techs, $this->strings, ['tech' => 'BRUNOISE']);
+        $html  = render_search_form([], [], $techs, $this->strings, [], ['tech' => 'BRUNOISE']);
         $this->assertMatchesRegularExpression('/value="BRUNOISE"\s+selected/', $html);
     }
 

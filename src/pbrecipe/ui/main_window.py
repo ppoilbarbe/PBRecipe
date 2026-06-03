@@ -7,6 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import QByteArray, Qt
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QLabel,
     QListWidget,
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
+    QProgressDialog,
     QSplitter,
     QStackedWidget,
     QToolBar,
@@ -696,6 +698,24 @@ class MainWindow(QMainWindow):
     # YAML export / import
     # ------------------------------------------------------------------
 
+    def _make_yaml_progress(self, title: str):
+        """Return (dialog, callback). The dialog auto-shows after 500 ms."""
+        dlg = QProgressDialog(title, None, 0, 0, self)
+        dlg.setWindowTitle(title)
+        dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        dlg.setMinimumDuration(500)
+        dlg.setCancelButton(None)
+        dlg.setAutoClose(False)
+        dlg.setAutoReset(False)
+
+        def callback(current: int, total: int, message: str) -> None:
+            dlg.setMaximum(total)
+            dlg.setValue(current)
+            dlg.setLabelText(message)
+            QApplication.processEvents()
+
+        return dlg, callback
+
     def _export_yaml(self) -> None:
         if self._config is None or self._db is None:
             QMessageBox.warning(
@@ -718,16 +738,19 @@ class MainWindow(QMainWindow):
             dd.record("export_yaml", path)
         from pbrecipe.export.yaml_io import YamlExport
 
+        dlg, progress_cb = self._make_yaml_progress("Export YAML en cours…")
         try:
-            YamlExport(self._db).run(path)
+            YamlExport(self._db).run(path, progress=progress_cb)
             self._config.yaml_export_file = path
             self._config.save()
             _log.info("Export YAML terminé : %s", path)
+            dlg.close()
             QMessageBox.information(
                 self, "Export réussi", f"Base exportée dans :\n{path}"
             )
         except Exception as exc:  # noqa: BLE001
             _log.error("Export YAML échoué : %s", exc)
+            dlg.close()
             QMessageBox.critical(self, "Erreur d'export", str(exc))
 
     def _export_yaml_as(self) -> None:
@@ -750,16 +773,19 @@ class MainWindow(QMainWindow):
         from pbrecipe.export.yaml_io import YamlExport
 
         _log.info("Export YAML (sous) → %s", path)
+        dlg, progress_cb = self._make_yaml_progress("Export YAML en cours…")
         try:
-            YamlExport(self._db).run(path)
+            YamlExport(self._db).run(path, progress=progress_cb)
             self._config.yaml_export_file = path
             self._config.save()
             _log.info("Export YAML terminé : %s", path)
+            dlg.close()
             QMessageBox.information(
                 self, "Export réussi", f"Base exportée dans :\n{path}"
             )
         except Exception as exc:  # noqa: BLE001
             _log.error("Export YAML échoué : %s", exc)
+            dlg.close()
             QMessageBox.critical(self, "Erreur d'export", str(exc))
 
     def _import_yaml(self) -> None:
@@ -797,8 +823,12 @@ class MainWindow(QMainWindow):
 
         from pbrecipe.export.yaml_io import YamlImport
 
+        dlg, progress_cb = self._make_yaml_progress("Import YAML en cours…")
         try:
-            stats = YamlImport(self._db).run(path, replace=replace_mode)
+            stats = YamlImport(self._db).run(
+                path, replace=replace_mode, progress=progress_cb
+            )
+            dlg.close()
             self._refresh_recipe_list()
             self._stack.setCurrentWidget(self._empty_widget)
             msg = (
@@ -815,6 +845,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Import réussi", msg)
         except Exception as exc:  # noqa: BLE001
             _log.error("Import YAML échoué : %s", exc)
+            dlg.close()
             QMessageBox.critical(self, "Erreur d'import", str(exc))
 
     # ------------------------------------------------------------------

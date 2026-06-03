@@ -33,6 +33,7 @@ class AppConfig:
     dialog_geometries: dict = field(default_factory=dict)
     splitter_sizes: list[int] = field(default_factory=list)
     toolbar_state: str = ""
+    grammalecte_enabled: bool = True
 
     # ------------------------------------------------------------------
     # Persistence
@@ -68,6 +69,7 @@ class AppConfig:
             [int(s) for s in raw_sizes] if isinstance(raw_sizes, list) else []
         )
         toolbar_state = str(data.get("toolbar_state", ""))
+        grammalecte_enabled = bool(data.get("grammalecte_enabled", True))
         cfg = cls(
             recent_files=list(data.get("recent_files", [])),
             log_level=log_level,
@@ -76,6 +78,7 @@ class AppConfig:
             dialog_geometries=dialog_geometries,
             splitter_sizes=splitter_sizes,
             toolbar_state=toolbar_state,
+            grammalecte_enabled=grammalecte_enabled,
         )
         _log.debug("Configuration programme chargée : %s (log=%s)", path, cfg.log_level)
         return cfg
@@ -96,6 +99,7 @@ class AppConfig:
                     "dialog_geometries": self.dialog_geometries,
                     "splitter_sizes": self.splitter_sizes,
                     "toolbar_state": self.toolbar_state,
+                    "grammalecte_enabled": self.grammalecte_enabled,
                 },
                 fh,
             )

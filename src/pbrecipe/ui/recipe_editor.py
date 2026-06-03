@@ -120,8 +120,15 @@ class RecipeEditor(QWidget):
         self._act_save.setEnabled(False)
         self._act_save.triggered.connect(self._save)
 
-        # Save button
+        # Button bar
         btn_bar = QHBoxLayout()
+        self._check_btn = QPushButton("Vérifier…")
+        self._check_btn.setToolTip(
+            "Vérification orthographique et grammaticale (Réalisation + Commentaires)"
+        )
+        self._check_btn.clicked.connect(self._check_spelling)
+        self._check_btn.setEnabled(False)
+        btn_bar.addWidget(self._check_btn)
         btn_bar.addStretch()
         self._save_btn = QPushButton("Enregistrer")
         self._save_btn.setToolTip("Enregistrer la recette (Ctrl+S)")
@@ -222,6 +229,7 @@ class RecipeEditor(QWidget):
         self._reload_editor_references(recipe, db)
 
         self._loading = False
+        self._check_btn.setEnabled(True)
         self._mark_clean()
         _log.debug(
             "Recette chargée dans l'éditeur : %s — «%s»",
@@ -252,6 +260,7 @@ class RecipeEditor(QWidget):
         self._ingredient_editor.clear()
         self._media_tab.load([])
         self._loading = False
+        self._check_btn.setEnabled(False)
         self._mark_clean()
 
     def reload_references(self) -> None:
@@ -290,6 +299,17 @@ class RecipeEditor(QWidget):
             slug = _slugify(text)
             self._code_edit.setText(slug)
             _log.debug("Code auto-généré depuis le nom : %s", slug)
+
+    def _check_spelling(self) -> None:
+        from pbrecipe.ui.spellcheck_dialog import run_spellcheck
+
+        run_spellcheck(
+            [
+                ("Réalisation", self._desc_editor.get_plain_text()),
+                ("Commentaires", self._comment_editor.get_plain_text()),
+            ],
+            self,
+        )
 
     def _save(self) -> None:
         if self._recipe is None:

@@ -9,6 +9,7 @@ from typing import Any
 
 from ruamel.yaml import YAML
 
+from pbrecipe.constants import MAX_MEDIA_BYTES
 from pbrecipe.database import Database
 from pbrecipe.models import (
     Category,
@@ -33,9 +34,11 @@ class YamlExport:
     def __init__(self, db: Database) -> None:
         self._db = db
 
-    def run(self, path) -> None:
+    def run(self, path, *, progress=None) -> None:
         _log.info("Export YAML → %s", path)
-        doc = self._build_document()
+        doc = self._build_document(progress=progress)
+        if progress:
+            progress(0, 0, "Écriture du fichier…")
         yaml = YAML()
         yaml.default_flow_style = False
         yaml.width = 2**31 - 1
@@ -58,7 +61,7 @@ class YamlExport:
 
     # ------------------------------------------------------------------
 
-    def _build_document(self) -> dict[str, Any]:
+    def _build_document(self, *, progress=None) -> dict[str, Any]:
         categories = self._db.list_categories()
         units = self._db.list_units()
         ingredients = self._db.list_ingredients()
@@ -72,6 +75,21 @@ class YamlExport:
         unit_by_id = {u.id: u.name for u in units}
         ing_by_id = {i.id: i.name for i in ingredients}
         src_by_id = {s.id: s.name for s in sources}
+
+        total = len(recipe_stubs)
+        if progress:
+            progress(0, total, "Préparation de l'export…")
+        recipes = []
+        for i, stub in enumerate(recipe_stubs):
+            recipe = self._db.get_recipe(stub.code)
+            if recipe is not None:
+                if progress:
+                    progress(i + 1, total, f"Recette {i + 1}/{total} : {stub.code}")
+                recipes.append(
+                    self._serialize_recipe(
+                        recipe, cat_by_id, unit_by_id, ing_by_id, src_by_id
+                    )
+                )
 
         return {
             "globals": globals_data,
@@ -104,17 +122,7 @@ class YamlExport:
                 }
                 for dl in difficulty_levels
             ],
-            "recipes": [
-                self._serialize_recipe(
-                    self._db.get_recipe(stub.code),
-                    cat_by_id,
-                    unit_by_id,
-                    ing_by_id,
-                    src_by_id,
-                )
-                for stub in recipe_stubs
-                if self._db.get_recipe(stub.code) is not None
-            ],
+            "recipes": recipes,
         }
 
     def _serialize_recipe(
@@ -182,13 +190,15 @@ class YamlImport:
     def __init__(self, db: Database) -> None:
         self._db = db
 
-    def run(self, path, *, replace: bool = False) -> dict[str, int]:
+    def run(self, path, *, replace: bool = False, progress=None) -> dict[str, int]:
         """Import the file at *path*.
 
         If *replace* is True, all existing data is deleted before import.
         Returns a summary dict with counts of created/updated items.
         """
         _log.info("Import YAML ← %s (replace=%s)", path, replace)
+        if progress:
+            progress(0, 0, "Lecture du fichier YAML…")
         if replace:
             self._db.clear_all_data()
         yaml = YAML()
@@ -210,6 +220,11 @@ class YamlImport:
             "recipes_created": 0,
             "recipes_updated": 0,
         }
+
+        recipes_list = doc.get("recipes", [])
+        total = len(recipes_list)
+        if progress:
+            progress(0, total, "Import des données générales…")
 
         self._import_globals(doc.get("globals", {}), stats)
         self._import_difficulty_levels(doc.get("difficulty_levels", []), stats)
@@ -235,7 +250,12 @@ class YamlImport:
 
         self._import_techniques(doc.get("techniques", []), stats)
 
-        for recipe_data in doc.get("recipes", []):
+        for i, recipe_data in enumerate(recipes_list):
+            if progress:
+                code = (
+                    recipe_data.get("code", "") if isinstance(recipe_data, dict) else ""
+                )
+                progress(i + 1, total, f"Recette {i + 1}/{total} : {code}")
             self._import_recipe(recipe_data, cat_map, unit_map, ing_map, src_map, stats)
 
         _log.info(
@@ -355,6 +375,12 @@ class YamlImport:
                     level,
                 )
                 data = None
+            if data is not None and len(data) > MAX_MEDIA_BYTES:
+                mb = len(data) / 1_048_576
+                raise ValueError(
+                    f"Niveau de difficulté {level} : icône de {mb:.1f} Mo"
+                    f" dépasse la limite de 16 Mo."
+                )
             self._db.save_difficulty_level(
                 DifficultyLevel(
                     level=level,
@@ -473,6 +499,12 @@ class YamlImport:
                     "Média ignoré (base64 invalide) : code=%s", m_data.get("code")
                 )
                 continue
+            if len(media_bytes) > MAX_MEDIA_BYTES:
+                mb = len(media_bytes) / 1_048_576
+                raise ValueError(
+                    f"Recette « {code} », image « {m_data.get('code', '?')} » :"
+                    f" {mb:.1f} Mo dépasse la limite de 16 Mo par image."
+                )
             media.append(
                 RecipeMedia(
                     recipe_code=code,

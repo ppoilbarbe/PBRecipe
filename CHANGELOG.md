@@ -5,6 +5,50 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
 
+## [2026.4] — 2026-06-03
+
+### Added
+
+- PHP : filtre par source dans le formulaire de recherche (`search.php`).
+- Préférences : option **mode DEBUG PHP** (`SITE_DEBUG` dans `config.php`).
+- `AppConfig` : persistance de la géométrie (position + taille) de chaque dialogue via
+  `GeometryMixin` ; tous les dialogues de référentiels en bénéficient.
+- Base de données : migration automatique `BLOB → MEDIUMBLOB` sur MariaDB ;
+  colonne déclarée `LargeBinary(16_777_215)`.
+- `Makefile` : cibles `dist` et `srcdist` avec versionnage git via `tools/git_version.sh`.
+- Export et import YAML : fenêtre de progression modale affichant l'avancement recette par recette
+  (« Recette N/M : CODE ») ; n'apparaît qu'au-delà de 500 ms pour ne pas gêner les opérations
+  rapides.
+- Vérification orthographique et grammaticale dans l'éditeur de recette (Réalisation +
+  Commentaires) et dans le dialogue d'édition de technique (Titre + Description), via le bouton
+  **Vérifier…**.
+- Deux correcteurs pris en charge comme dépendances facultatives :
+  - **Grammalecte** (`pip install pygrammalecte`) — utilisé en priorité si activé ; la version
+    affichée est celle du moteur embarqué (ex. 2.1.1), pas celle du wrapper.
+  - **LanguageTool** (`pip install language-tool-python`, requiert Java) — utilisé en fallback.
+- **Préférences** : nouvelle section « Vérification grammaticale » permettant d'activer/désactiver
+  Grammalecte, de voir son statut (installé/non installé + version), et d'installer ou mettre à
+  jour Grammalecte directement depuis le dialogue (via `pip`, sans bloquer l'interface).
+- Import YAML : message d'erreur explicite si une image dépasse 16 Mo
+  (ex. « Recette CARBONARA, image PHOTO1 : 18.3 Mo dépasse la limite de 16 Mo par image »)
+  au lieu du message brut de MariaDB.
+- Constante `MAX_MEDIA_BYTES = 16_777_215` dans `constants.py` ; `schema.py` l'utilise désormais
+  au lieu de la valeur littérale.
+
+### Changed
+
+- PHP : `strings` et `presentation` déplacés dans `index.php` (chargés depuis la BDD) ;
+  `config.php.tpl` allégé en conséquence.
+- `IngredientListEditor` : largeurs de colonnes proportionnelles aux constantes `MAX_*` au lieu
+  de pixels fixes.
+- Export YAML : largeur de ligne illimitée pour éviter les coupures dans les chaînes longues.
+- pre-commit : mise à jour `pre-commit-hooks` → v6.0.0, `ruff` → v0.15.13.
+
+### Fixed
+
+- `SearchTest` : correction des appels à `render_search_form` après l'ajout du paramètre
+  `$sources` en version 2026.3 ; `$current` était passé en 5ème position au lieu de la 6ème.
+
 ## [2026.3] — 2026-05-08
 
 ### Added

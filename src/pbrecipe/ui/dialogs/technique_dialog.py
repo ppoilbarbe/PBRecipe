@@ -60,9 +60,24 @@ class TechniqueEditDialog(QDialog):
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
+        self._check_btn = buttons.addButton(
+            "Vérifier…", QDialogButtonBox.ButtonRole.HelpRole
+        )
+        self._check_btn.clicked.connect(self._check_spelling)
         buttons.accepted.connect(self._accept)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
+
+    def _check_spelling(self) -> None:
+        from pbrecipe.ui.spellcheck_dialog import run_spellcheck
+
+        run_spellcheck(
+            [
+                ("Titre", self._title_edit.text()),
+                ("Description", self._desc_editor.get_plain_text()),
+            ],
+            self,
+        )
 
     def _accept(self) -> None:
         self._technique.code = self._code_edit.text().strip().upper()

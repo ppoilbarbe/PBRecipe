@@ -546,6 +546,9 @@ class HtmlEditor(QWidget):
             return ""
         return result
 
+    def get_plain_text(self) -> str:
+        return self._edit.toPlainText()
+
     def clear(self) -> None:
         self._edit.clear()
 

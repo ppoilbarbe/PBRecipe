@@ -20,6 +20,7 @@ from pbrecipe.constants import (
     MAX_INGREDIENT_QUANTITY,
     MAX_INGREDIENT_SEPARATOR,
     MAX_INGREDIENT_SUFFIX,
+    MAX_MEDIA_BYTES,
     MAX_MEDIA_CODE,
     MAX_MIME_TYPE,
     MAX_RECIPE_CODE,
@@ -138,7 +139,7 @@ t_recipe_media = Table(
         "code", String(MAX_MEDIA_CODE), nullable=False
     ),  # référence dans [IMG:RECIPE:CODE]
     Column("mime_type", String(MAX_MIME_TYPE), nullable=False, default="image/jpeg"),
-    Column("data", LargeBinary(16_777_215), nullable=False),
+    Column("data", LargeBinary(MAX_MEDIA_BYTES), nullable=False),
 )
 
 t_difficulty_levels = Table(
@@ -148,7 +149,7 @@ t_difficulty_levels = Table(
     Column("label", String(MAX_DIFFICULTY_LABEL), nullable=False, default=""),
     Column("mime_type", String(MAX_MIME_TYPE), nullable=False, default="image/jpeg"),
     Column(
-        "data", LargeBinary(16_777_215), nullable=True
+        "data", LargeBinary(MAX_MEDIA_BYTES), nullable=True
     ),  # icône bitmap, None si non définie
 )
 
