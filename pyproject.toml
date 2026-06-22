@@ -33,7 +33,7 @@ spellcheck = [
     "language-tool-python>=2.7",
 ]
 grammalecte = [
-    "pygrammalecte>=2.0",
+    "pygrammalecte>=1.5",
 ]
 dev = [
     "ruff>=0.4",
@@ -42,6 +42,7 @@ dev = [
     "pytest-qt>=4",
     "pytest-cov>=5",
     "build>=1.0",
+    "pygrammalecte>=1.5",
 ]
 
 [project.scripts]

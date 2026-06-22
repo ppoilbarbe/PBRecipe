@@ -36,8 +36,6 @@ def _patch_pygrammalecte() -> None:
     """
     try:
         import json as _json
-        from pathlib import Path
-        from sysconfig import get_paths
 
         import pygrammalecte.pygrammalecte as _pg
 
@@ -76,11 +74,6 @@ def _patch_pygrammalecte() -> None:
 
         # Enable spelling suggestions (bSpellSugg is False in the original)
         def _run_with_suggestions(filepath: str) -> str:
-            grammalecte_script = Path(get_paths()["scripts"]) / "grammalecte-cli.py"
-            if not grammalecte_script.exists():
-                exc = FileNotFoundError()
-                exc.filename = "grammalecte-cli.py"
-                raise exc
             import grammalecte as _gc
             from grammalecte.grammalecte_cli import generateParagraphFromFile
 

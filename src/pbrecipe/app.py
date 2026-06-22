@@ -5,6 +5,8 @@ import logging
 import sys
 from pathlib import Path
 
+from pbrecipe.argparse_qt import add_qt_arguments
+
 _log = logging.getLogger(__name__)
 
 _LEVEL_MAP: dict[str, int] = {
@@ -102,8 +104,9 @@ def main() -> None:
         help="N'afficher que les avertissements et erreurs",
     )
     parser.set_defaults(log_level=default_level)
+    add_qt_arguments(parser)
 
-    args, qt_args = parser.parse_known_args()
+    args = parser.parse_args()
     apply_log_level(args.log_level)
 
     if args.check_connect:
@@ -123,7 +126,7 @@ def main() -> None:
 
     from pbrecipe.ui.main_window import MainWindow
 
-    app = QApplication([sys.argv[0]] + qt_args)
+    app = QApplication([sys.argv[0]] + args.qt_args)
     app.setApplicationName("PBRecipe")
     app.setOrganizationName("Cardolan")
     _icon = Path(__file__).parent / "resources" / "icons" / "pbrecipe-128x128.png"

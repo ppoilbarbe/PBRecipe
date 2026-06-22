@@ -29,6 +29,13 @@ et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
   - `tests/test_spellcheck.py` (37 tests) — `_html_to_plain` et `_patch_pygrammalecte`
     (correction JSON, NBSP, suggestions orthographiques)
   - `tests/test_recipe_filter.py` (14 tests) — `MainWindow._normalize_filter`
+  - 17 nouveaux fichiers de test Python (320 tests au total) ; couverture 20 % → 91 %.
+- **Coverage PHP** : `make coverage` génère également un rapport HTML via `phpdbg`
+  (`htmlcov/php/index.html`) ; couverture limitée aux modules `lib/`.
+- `argparse_qt.py` : parsing des options Qt (`--style`, `--platform`, `--display`, etc.)
+  en ligne de commande, importé de PBRenamer.
+- **Bundle PyInstaller** : `pygrammalecte` et `grammalecte` (modules + dictionnaires
+  `graphspell/_dictionaries/`) inclus dans l'exécutable.
 
 ### Changed
 
@@ -49,6 +56,10 @@ et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
   convertit `\xa0` en espace ordinaire ; corrigé en utilisant le HTML brut comme source.
 - PHP `render_difficulty()` : `hide_label` respecté — l'icône s'affiche seule quand l'option
   est cochée.
+- CI : `pygrammalecte` ajouté aux extras `[dev]` dans `pyproject.toml` — les tests du module
+  `test_spellcheck.py` échouaient (`ModuleNotFoundError`) sur les runners GitHub Actions.
+- Bundle : `_patch_pygrammalecte` cherchait `grammalecte-cli.py` via `get_paths()["scripts"]`,
+  chemin invalide dans un exécutable PyInstaller — remplacé par l'import direct du module.
 
 ## [2026.4] — 2026-06-03
 

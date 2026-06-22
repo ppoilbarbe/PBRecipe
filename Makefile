@@ -21,7 +21,7 @@ PY_SOURCES := $(shell find $(SRC)/pbrecipe -name "*.py" ! -path "*/__pycache__/*
 
 .DEFAULT_GOAL := help
 .PHONY: all help icons venv venv-update install run test test-php coverage lint format \
-        dist srcdist clean hooks update-vendors
+        dist srcdist clean hooks update-vendors _php-vendor
 
 all: icons ## Génère tous les artefacts (icônes)
 
@@ -63,19 +63,23 @@ run: ## Launch PBRecipe from the conda env  (pass extra args with ARGS="--debug 
 test: ## Run Python test suite
 	$(CONDA_RUN) pytest
 
-test-php: ## Run PHP test suite (télécharge composer/phpunit si nécessaire)
+_php-vendor:
 	@test -f composer.phar || { \
 	    $(CONDA_RUN) php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
 	    $(CONDA_RUN) php composer-setup.php --quiet && \
 	    rm -f composer-setup.php; \
 	}
 	@test -f vendor/bin/phpunit || $(CONDA_RUN) php composer.phar install --no-interaction --quiet
+
+test-php: _php-vendor ## Run PHP test suite (télécharge composer/phpunit si nécessaire)
 	PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) pytest tests/test_php_fixtures.py
 	PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) ./vendor/bin/phpunit
 
-coverage: ## Run test suite and open HTML coverage report
-	$(CONDA_RUN) pytest --cov-report=term-missing --cov-report=html
-	@printf "$(G)Report:$(R) $(Y)htmlcov/index.html$(R)\n"
+coverage: _php-vendor ## Run test suite and open HTML coverage report
+	PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) pytest --cov-report=term-missing --cov-report=html
+	PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) phpdbg -qrr ./vendor/bin/phpunit --coverage-html htmlcov/php
+	@printf "$(G)Report Python:$(R) $(Y)htmlcov/index.html$(R)\n"
+	@printf "$(G)Report PHP:$(R)    $(Y)htmlcov/php/index.html$(R)\n"
 
 hooks: ## Run all pre-commit hooks on all files
 	$(CONDA_RUN) pre-commit run --all-files

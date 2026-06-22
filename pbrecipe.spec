@@ -18,6 +18,18 @@ datas = [
     (str(RESOURCES / "php"),   "pbrecipe/resources/php"),
 ]
 
+import site
+
+# Dictionnaires grammalecte (données de graphspell pour la correction orthographique)
+_grammalecte_dicts = []
+for _sp in site.getsitepackages():
+    _d = Path(_sp) / "grammalecte" / "graphspell" / "_dictionaries"
+    if _d.is_dir():
+        _grammalecte_dicts = [(str(_d), "grammalecte/graphspell/_dictionaries")]
+        break
+
+datas += _grammalecte_dicts
+
 hiddenimports = [
     "ruamel.yaml",
     "ruamel.yaml.clib",
@@ -26,6 +38,18 @@ hiddenimports = [
     "sqlalchemy.dialects.postgresql",
     "pymysql",
     "psycopg2",
+    # Correcteur grammatical (optionnel — absent = vérification désactivée)
+    "pygrammalecte",
+    "pygrammalecte.pygrammalecte",
+    "grammalecte",
+    "grammalecte.fr",
+    "grammalecte.graphspell",
+    "grammalecte.graphspell.ibdawg",
+    "grammalecte.graphspell.spellchecker",
+    "grammalecte.graphspell.tokenizer",
+    "grammalecte.grammar_checker",
+    "grammalecte.grammalecte_cli",
+    "grammalecte.text",
 ]
 
 a = Analysis(
