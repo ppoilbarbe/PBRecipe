@@ -115,6 +115,7 @@ class YamlExport:
                 {
                     "level": dl.level,
                     "label": dl.label,
+                    "hide_label": dl.hide_label,
                     "mime_type": dl.mime_type,
                     "data": base64.b64encode(dl.data).decode("ascii")
                     if dl.data
@@ -385,6 +386,7 @@ class YamlImport:
                 DifficultyLevel(
                     level=level,
                     label=str(entry.get("label", "")),
+                    hide_label=bool(entry.get("hide_label", False)),
                     mime_type=str(entry.get("mime_type", "image/jpeg")),
                     data=data,
                 )

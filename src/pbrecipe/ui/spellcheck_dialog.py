@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
+import logging
 import re
-from html import escape
+from html import escape, unescape
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -18,9 +19,105 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+_log = logging.getLogger(__name__)
+
 _MARKER_RE = re.compile(r"\[(IMG|TECH|RECIPE):[^\]]+\]", re.IGNORECASE)
+_BLOCK_TAG_RE = re.compile(r"</?(p|br|div|li|h[1-6]|tr|td|th)[^>]*>", re.IGNORECASE)
+_TAG_RE = re.compile(r"<[^>]+>")
+_STYLE_RE = re.compile(r"<style\b[^>]*>.*?</style>", re.IGNORECASE | re.DOTALL)
+_MULTI_NL_RE = re.compile(r"\n{3,}")
+_EMPTY_COMMA_RE = re.compile(r",\s*,|\[\s*,|,\s*\]")
+
+
+def _patch_pygrammalecte() -> None:
+    """Patch pygrammalecte bugs:
+    1. Empty paragraphs produce invalid JSON arrays (bEmptyIfNoErrors=True).
+    2. Spelling suggestions are disabled (bSpellSugg=False hard-coded).
+    """
+    try:
+        import json as _json
+        from pathlib import Path
+        from sysconfig import get_paths
+
+        import pygrammalecte.pygrammalecte as _pg
+
+        def _fixed(json_str: str):
+            # Strip grammalecte comment lines (grammalecte 1.12+ adds # lines)
+            cleaned = "\n".join(
+                line for line in json_str.splitlines() if not line.startswith("#")
+            )
+            # Fix empty array elements produced when some paragraphs have no errors:
+            # getParagraphErrorsAsJSON(bEmptyIfNoErrors=True) returns "" for
+            # error-free paragraphs; joining with ",\n" then yields invalid JSON.
+            # Each re.sub pass removes one "layer" of consecutive empty elements,
+            # so loop until the string is stable (handles N consecutive empties).
+            while True:
+                prev = cleaned
+                cleaned = re.sub(r",\s*,", ",", cleaned)  # collapse ,,
+                cleaned = re.sub(r"\[\s*,", "[", cleaned)  # remove leading ,
+                cleaned = re.sub(r",\s*\]", "]", cleaned)  # remove trailing ,
+                if cleaned == prev:
+                    break
+            warnings = _json.loads(cleaned)
+            for warning in warnings["data"]:
+                lineno = int(warning["iParagraph"])
+                messages = []
+                for error in warning["lGrammarErrors"]:
+                    messages.append(
+                        _pg.GrammalecteGrammarMessage.from_dict(lineno, error)
+                    )
+                for error in warning["lSpellingErrors"]:
+                    msg = _pg.GrammalecteSpellingMessage.from_dict(lineno, error)
+                    msg.suggestions = error.get("aSuggestions", [])
+                    messages.append(msg)
+                yield from sorted(messages)
+
+        _pg._convert_to_messages = _fixed
+
+        # Enable spelling suggestions (bSpellSugg is False in the original)
+        def _run_with_suggestions(filepath: str) -> str:
+            grammalecte_script = Path(get_paths()["scripts"]) / "grammalecte-cli.py"
+            if not grammalecte_script.exists():
+                exc = FileNotFoundError()
+                exc.filename = "grammalecte-cli.py"
+                raise exc
+            import grammalecte as _gc
+            from grammalecte.grammalecte_cli import generateParagraphFromFile
+
+            warnings_list = []
+            oGC = _gc.GrammarChecker("fr")  # noqa: N806
+            oGC.gce.setOptions({"html": True, "latex": True, "apos": False})
+            for i, sText, lLineSet in generateParagraphFromFile(filepath, False):  # noqa: N806
+                sText = oGC.getParagraphErrorsAsJSON(  # noqa: N806
+                    i,
+                    sText,
+                    bContext=False,
+                    bEmptyIfNoErrors=True,
+                    bSpellSugg=True,
+                    bReturnText=False,
+                    lLineSet=lLineSet,
+                )
+                warnings_list.append(sText)
+            warnings = ",\n".join(warnings_list)
+            return f'{{"data": [\n{warnings}\n]}}'
+
+        _pg._run_grammalecte = _run_with_suggestions
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _html_to_plain(html: str) -> str:
+    """Convert Qt rich-text HTML to plain text for spell-checkers."""
+    text = _STYLE_RE.sub("", html)
+    text = _BLOCK_TAG_RE.sub("\n", text)
+    text = _TAG_RE.sub("", text)
+    text = unescape(text)
+    text = _MULTI_NL_RE.sub("\n\n", text)
+    return text.strip()
+
 
 _lt_tool = None  # lazy singleton LanguageTool
+_spellcheck_dialog: SpellCheckDialog | None = None  # non-modal singleton
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -38,6 +135,7 @@ def grammalecte_info() -> tuple[bool, str]:
         import pygrammalecte  # noqa: F401
         from pygrammalecte import grammalecte_text
 
+        _patch_pygrammalecte()
         list(grammalecte_text("Test."))
         try:
             import grammalecte.fr as _gfr
@@ -72,7 +170,9 @@ def run_spellcheck(
     sections: list[tuple[str, str]],
     parent: QWidget | None = None,
 ) -> None:
-    """Ouvre le dialogue, ou avertit si aucun correcteur n'est disponible."""
+    """Ouvre (ou met à jour) la fenêtre de vérification orthographique non modale."""
+    global _spellcheck_dialog
+
     from pbrecipe.config.app_config import AppConfig
 
     app_config = AppConfig.load()
@@ -89,7 +189,15 @@ def run_spellcheck(
         _no_checker_warning(parent, use_grammalecte)
         return
 
-    SpellCheckDialog(sections, engine, parent).exec()
+    if _spellcheck_dialog is not None and _spellcheck_dialog.isVisible():
+        _spellcheck_dialog.update_check(sections, engine)
+        _spellcheck_dialog.raise_()
+        _spellcheck_dialog.activateWindow()
+    else:
+        # Parent=None : fenêtre indépendante dont la durée de vie n'est pas
+        # liée à la fenêtre appelante (évite un crash si l'appelant est détruit)
+        _spellcheck_dialog = SpellCheckDialog(sections, engine)
+        _spellcheck_dialog.show()
 
 
 def _no_checker_warning(parent: QWidget | None, grammalecte_preferred: bool) -> None:
@@ -143,7 +251,19 @@ class SpellCheckDialog(QDialog):
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
 
+    def update_check(self, sections: list[tuple[str, str]], engine: str) -> None:
+        """Met à jour le contenu sans ouvrir une nouvelle fenêtre."""
+        self._sections = sections
+        self._engine = engine
+        engine_label = "Grammalecte" if engine == "grammalecte" else "LanguageTool"
+        self.setWindowTitle(
+            f"Vérification orthographique et grammaticale — {engine_label}"
+        )
+        self._run_check()
+
     def _run_check(self) -> None:
+        self._browser.setHtml("<p><i>Vérification en cours…</i></p>")
+        QApplication.processEvents()
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
             if self._engine == "grammalecte":
@@ -168,10 +288,11 @@ class SpellCheckDialog(QDialog):
         any_text = False
 
         for label, text in self._sections:
-            clean = _MARKER_RE.sub("", text).strip()
+            clean = _html_to_plain(_MARKER_RE.sub("", text))
             if not clean:
                 continue
             any_text = True
+            _log.debug("Grammalecte — section «%s» :\n%s", label, clean)
             matches = list(grammalecte_text(clean))
             parts.append(f"<h3>{escape(label)}</h3>")
             if not matches:
@@ -187,7 +308,7 @@ class SpellCheckDialog(QDialog):
                 elif isinstance(m, GrammalecteSpellingMessage):
                     error_text = m.word
                     message = m.message
-                    suggestions = []
+                    suggestions = list(getattr(m, "suggestions", []))
                 else:
                     continue
                 ctx = _build_context(line_text, m.start, len(error_text))
@@ -215,7 +336,7 @@ class SpellCheckDialog(QDialog):
         any_text = False
 
         for label, text in self._sections:
-            clean = _MARKER_RE.sub("", text).strip()
+            clean = _html_to_plain(_MARKER_RE.sub("", text))
             if not clean:
                 continue
             any_text = True

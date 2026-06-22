@@ -5,6 +5,51 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
 
+## [Unreleased]
+
+### Added
+
+- **Filtre de la liste des recettes** : zone de saisie sous la liste, insensible à la casse et aux
+  diacritiques (ex. « gateau » trouve « Gâteau au chocolat »). Le filtre persiste lors des
+  rafraîchissements sans masquer la recette sélectionnée par code.
+- **Raccourci F7** sur le bouton « Vérifier… » dans l'éditeur de recette et dans le dialogue
+  d'édition de technique (standard traitement de texte : LibreOffice, Word…).
+- **Niveaux de difficulté — case « Masquer le libellé »** dans `DifficultyDialog` : affiche
+  l'icône seule, libellé visible uniquement dans l'infobulle au survol.
+- PHP : Tom Select vendorisé (`css/tom-select.min.css` + `js/tom-select.min.js`) ;
+  mis à jour via `make update-vendors`.
+- PHP : formulaire de recherche — catégorie, ingrédient et source passés en `<select multiple>`
+  avec Tom Select ; chaque filtre propose un radio OU/ET (`.search-mode-toggle`).
+  Logique ET entre dimensions ; les multi-select sources en mode ET renvoient toujours 0 résultat
+  (source_id est une FK directe 1:1 sur les recettes).
+- `make run ARGS="…"` : passage d'arguments CLI au programme (ex. `ARGS="--debug"`).
+- `Makefile` : cible `update-vendors` — télécharge la dernière version de Tom Select
+  depuis jsDelivr.
+- Tests de non-régression :
+  - `tests/test_spellcheck.py` (37 tests) — `_html_to_plain` et `_patch_pygrammalecte`
+    (correction JSON, NBSP, suggestions orthographiques)
+  - `tests/test_recipe_filter.py` (14 tests) — `MainWindow._normalize_filter`
+
+### Changed
+
+- Vérification orthographique : **fenêtre non modale** — reste ouverte pendant l'édition du texte ;
+  un deuxième clic sur « Vérifier… » met à jour le contenu sans ouvrir une nouvelle fenêtre.
+- Vérification orthographique (Grammalecte) : **suggestions pour les fautes d'orthographe**
+  activées (`bSpellSugg=True`) — ex. « cannelle » proposé pour « canelle ».
+- Vérification orthographique : passage de `get_plain_text()` à `get_html()` + `_html_to_plain()`
+  pour préserver les espaces insécables (`\xa0`) lors de la transmission au correcteur.
+- PHP : `media.php` déplacé de `lib/` vers la racine de l'export (`.htaccess` protège `lib/`
+  entier, `media.php` doit être accessible directement par le navigateur).
+
+### Fixed
+
+- Grammalecte : `JSONDecodeError` lors de la vérification de textes avec des paragraphes vides
+  (pygrammalecte produisait un tableau JSON invalide avec des virgules orphelines).
+- Grammalecte : espace insécable signalé à tort comme manquant — `QTextEdit.toPlainText()`
+  convertit `\xa0` en espace ordinaire ; corrigé en utilisant le HTML brut comme source.
+- PHP `render_difficulty()` : `hide_label` respecté — l'icône s'affiche seule quand l'option
+  est cochée.
+
 ## [2026.4] — 2026-06-03
 
 ### Added

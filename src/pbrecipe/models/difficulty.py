@@ -7,5 +7,6 @@ from dataclasses import dataclass, field
 class DifficultyLevel:
     level: int
     label: str = ""
+    hide_label: bool = False
     mime_type: str = "image/jpeg"
     data: bytes | None = field(default=None, repr=False)

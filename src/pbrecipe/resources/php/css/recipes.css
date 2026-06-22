@@ -1,3 +1,6 @@
+/* @import doit être la première instruction CSS (avant tout sélecteur). */
+@import url('tom-select.min.css');
+
 /*
  * recipes.css — Styles spécifiques au module recettes PBRecipe
  * =============================================================
@@ -11,13 +14,34 @@
  *  4. Image héros           — première image flottée à gauche des ingrédients
  *  5. Galerie d'images      — images supplémentaires avec agrandissement au survol
  *  6. Messages d'état       — liens technique, aucun résultat, erreur
- *  7. Impression            — règles spécifiques aux recettes @media print
+ *  7. Responsive            — adaptation écrans étroits (mobiles)
+ *  8. Impression            — règles spécifiques aux recettes @media print
  *
  * NAMESPACE
  * ─────────
  * Toutes les classes sont préfixées .recipe-, .category- ou .search-.
  * Elles ne devraient pas entrer en conflit avec un site tiers.
  */
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   0. OVERRIDES TOM SELECT
+   ══════════════════════════════════════════════════════════════════════════════
+   Adapte les variables CSS de Tom Select à la charte graphique du site.
+   ══════════════════════════════════════════════════════════════════════════════ */
+.search-form {
+  --ts-font-size: .9rem;
+  --ts-font-family: var(--font-ui);
+  --ts-border-color: var(--clr-border);
+  --ts-border-radius: var(--radius);
+  --ts-color-text: var(--clr-text);
+  --ts-color-background: var(--clr-bg);
+  --ts-color-background-dropdown: var(--clr-surface);
+  --ts-color-item-text: #fff;
+  --ts-color-item-bg: var(--clr-primary);
+  --ts-color-item-bg-active: var(--clr-accent);
+  --ts-color-item-text-active: #fff;
+  --ts-pr-min: 1rem;
+}
 
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -26,9 +50,19 @@
    Structure HTML (render_search_form() dans search.php) :
    <form class="search-form">
      <input type="text" name="q" …>
-     <select name="cat">…</select>
-     <select name="ing">…</select>
+     <div class="search-filter-group">
+       <select name="cat[]" id="ts-cat" multiple …>…</select>
+       <div class="search-mode-toggle">…</div>
+     </div>
+     <div class="search-filter-group">
+       <select name="ing[]" id="ts-ing" multiple …>…</select>
+       <div class="search-mode-toggle">…</div>
+     </div>
      <select name="diff">…</select>
+     <div class="search-filter-group">
+       <select name="src[]" id="ts-src" multiple …>…</select>
+       <div class="search-mode-toggle">…</div>
+     </div>
      <button type="submit">Rechercher</button>
      <select name="tech" …>…</select>
    </form>
@@ -37,6 +71,7 @@
 .search-form {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: .5rem;
   margin-bottom: 1.5rem;
   background: var(--clr-surface);
@@ -68,6 +103,34 @@
   font-family: var(--font-ui);
 }
 .search-form button:hover { background: var(--clr-accent); }
+
+/* Groupe : widget Tom Select + toggle OU/ET */
+.search-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  flex: 0 0 auto;
+}
+
+.search-filter-group .ts-wrapper {
+  min-width: 150px;
+}
+
+.search-mode-toggle {
+  display: flex;
+  gap: .5rem;
+  justify-content: center;
+  font-size: .78rem;
+  font-family: var(--font-ui);
+  color: var(--clr-muted);
+}
+.search-mode-toggle label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+  user-select: none;
+}
 
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -434,15 +497,78 @@ details:not([open]) .category-name::before { content: '▸ '; }
 .no-results { color: var(--clr-muted); font-style: italic; padding: 1rem 0; }
 .error      { color: var(--clr-accent); font-family: var(--font-ui); padding: 1rem 0; }
 
-.site-presentation {
+.site-presentation-block {
   margin-bottom: 1.5rem;
+}
+.site-presentation-block > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-family: var(--font-ui);
+  font-weight: bold;
+  color: var(--clr-primary);
+  font-size: 1rem;
+}
+.site-presentation-block > summary::-webkit-details-marker { display: none; }
+.site-presentation-block > summary::before { content: '▾ '; font-size: .85em; color: var(--clr-muted); }
+.site-presentation-block:not([open]) > summary::before { content: '▸ '; }
+.site-presentation-block[open] > summary { margin-bottom: .5rem; }
+
+.site-presentation {
   line-height: 1.7;
 }
 .site-presentation p + p { margin-top: .6rem; }
 
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   7. IMPRESSION (@media print) — règles spécifiques aux recettes
+   7. RESPONSIVE — adaptation écrans étroits (mobiles)
+   ══════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  /* Formulaire de recherche : chaque filtre prend toute la largeur */
+  .search-filter-group {
+    flex: 1 1 100%;
+  }
+  .search-filter-group .ts-wrapper {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+  .search-form select,
+  .search-form input[type=text] {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Fiche recette : réduire le padding pour gagner de la place */
+  .recipe-card {
+    padding: 1rem .75rem;
+  }
+
+  /* Méta : difficultés et durées passent en colonne */
+  .recipe-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .difficulty {
+    margin-left: 0;
+  }
+
+  /* Images inline dans le corps : hauteur plafonnée */
+  .recipe-thumb {
+    max-height: 80px;
+  }
+
+  /* Galerie : hauteur fixe remplacée par largeur fluide */
+  .gallery-thumb {
+    height: auto;
+    width: 100%;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   8. IMPRESSION (@media print) — règles spécifiques aux recettes
    ══════════════════════════════════════════════════════════════════════════════
    Les règles générales (body, a, :root, .site-header, .site-footer) sont dans
    la section @media print de base.css.

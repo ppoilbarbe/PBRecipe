@@ -103,13 +103,17 @@ graph TD
 graph TD
     classDef opt stroke-dasharray:5 5
 
-    diff["span.difficulty · title=label"]
+    diff["span.difficulty · title=label\n(infobulle = libellé, toujours présente)"]
 
-    diff --> icon["span.diff-icon"]:::opt
-    diff --> label["span.diff-label"]:::opt
+    diff --> icon["span.diff-icon\n(si icône définie)"]:::opt
+    diff --> label["span.diff-label\n(si label ≠ '' ET hide_label=false)"]:::opt
 
-    icon --> img["img.diff-icon-img\n(src=lib/media.php?diff=N)"]
+    icon --> img["img.diff-icon-img\n(src=media.php?diff=N)"]
 ```
+
+> `hide_label=true` : seule l'icône est affichée ; le libellé reste accessible via l'attribut
+> `title` de `span.difficulty` (infobulle au survol). Si `hide_label=false`, libellé et icône
+> sont tous deux affichés.
 
 ---
 

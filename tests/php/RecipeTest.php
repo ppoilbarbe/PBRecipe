@@ -178,14 +178,14 @@ class RecipeTest extends TestCase
 
     public function test_search_recipes_by_category(): void
     {
-        $results = search_recipes(category_id: 1);
+        $results = search_recipes(category_ids: [1]);
         $this->assertCount(1, $results);
         $this->assertSame('GATEAU', $results[0]['code']);
     }
 
     public function test_search_recipes_by_ingredient(): void
     {
-        $results = search_recipes(ingredient_id: 1); // Farine
+        $results = search_recipes(ingredient_ids: [1]); // Farine
         $this->assertCount(1, $results);
         $this->assertSame('GATEAU', $results[0]['code']);
     }
@@ -193,7 +193,7 @@ class RecipeTest extends TestCase
     public function test_search_recipes_combined_criteria_narrows_results(): void
     {
         // GATEAU est difficulté 2, TARTE est difficulté 1 — aucun n'est à la fois cat=1 ET diff=1
-        $results = search_recipes(category_id: 1, difficulty: 1);
+        $results = search_recipes(category_ids: [1], difficulty: 1);
         $this->assertCount(0, $results);
     }
 

@@ -147,6 +147,7 @@ t_difficulty_levels = Table(
     metadata,
     Column("level", SmallInteger, primary_key=True, autoincrement=False),
     Column("label", String(MAX_DIFFICULTY_LABEL), nullable=False, default=""),
+    Column("hide_label", Boolean, nullable=False, default=False),
     Column("mime_type", String(MAX_MIME_TYPE), nullable=False, default="image/jpeg"),
     Column(
         "data", LargeBinary(MAX_MEDIA_BYTES), nullable=True

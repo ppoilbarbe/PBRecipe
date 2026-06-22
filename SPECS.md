@@ -75,10 +75,11 @@ units(id PK, name ≤15, name_plural ≤15 DEF'')  # name peut être vide ; name
 ingredients(id PK, name ≤50 NN,
             name_plural ≤50 DEF'')              # name_plural : forme plurielle optionnelle
 sources(id PK, name TEXT NN)                   # TEXT (pas de limite), peut contenir du HTML
-techniques(code ≤10 PK, title ≤40 NN, description TEXT)
+techniques(code ≤10 PK, title ≤200 NN, description TEXT)
 difficulty_levels(level 0-3 PK, label ≤50 DEF'',
+                  hide_label BOOLEAN DEF False,  # masquer libellé, garder icône + infobulle
                   mime_type ≤50 DEF'image/jpeg',
-                  data BLOB?)                  # icône bitmap ; NULL si non définie
+                  data BLOB?)                    # icône bitmap ; NULL si non définie
 recipes(code ≤50 PK, name ≤200 NN, difficulty 0-3 DEF 0,
         serving ≤30 DEF'',
         prep_time INT?, wait_time INT?,
@@ -105,6 +106,8 @@ Migration : à la création du schéma :
 - Si la colonne `recipes.serving` est absente → `ALTER TABLE recipes ADD COLUMN serving VARCHAR(30) NOT NULL DEFAULT ''`.
 - v3 : si `units.name_plural`, `ingredients.name_plural`, `recipe_ingredients.unit_plural` ou
   `recipe_ingredients.ingredient_plural` sont absentes → `ALTER TABLE … ADD COLUMN …`.
+- v4 : `_ensure_bool_columns()` — si `difficulty_levels.hide_label` est absent →
+  `ALTER TABLE difficulty_levels ADD COLUMN hide_label BOOLEAN NOT NULL DEFAULT FALSE`.
 
 Tri de toutes les listes : effectué côté Python via `_sort_key()` (insensible à la casse et aux
 diacritiques : `unicodedata.normalize("NFD").casefold().encode("ascii","ignore")`). Les requêtes SQL
@@ -226,6 +229,10 @@ ui/
                             Chargement automatique du dernier fichier au démarrage.
                             Confirmation avant abandon des modifications non enregistrées
                             (navigation, fermeture).
+                            Filtre sous la liste : QLineEdit + bouton ✕ ; _normalize_filter()
+                              (NFD casefold, strip catégorie 'Mn') ; _apply_recipe_filter() masque
+                              les items via setHidden() ; la recette sélectionnée par code reste
+                              toujours visible.
                             Menus :
                               Fichier   → Nouvelle base… | Ouvrir… | Fichiers récents
                                           Paramètres de la base… | Préférences du programme…
@@ -251,6 +258,8 @@ ui/
                             Bouton Enregistrer : désactivé tant qu'aucune modification.
                             Action « Enregistrer la recette » (QAction) avec raccourci Ctrl+S,
                               partagée entre le menu Recette et le bouton Enregistrer.
+                            Bouton « Vérifier… » (raccourci F7) : lance la vérification
+                              orthographique sur Réalisation + Commentaires via run_spellcheck().
                             Validation à l'enregistrement : au moins une catégorie requise
                             (message d'erreur + annulation si aucune sélectionnée).
                             Combo sources : affichage sans balises HTML (re.sub r"<[^>]+>").
@@ -327,9 +336,20 @@ ui/
                             TechniqueEditDialog (code+titre+HtmlEditor(show_img=False))
                               reçoit db → set_references(recipes, [], techniques)
                               [IMG] absent : les images appartiennent aux recettes
+                              Bouton « Vérifier… » (raccourci F7) : vérification orthographique
+                              sur Titre + Description via run_spellcheck()
     difficulty_dialog.py    DifficultyDialog : panneau scindé — liste fixe 4 niveaux (gauche)
-                              + éditeur (droite) : libellé + aperçu icône bitmap + Charger/Supprimer
+                              + éditeur (droite) : libellé + case « Masquer le libellé » +
+                              aperçu icône bitmap + Charger/Supprimer
                               sauvegarde immédiate en DB à chaque modification
+  spellcheck_dialog.py      run_spellcheck(sections, parent) — fenêtre non modale singleton ;
+                              un 2e clic sur « Vérifier… » met à jour le contenu sans nouvelle fenêtre.
+                            _html_to_plain(html) : convertit le HTML Qt en texte brut en préservant
+                              \xa0 (via unescape() sur &nbsp;/&#160;).
+                            _patch_pygrammalecte() : corrige deux bugs pygrammalecte —
+                              (1) JSON invalide quand des paragraphes sont vides (virgules orphelines) ;
+                              (2) suggestions désactivées (bSpellSugg=False en dur) → patchées à True.
+                              Attache les suggestions au champ .suggestions de GrammalecteSpellingMessage.
 export/
   php_export.py             copie fichiers PHP statiques + génère lib/config.php (.tpl)
                             Passe SITE_TYPE = config.site_type dans les variables du template.
@@ -352,9 +372,10 @@ resources/
                               ref_categories, ref_ingredients, ref_units,
                               ref_techniques, ref_sources, ref_difficulty
   php/
-    lib/.htaccess             Options -Indexes / Deny from all
+    lib/.htaccess             Options -Indexes / Deny from all (protège tout lib/)
     lib/config.php.tpl        template $DB_TYPE/$DB_HOST/…/$STRINGS_PHP/$SITE_TITLE/$SITE_TYPE
-    lib/media.php             sert images depuis la DB (GET ?code=CODE ou ?diff=N)
+    media.php                 sert images depuis la DB (GET ?code=CODE ou ?diff=N) — à la racine
+                              de l'export car lib/ est protégé par .htaccess
                               Cache disque dans media/ : écrit le fichier au premier accès,
                               sert depuis la mémoire si le répertoire n'est pas accessible.
                               Gère PostgreSQL BYTEA retourné comme ressource de flux.
@@ -364,12 +385,15 @@ resources/
                               autour du contenu au lieu du squelette HTML autonome.
     lib/db.php                PDO (sqlite/mysql/pgsql), connexion lazy statique
     lib/recipe.php            get_recipe(), get_recipes_by_category(), search_recipes(),
-                              get_all_categories/ingredients/techniques()
+                              get_all_categories/ingredients/techniques/sources()
+                              search_recipes(name, category_ids[], ingredient_ids[], difficulty,
+                                source_ids[], cat_mode, ing_mode, src_mode) — filtres multi-valeurs ;
+                                mode 'or' → IN(…), mode 'and' → sous-requête HAVING COUNT(DISTINCT …)=n
     lib/display.php           h(), media_url(code), get_difficulty_levels(), parse_markers(),
                               render_difficulty(), render_duration(), render_recipe(),
                               render_category_listing()
                               Génère du HTML indenté (2 espaces/niveau).
-                              media_url(code) → 'lib/media.php?code=CODE' (source DB directe)
+                              media_url(code) → 'media.php?code=CODE' (source DB directe)
                               get_difficulty_levels() : lit difficulty_levels en DB, mis en cache
                                 par requête ; retourne [level => ['label'=>…, 'icon'=>…]]
                                 icon = 'lib/media.php?diff=N' si data non vide, sinon ''
@@ -380,14 +404,21 @@ resources/
                               Paramètre indent : préfixe d'indentation pour l'imbrication
                               (passé à '    ' depuis render_recipe).
     lib/search.php            render_search_form(), render_search_results()
-                              Génère du HTML indenté. Dropdown difficulté alimenté par
-                              $DIFFICULTY_LEVELS (niveaux > 0).
+                              cat/ing/src : <select multiple> + toggle OU/ET (.search-filter-group)
+                              Difficulté : select simple. Technique : select simple + onchange submit.
+                              Placeholders Tom Select via data-placeholder sur chaque <select>.
     css/base.css              Variables CSS (:root), reset, body/liens, layout sticky header.
                               @media print général (couleurs, body, a). Partageable avec le site hôte.
+    css/tom-select.min.css    Tom Select (vendorisé). Variables CSS surchargées dans .search-form
+                              pour s'adapter à la charte graphique (--ts-font-size, --ts-border-color…).
     css/recipes.css           Formulaire de recherche, listing catégories <details>, fiche recette,
                               image héros, galerie hover, messages d'état, @media print recettes.
+                              .search-filter-group : wrapper flex column (select + toggle OU/ET).
+                              .search-mode-toggle : radio OU/ET sous chaque multi-select.
                               Dépend des variables :root définies dans base.css.
-    js/recipe.js              Ouvre les <details> catégories au chargement.
+    js/tom-select.min.js      Tom Select (vendorisé).
+    js/recipe.js              Ouvre les <details> catégories. Initialise Tom Select sur #ts-cat,
+                              #ts-ing, #ts-src (plugin remove_button, maxOptions illimité).
 ```
 
 ## Export YAML — format
@@ -449,13 +480,16 @@ recipes:
 ```
 target/
   index.php
+  media.php      ← sert les images depuis la DB ; cache disque dans media/
+                    (doit être à la racine : lib/ est protégé par .htaccess)
   lib/
-    .htaccess    ← protège tout le répertoire lib/
+    .htaccess    ← Deny from all (protège tout lib/)
     config.php   ← généré depuis config.php.tpl (inclut SITE_TYPE)
-    media.php    ← sert les images depuis la DB ; cache disque dans media/
     db.php / recipe.php / display.php / technique.php / search.php
   css/base.css
   css/recipes.css
+  css/tom-select.min.css   ← Tom Select (vendorisé, mis à jour via `make update-vendors`)
+  js/tom-select.min.js
   js/recipe.js
   media/         ← cache disque (créé vide à l'export, alimenté par media.php)
 ```
@@ -471,7 +505,15 @@ target/
 8. Source cadrée à droite
 
 ## Page accueil PHP
-- Formulaire recherche : texte libre + select catégorie + select ingrédient + select difficulté + select technique (déclenche submit)
+- Formulaire recherche :
+  - Texte libre
+  - Multi-select catégorie (Tom Select, `cat[]`) + toggle OU/ET (`cat_mode=or|and`)
+  - Multi-select ingrédient (Tom Select, `ing[]`) + toggle OU/ET (`ing_mode=or|and`)
+  - Select difficulté (valeur unique)
+  - Multi-select source (Tom Select, `src[]`) + toggle OU/ET (`src_mode=or|and`)
+  - Select technique (valeur unique, déclenche submit immédiat)
+  - Logique ET entre dimensions, OU ou ET au sein d'une même dimension
+  - Mode ET sur sources : toujours 0 résultat si 2+ sources sélectionnées (source_id est une FK directe 1:1)
 - Sans critère : listing `<details open>` par catégorie → liens recettes
 - Avec critère : liste résultats `search_recipes()`
 
@@ -479,10 +521,10 @@ target/
 - Accueil : `index.php` (sans paramètre)
 - Recette : `index.php?RECIPE=CODE`
 - Technique standalone : `index.php?tech=CODE`
-- Recherche : `index.php?q=…&cat=ID&ing=ID&diff=N`
+- Recherche : `index.php?q=…&cat[]=ID&cat[]=ID&cat_mode=or&ing[]=ID&ing_mode=and&diff=N&src[]=ID&src_mode=or`
 
 ## Makefile (cible par défaut : `help`)
-`help venv venv-update install run test coverage lint format hooks designer dist clean`
+`help venv venv-update install run test test-php coverage lint format hooks designer dist srcdist update-vendors clean`
 
 ## Fichiers projet
 ```
@@ -491,6 +533,9 @@ src/  tests/
 ```
 
 ## Tests
-- `tests/test_config.py`    : defaults, fallback string, roundtrip YAML
-- `tests/test_sqlite_db.py` : CRUD category/recipe/technique, search
-- `tests/test_html_editor.py`: tests unitaires de _clean_html() et HtmlEditor
+- `tests/test_config.py`       : defaults, fallback string, roundtrip YAML
+- `tests/test_sqlite_db.py`    : CRUD category/recipe/technique, search
+- `tests/test_html_editor.py`  : tests unitaires de _clean_html() et HtmlEditor
+- `tests/test_spellcheck.py`   : _html_to_plain (préservation NBSP, HTML stripping) +
+                                   _patch_pygrammalecte (robustesse JSON, suggestions)
+- `tests/test_recipe_filter.py`: _normalize_filter (diacritiques, casse, cas réels)

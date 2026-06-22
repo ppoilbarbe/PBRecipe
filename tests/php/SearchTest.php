@@ -78,8 +78,8 @@ class SearchTest extends TestCase
         $cats  = [['id' => 1, 'name' => 'Dessert']];
         $ings  = [['id' => 1, 'name' => 'Farine']];
         $html  = render_search_form($cats, $ings, [], $this->strings);
-        $this->assertStringContainsString('name="cat"', $html);
-        $this->assertStringContainsString('name="ing"', $html);
+        $this->assertStringContainsString('name="cat[]"', $html);
+        $this->assertStringContainsString('name="ing[]"', $html);
     }
 
     public function test_render_search_form_populates_categories(): void
@@ -93,7 +93,7 @@ class SearchTest extends TestCase
     public function test_render_search_form_marks_selected_category(): void
     {
         $cats = [['id' => 1, 'name' => 'Dessert']];
-        $html = render_search_form($cats, [], [], $this->strings, [], ['cat' => 1]);
+        $html = render_search_form($cats, [], [], $this->strings, [], ['cats' => [1]]);
         $this->assertMatchesRegularExpression('/value="1"\s+selected/', $html);
     }
 

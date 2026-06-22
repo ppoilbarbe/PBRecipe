@@ -21,7 +21,7 @@ PY_SOURCES := $(shell find $(SRC)/pbrecipe -name "*.py" ! -path "*/__pycache__/*
 
 .DEFAULT_GOAL := help
 .PHONY: all help icons venv venv-update install run test test-php coverage lint format \
-        dist srcdist clean hooks
+        dist srcdist clean hooks update-vendors
 
 all: icons ## Génère tous les artefacts (icônes)
 
@@ -56,8 +56,9 @@ install: ## Install package in editable mode and register git hooks
 	$(CONDA_RUN) pip install -e ".[dev]"
 	$(CONDA_RUN) pre-commit install
 
-run: ## Launch PBRecipe from the conda env
-	$(CONDA_RUN) python -m pbrecipe
+ARGS ?=
+run: ## Launch PBRecipe from the conda env  (pass extra args with ARGS="--debug …")
+	$(CONDA_RUN) python -m pbrecipe $(ARGS)
 
 test: ## Run Python test suite
 	$(CONDA_RUN) pytest
@@ -106,6 +107,17 @@ srcdist: ## Build a source distribution (archive dans dist/)
 	@printf "$(C)Source distribution — version $(_VER)$(R)\n"
 	$(CONDA_RUN) python -m build --sdist --outdir dist/
 	@printf "$(G)Done.$(R) Archive dans $(Y)dist/$(R)\n"
+
+update-vendors: ## Update vendored JS/CSS libraries (Tom Select, …)
+	@printf "$(C)Updating vendored libraries...$(R)\n"
+	@TS_VER=$$(curl -s https://api.github.com/repos/orchidjs/tom-select/releases/latest \
+	    | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))") && \
+	printf "  Tom Select v$$TS_VER...\n" && \
+	curl -sL "https://cdn.jsdelivr.net/npm/tom-select@$$TS_VER/dist/js/tom-select.complete.min.js" \
+	    -o src/pbrecipe/resources/php/js/tom-select.min.js && \
+	curl -sL "https://cdn.jsdelivr.net/npm/tom-select@$$TS_VER/dist/css/tom-select.min.css" \
+	    -o src/pbrecipe/resources/php/css/tom-select.min.css
+	@printf "$(G)Libraries updated.$(R)\n"
 
 clean: ## Remove all build/cache artifacts
 	rm -rf build dist *.egg-info .pytest_cache .coverage htmlcov vendor composer.phar

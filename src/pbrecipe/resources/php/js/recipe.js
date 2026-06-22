@@ -1,5 +1,17 @@
 /* PBRecipe — minimal JS for interactive behaviours */
 
+// ── Tom Select — filtres de recherche multi-sélection ─────────────────────────
+['ts-cat', 'ts-ing', 'ts-src'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el && typeof TomSelect !== 'undefined') {
+    new TomSelect(el, {
+      plugins: ['remove_button'],
+      maxOptions: null,
+      placeholder: el.dataset.placeholder || '',
+    });
+  }
+});
+
 // Ensure all <details> category blocks start open (already set in PHP via `open`,
 // but keep this for any dynamically inserted content).
 document.querySelectorAll('details.category-block').forEach(el => {

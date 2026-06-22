@@ -7,6 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
@@ -94,6 +95,11 @@ class DifficultyDialog(GeometryMixin, QDialog):
         self._label_edit.setPlaceholderText("(vide pour niveau non défini)")
         self._label_edit.editingFinished.connect(self._save_current)
         form.addRow("Libellé :", self._label_edit)
+        self._hide_label_cb = QCheckBox(
+            "Masquer le libellé (infobulle au survol de l'icône)"
+        )
+        self._hide_label_cb.stateChanged.connect(self._save_current)
+        form.addRow("", self._hide_label_cb)
         rl.addLayout(form)
 
         # Aperçu de l'icône
@@ -165,6 +171,7 @@ class DifficultyDialog(GeometryMixin, QDialog):
         self._loading = True
         self._level_label.setText(f"Niveau {dl.level}")
         self._label_edit.setText(dl.label)
+        self._hide_label_cb.setChecked(dl.hide_label)
         self._refresh_preview(dl)
         self._btn_clear.setEnabled(dl.data is not None)
         self._loading = False
@@ -214,10 +221,17 @@ class DifficultyDialog(GeometryMixin, QDialog):
             return
         dl = self._levels[self._current_row]
         new_label = self._label_edit.text()
-        if dl.label != new_label:
+        new_hide = self._hide_label_cb.isChecked()
+        if dl.label != new_label or dl.hide_label != new_hide:
             dl.label = new_label
+            dl.hide_label = new_hide
             self._db.save_difficulty_level(dl)
-            _log.info("Niveau %d — libellé mis à jour : «%s»", dl.level, dl.label)
+            _log.info(
+                "Niveau %d — libellé mis à jour : «%s» (masqué=%s)",
+                dl.level,
+                dl.label,
+                dl.hide_label,
+            )
             self._rebuild_list()
 
     def _load_image(self) -> None:

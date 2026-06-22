@@ -4,7 +4,7 @@ import logging
 import re
 import unicodedata
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QComboBox,
@@ -123,8 +123,10 @@ class RecipeEditor(QWidget):
         # Button bar
         btn_bar = QHBoxLayout()
         self._check_btn = QPushButton("Vérifier…")
+        self._check_btn.setShortcut(QKeySequence(Qt.Key.Key_F7))
         self._check_btn.setToolTip(
-            "Vérification orthographique et grammaticale (Réalisation + Commentaires)"
+            "Vérification orthographique et grammaticale"
+            " (Réalisation + Commentaires) [F7]"
         )
         self._check_btn.clicked.connect(self._check_spelling)
         self._check_btn.setEnabled(False)
@@ -305,8 +307,8 @@ class RecipeEditor(QWidget):
 
         run_spellcheck(
             [
-                ("Réalisation", self._desc_editor.get_plain_text()),
-                ("Commentaires", self._comment_editor.get_plain_text()),
+                ("Réalisation", self._desc_editor.get_html()),
+                ("Commentaires", self._comment_editor.get_html()),
             ],
             self,
         )

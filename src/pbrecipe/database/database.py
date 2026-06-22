@@ -118,6 +118,9 @@ class Database:
         assert self._engine
         metadata.create_all(self._engine)
         with self._engine.begin() as conn:
+            self._ensure_bool_columns(
+                conn
+            )  # doit précéder _migrate (INSERT inclut hide_label)
             self._migrate(conn)
             self._ensure_all_varchar_sizes(conn)
             self._ensure_mediumblob(conn)
@@ -261,6 +264,26 @@ class Database:
             )
             conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
             _log.info("Migration : %s.%s promu de BLOB en MEDIUMBLOB", table, col)
+
+    # (table, column, SQL type + constraint)
+    _BOOL_COLUMNS: list[tuple[str, str, str]] = [
+        ("difficulty_levels", "hide_label", "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ]
+
+    def _ensure_bool_columns(self, conn: Connection) -> None:
+        """Ajoute les colonnes booléennes manquantes dans les schemas existants."""
+        # MariaDB/MySQL requiert des backticks ;
+        # SQLite et PostgreSQL acceptent les guillemets doubles.
+        q = "`" if conn.dialect.name == "mysql" else '"'
+        for table, col, definition in self._BOOL_COLUMNS:
+            cols = {c["name"] for c in inspect(conn).get_columns(table)}
+            if col not in cols:
+                conn.execute(
+                    text(
+                        f"ALTER TABLE {q}{table}{q} ADD COLUMN {q}{col}{q} {definition}"
+                    )
+                )
+                _log.info("Migration : colonne %s.%s ajoutée", table, col)
 
     @staticmethod
     def _enable_sqlite_fk(dbapi_conn, _record) -> None:
@@ -491,6 +514,7 @@ class Database:
             DifficultyLevel(
                 level=r.level,
                 label=r.label,
+                hide_label=bool(r.hide_label),
                 mime_type=r.mime_type,
                 data=bytes(r.data) if r.data else None,
             )
@@ -507,6 +531,7 @@ class Database:
         return DifficultyLevel(
             level=row.level,
             label=row.label,
+            hide_label=bool(row.hide_label),
             mime_type=row.mime_type,
             data=bytes(row.data) if row.data else None,
         )
@@ -517,7 +542,12 @@ class Database:
                 f"Niveau de difficulté invalide : {dl.level}"
                 f" (attendu {MIN_DIFFICULTY}–{MAX_DIFFICULTY})"
             )
-        vals = {"label": dl.label, "mime_type": dl.mime_type, "data": dl.data}
+        vals = {
+            "label": dl.label,
+            "hide_label": dl.hide_label,
+            "mime_type": dl.mime_type,
+            "data": dl.data,
+        }
         with self._tx() as conn:
             exists = conn.execute(
                 select(t_difficulty_levels.c.level).where(

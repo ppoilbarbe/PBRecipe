@@ -68,7 +68,9 @@ function render_techniques_panel(array $techniques, string $label, string $inden
     $html .= $i1    . "<h2>" . h($label) . "</h2>\n";
     foreach ($techniques as $tech) {
         $html .= $i1 . "<div class=\"technique\" id=\"tech-" . h($tech['code']) . "\">\n";
-        $html .= $i2 . "<h3>" . h($tech['title']) . "</h3>\n";
+        $_t = $tech['title'];
+        $_t = mb_strtoupper(mb_substr($_t, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($_t, 1, null, 'UTF-8');
+        $html .= $i2 . "<h3>" . h($_t) . "</h3>\n";
         $html .= $i2 . "<div class=\"technique-body\">" . parse_markers($tech['description']) . "</div>\n";
         $html .= $i1 . "</div>\n";
     }

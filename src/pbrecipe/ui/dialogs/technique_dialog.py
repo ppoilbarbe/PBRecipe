@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -63,6 +65,8 @@ class TechniqueEditDialog(QDialog):
         self._check_btn = buttons.addButton(
             "Vérifier…", QDialogButtonBox.ButtonRole.HelpRole
         )
+        self._check_btn.setShortcut(QKeySequence(Qt.Key.Key_F7))
+        self._check_btn.setToolTip("Vérification orthographique et grammaticale [F7]")
         self._check_btn.clicked.connect(self._check_spelling)
         buttons.accepted.connect(self._accept)
         buttons.rejected.connect(self.reject)
@@ -74,7 +78,7 @@ class TechniqueEditDialog(QDialog):
         run_spellcheck(
             [
                 ("Titre", self._title_edit.text()),
-                ("Description", self._desc_editor.get_plain_text()),
+                ("Description", self._desc_editor.get_html()),
             ],
             self,
         )

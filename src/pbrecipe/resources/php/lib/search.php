@@ -17,29 +17,49 @@ function render_search_form(
     $html .= "  <input type=\"text\" name=\"q\" value=\"" . $qval . "\"\n";
     $html .= "         placeholder=\"" . h($strings['search_placeholder'] ?? 'Rechercher…') . "\">\n";
 
-    // Category (only if at least one exists)
+    // Categories — multi-select with Tom Select
     if (!empty($categories)) {
-        $html .= "  <select name=\"cat\">\n";
-        $html .= "    <option value=\"0\">" . h($strings['all_categories'] ?? 'Toutes catégories') . "</option>\n";
+        $current_cats = array_map('intval', (array)($current['cats'] ?? []));
+        $cat_mode     = ($current['cat_mode'] ?? 'or') === 'and' ? 'and' : 'or';
+        $placeholder  = h($strings['all_categories'] ?? 'Toutes catégories');
+        $lbl_or       = h($strings['mode_or']  ?? 'OU');
+        $lbl_and      = h($strings['mode_and'] ?? 'ET');
+        $html .= "  <div class=\"search-filter-group\">\n";
+        $html .= "    <select name=\"cat[]\" id=\"ts-cat\" multiple data-placeholder=\"" . $placeholder . "\">\n";
         foreach ($categories as $c) {
-            $sel   = ($current['cat'] ?? 0) == $c['id'] ? ' selected' : '';
-            $html .= "    <option value=\"" . (int)$c['id'] . "\"" . $sel . ">" . h($c['name']) . "</option>\n";
+            $sel   = in_array((int)$c['id'], $current_cats, true) ? ' selected' : '';
+            $html .= "      <option value=\"" . (int)$c['id'] . "\"" . $sel . ">" . h($c['name']) . "</option>\n";
         }
-        $html .= "  </select>\n";
+        $html .= "    </select>\n";
+        $html .= "    <div class=\"search-mode-toggle\">\n";
+        $html .= "      <label><input type=\"radio\" name=\"cat_mode\" value=\"or\"" . ($cat_mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
+        $html .= "      <label><input type=\"radio\" name=\"cat_mode\" value=\"and\"" . ($cat_mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
+        $html .= "    </div>\n";
+        $html .= "  </div>\n";
     }
 
-    // Ingredient (only if at least one exists)
+    // Ingredients — multi-select with Tom Select
     if (!empty($ingredients)) {
-        $html .= "  <select name=\"ing\">\n";
-        $html .= "    <option value=\"0\">" . h($strings['search_by_ingredient'] ?? 'Par ingrédient') . "</option>\n";
+        $current_ings = array_map('intval', (array)($current['ings'] ?? []));
+        $ing_mode     = ($current['ing_mode'] ?? 'or') === 'and' ? 'and' : 'or';
+        $placeholder  = h($strings['search_by_ingredient'] ?? 'Par ingrédient');
+        $lbl_or       = h($strings['mode_or']  ?? 'OU');
+        $lbl_and      = h($strings['mode_and'] ?? 'ET');
+        $html .= "  <div class=\"search-filter-group\">\n";
+        $html .= "    <select name=\"ing[]\" id=\"ts-ing\" multiple data-placeholder=\"" . $placeholder . "\">\n";
         foreach ($ingredients as $i) {
-            $sel   = ($current['ing'] ?? 0) == $i['id'] ? ' selected' : '';
-            $html .= "    <option value=\"" . (int)$i['id'] . "\"" . $sel . ">" . h($i['name']) . "</option>\n";
+            $sel   = in_array((int)$i['id'], $current_ings, true) ? ' selected' : '';
+            $html .= "      <option value=\"" . (int)$i['id'] . "\"" . $sel . ">" . h($i['name']) . "</option>\n";
         }
-        $html .= "  </select>\n";
+        $html .= "    </select>\n";
+        $html .= "    <div class=\"search-mode-toggle\">\n";
+        $html .= "      <label><input type=\"radio\" name=\"ing_mode\" value=\"or\"" . ($ing_mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
+        $html .= "      <label><input type=\"radio\" name=\"ing_mode\" value=\"and\"" . ($ing_mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
+        $html .= "    </div>\n";
+        $html .= "  </div>\n";
     }
 
-    // Difficulty (only if at least one level > 0 is defined)
+    // Difficulty — single select (inchangé)
     $diff_options = '';
     foreach (get_difficulty_levels() as $d => $info) {
         if ($d <= 0) continue;
@@ -54,20 +74,30 @@ function render_search_form(
         $html .= "  </select>\n";
     }
 
-    // Source (only if at least one exists)
+    // Sources — multi-select with Tom Select
     if (!empty($sources)) {
-        $html .= "  <select name=\"src\">\n";
-        $html .= "    <option value=\"0\">" . h($strings['all_sources'] ?? 'Toutes sources') . "</option>\n";
+        $current_srcs = array_map('intval', (array)($current['srcs'] ?? []));
+        $src_mode     = ($current['src_mode'] ?? 'or') === 'and' ? 'and' : 'or';
+        $placeholder  = h($strings['all_sources'] ?? 'Toutes sources');
+        $lbl_or       = h($strings['mode_or']  ?? 'OU');
+        $lbl_and      = h($strings['mode_and'] ?? 'ET');
+        $html .= "  <div class=\"search-filter-group\">\n";
+        $html .= "    <select name=\"src[]\" id=\"ts-src\" multiple data-placeholder=\"" . $placeholder . "\">\n";
         foreach ($sources as $s) {
-            $sel   = ($current['src'] ?? 0) == $s['id'] ? ' selected' : '';
-            $html .= "    <option value=\"" . (int)$s['id'] . "\"" . $sel . ">" . h(strip_tags($s['name'])) . "</option>\n";
+            $sel   = in_array((int)$s['id'], $current_srcs, true) ? ' selected' : '';
+            $html .= "      <option value=\"" . (int)$s['id'] . "\"" . $sel . ">" . h(strip_tags($s['name'])) . "</option>\n";
         }
-        $html .= "  </select>\n";
+        $html .= "    </select>\n";
+        $html .= "    <div class=\"search-mode-toggle\">\n";
+        $html .= "      <label><input type=\"radio\" name=\"src_mode\" value=\"or\"" . ($src_mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
+        $html .= "      <label><input type=\"radio\" name=\"src_mode\" value=\"and\"" . ($src_mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
+        $html .= "    </div>\n";
+        $html .= "  </div>\n";
     }
 
     $html .= "  <button type=\"submit\">Rechercher</button>\n";
 
-    // Technique selector (standalone display)
+    // Technique selector (standalone display, inchangé)
     if (!empty($techniques)) {
         $html .= "  <select name=\"tech\" onchange=\"this.form.submit()\">\n";
         $html .= "    <option value=\"\">" . h($strings['show_techniques'] ?? 'Afficher une technique') . "</option>\n";

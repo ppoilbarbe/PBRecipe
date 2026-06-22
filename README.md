@@ -10,6 +10,8 @@ sur un hébergement web standard.
 ## Fonctionnalités
 
 - Saisie des recettes avec description HTML enrichie (titres, listes, liens, images).
+- Filtre instantané de la liste des recettes, insensible à la casse et aux accents.
+- Vérification orthographique et grammaticale (Grammalecte ou LanguageTool, F7).
 - Gestion des référentiels : catégories, ingrédients, unités, sources, techniques,
   niveaux de difficulté (avec icône).
 - Marqueurs dynamiques dans les textes : `[RECIPE:code]`, `[IMG:code]`, `[TECH:code]`.

@@ -44,12 +44,15 @@ $SITE_PRESENTATION = $_globals['presentation'] ?? '';
 $recipe_code = isset($_GET['RECIPE']) ? trim($_GET['RECIPE']) : '';
 $tech_code   = isset($_GET['tech'])   ? trim($_GET['tech'])   : '';
 $q           = isset($_GET['q'])      ? trim($_GET['q'])      : '';
-$cat_id      = isset($_GET['cat'])    ? (int)$_GET['cat']     : 0;
-$ing_id      = isset($_GET['ing'])    ? (int)$_GET['ing']     : 0;
-$diff        = isset($_GET['diff'])   ? (int)$_GET['diff']    : -1;
-$src_id      = isset($_GET['src'])    ? (int)$_GET['src']     : 0;
+$cat_ids  = isset($_GET['cat'])  ? array_values(array_filter(array_map('intval', (array)$_GET['cat']),  fn($v) => $v > 0)) : [];
+$ing_ids  = isset($_GET['ing'])  ? array_values(array_filter(array_map('intval', (array)$_GET['ing']),  fn($v) => $v > 0)) : [];
+$diff     = isset($_GET['diff']) ? (int)$_GET['diff'] : -1;
+$src_ids  = isset($_GET['src'])  ? array_values(array_filter(array_map('intval', (array)$_GET['src']),  fn($v) => $v > 0)) : [];
+$cat_mode = ($_GET['cat_mode'] ?? 'or') === 'and' ? 'and' : 'or';
+$ing_mode = ($_GET['ing_mode'] ?? 'or') === 'and' ? 'and' : 'or';
+$src_mode = ($_GET['src_mode'] ?? 'or') === 'and' ? 'and' : 'or';
 
-$is_search = ($q !== '' || $cat_id > 0 || $ing_id > 0 || $diff >= 0 || $src_id > 0);
+$is_search = ($q !== '' || !empty($cat_ids) || !empty($ing_ids) || $diff >= 0 || !empty($src_ids));
 
 // ── Page content ─────────────────────────────────────────────────────────────
 
@@ -86,16 +89,21 @@ if ($recipe_code !== '') {
     $sources     = get_all_sources();
 
     if ($SITE_PRESENTATION !== '') {
-        $body .= "<div class=\"site-presentation\">" . parse_markers($SITE_PRESENTATION, true) . "</div>\n";
+        $body .= "<details class=\"site-presentation-block\" open>\n";
+        $body .= "  <summary>" . h($STRINGS['presentation_label'] ?? $SITE_TITLE) . "</summary>\n";
+        $body .= "  <div class=\"site-presentation\">" . parse_markers($SITE_PRESENTATION, true) . "</div>\n";
+        $body .= "</details>\n";
     }
 
     $body .= render_search_form(
         $categories, $ingredients, $techniques, $STRINGS, $sources,
-        ['q' => $q, 'cat' => $cat_id, 'ing' => $ing_id, 'diff' => $diff, 'src' => $src_id, 'tech' => $tech_code]
+        ['q' => $q, 'cats' => $cat_ids, 'ings' => $ing_ids, 'diff' => $diff,
+         'srcs' => $src_ids, 'tech' => $tech_code,
+         'cat_mode' => $cat_mode, 'ing_mode' => $ing_mode, 'src_mode' => $src_mode]
     );
 
     if ($is_search) {
-        $results = search_recipes($q, $cat_id, $ing_id, $diff, $src_id);
+        $results = search_recipes($q, $cat_ids, $ing_ids, $diff, $src_ids, $cat_mode, $ing_mode, $src_mode);
         $body .= render_search_results($results, $STRINGS['no_results'] ?? 'Aucune recette trouvée.');
     } else {
         $grouped = get_recipes_by_category();
@@ -117,6 +125,7 @@ if ($_integrated):
 <body>
 <?php recipe_body(SITE_TYPE) ?>
   <?= $body ?>
+  <script src="js/tom-select.min.js"></script>
   <script src="js/recipe.js"></script>
 <?php
     recipe_footer(SITE_TYPE);
@@ -146,6 +155,7 @@ if ($_integrated):
     <p><?= h($SITE_TITLE) ?></p>
   </footer>
 
+  <script src="js/tom-select.min.js"></script>
   <script src="js/recipe.js"></script>
 </body>
 </html>

@@ -120,21 +120,33 @@ graph TD
     form["form.search-form · method=GET"]
 
     form --> q["input[type=text] · name=q"]
-    form --> selcat["select · name=cat"]
-    form --> seling["select · name=ing"]
-    form --> seldiff["select · name=diff"]
-    form --> btn["button[type=submit]"]
+    form --> grpcat["div.search-filter-group\n(si catégories disponibles)"]:::opt
+    form --> grping["div.search-filter-group\n(si ingrédients disponibles)"]:::opt
+    form --> seldiff["select · name=diff\n(si niveaux > 0 définis)"]:::opt
+    form --> grpsrc["div.search-filter-group\n(si sources disponibles)"]:::opt
     form --> seltech["select · name=tech\n(si techniques disponibles)"]:::opt
+    form --> btn["button[type=submit]"]
 
-    selcat --> optcat0["option · valeur=0 · Toutes catégories"]
+    grpcat --> selcat["select · name=cat[] · id=ts-cat · multiple\n(Tom Select)"]
+    grpcat --> togcat["div.search-mode-toggle\n(radio cat_mode=or|and)"]
     selcat --> optcatn["option · valeur=id (1 par catégorie)"]
 
-    seling --> opting0["option · valeur=0 · Par ingrédient"]
+    grping --> seling["select · name=ing[] · id=ts-ing · multiple\n(Tom Select)"]
+    grping --> toging["div.search-mode-toggle\n(radio ing_mode=or|and)"]
     seling --> optingn["option · valeur=id (1 par ingrédient)"]
 
     seldiff --> optdiff0["option · valeur=-1 · Toutes difficultés"]
     seldiff --> optdiffn["option · valeur=level (1 par niveau)"]
 
+    grpsrc --> selsrc["select · name=src[] · id=ts-src · multiple\n(Tom Select)"]
+    grpsrc --> togsrc["div.search-mode-toggle\n(radio src_mode=or|and)"]
+    selsrc --> optsrcn["option · valeur=id (1 par source)"]
+
     seltech --> opttech0["option · valeur=vide · Afficher une technique"]:::opt
     seltech --> opttechn["option · valeur=code (1 par technique)"]:::opt
 ```
+
+> Les multi-selects catégorie / ingrédient / source sont initialisés par Tom Select
+> (`js/recipe.js`). Logique : ET entre dimensions ; OU ou ET au sein d'une dimension.
+> Note : le mode ET sur les sources renvoie toujours 0 résultat car `source_id` est une
+> FK directe 1:1 — une recette ne peut appartenir qu'à une seule source.

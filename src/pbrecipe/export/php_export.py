@@ -17,11 +17,11 @@ class PhpExport:
     Layout of the target directory after export:
       target/
         index.php
+        media.php       ← serves images from DB (with disk cache in media/)
         lib/
-          .htaccess     ← deny directory browsing
+          .htaccess     ← deny all direct browser access
           config.php    ← generated from config.php.tpl
           db.php
-          media.php     ← serves images from DB (with disk cache in media/)
           recipe.php
           display.php
           technique.php
@@ -29,9 +29,11 @@ class PhpExport:
         css/
           base.css
           recipes.css
+          tom-select.min.css
         js/
+          tom-select.min.js
           recipe.js
-        media/          ← cache disque pour lib/media.php (créé vide à l'export)
+        media/          ← cache disque pour media.php (créé vide à l'export)
     """
 
     def __init__(
@@ -59,15 +61,17 @@ class PhpExport:
 
         static_files = [
             "index.php",
+            "media.php",
             "lib/.htaccess",
             "lib/db.php",
-            "lib/media.php",
             "lib/recipe.php",
             "lib/display.php",
             "lib/technique.php",
             "lib/search.php",
             "css/base.css",
             "css/recipes.css",
+            "css/tom-select.min.css",
+            "js/tom-select.min.js",
             "js/recipe.js",
         ]
         for rel in static_files:

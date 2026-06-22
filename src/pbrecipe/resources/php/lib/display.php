@@ -15,9 +15,9 @@ function has_visible_text(?string $html): bool {
     return trim($s, " \t\n\r\0\x0B\u{00A0}") !== '';
 }
 
-/** Return the URL to serve an image by its code (via lib/media.php). */
+/** Return the URL to serve an image by its code (via media.php). */
 function media_url(string $code): string {
-    return 'lib/media.php?code=' . urlencode($code);
+    return 'media.php?code=' . urlencode($code);
 }
 
 /**
@@ -32,16 +32,20 @@ function get_difficulty_levels(): array {
     if ($cache !== null) return $cache;
     $cache = [];
     $stmt = db_connect()->query(
-        'SELECT level, label, data FROM difficulty_levels ORDER BY level'
+        'SELECT level, label, hide_label, data FROM difficulty_levels ORDER BY level'
     );
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $d    = (int)$row['level'];
         $data = $row['data'];
         if (is_resource($data)) { $data = stream_get_contents($data); }
         $icon = ($data !== null && $data !== '')
-              ? 'lib/media.php?diff=' . $d
+              ? 'media.php?diff=' . $d
               : '';
-        $cache[$d] = ['label' => (string)$row['label'], 'icon' => $icon];
+        $cache[$d] = [
+            'label'      => (string)$row['label'],
+            'hide_label' => (bool)$row['hide_label'],
+            'icon'       => $icon,
+        ];
     }
     return $cache;
 }
@@ -98,7 +102,7 @@ function parse_markers(string $html, bool $tech_standalone = false): string {
         function ($m) {
             $recipe_code = strtoupper($m[1]);
             $img_code    = strtoupper($m[2]);
-            $src = 'lib/media.php?recipe=' . urlencode($recipe_code)
+            $src = 'media.php?recipe=' . urlencode($recipe_code)
                  . '&code=' . urlencode($img_code);
             return '<span class="recipe-img-ref">'
                  . '<img src="' . h($src) . '" alt="' . h($img_code) . '" class="recipe-thumb" loading="lazy">'
@@ -129,16 +133,18 @@ function parse_markers(string $html, bool $tech_standalone = false): string {
 function render_difficulty(int $level): string {
     $levels = get_difficulty_levels();
     if ($level <= 0 || !isset($levels[$level])) return '';
-    $info  = $levels[$level];
-    $label = $info['label'] ?? '';
-    $icon  = $info['icon']  ?? '';
+    $info       = $levels[$level];
+    $label      = $info['label']      ?? '';
+    $hide_label = $info['hide_label'] ?? false;
+    $icon       = $info['icon']       ?? '';
+    // title toujours présent pour l'infobulle au survol
     $html  = '<span class="difficulty" title="' . h($label) . '">';
     if ($icon !== '') {
         $html .= '<span class="diff-icon">'
                . '<img src="' . h($icon) . '" alt="' . h($label) . '" class="diff-icon-img">'
                . '</span>';
     }
-    if ($label !== '') {
+    if ($label !== '' && !$hide_label) {
         $html .= '<span class="diff-label">' . h($label) . '</span>';
     }
     $html .= '</span>';

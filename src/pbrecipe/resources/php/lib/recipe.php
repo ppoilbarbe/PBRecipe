@@ -98,7 +98,7 @@ function get_recipe(string $code): ?array {
     $ings->execute([$code]);
     $r['ingredients'] = $ings->fetchAll();
 
-    // Media — URL servie directement par lib/media.php (source de vérité : la DB)
+    // Media — URL servie par media.php (source de vérité : la DB)
     $media = $pdo->prepare(
         'SELECT code FROM recipe_media WHERE recipe_code = ? ORDER BY position'
     );
@@ -106,7 +106,7 @@ function get_recipe(string $code): ?array {
     $r['media'] = [];
     foreach ($media->fetchAll() as $_mrow) {
         $_c = strtoupper((string)$_mrow['code']);
-        $r['media'][] = ['code' => $_c, 'url' => 'lib/media.php?code=' . urlencode($_c)];
+        $r['media'][] = ['code' => $_c, 'url' => 'media.php?code=' . urlencode($_c)];
     }
     unset($_mrow, $_c);
 
@@ -125,26 +125,40 @@ function get_recipe(string $code): ?array {
 /** Search recipes; returns a lightweight list. */
 function search_recipes(
     string $name = '',
-    int $category_id = 0,
-    int $ingredient_id = 0,
+    array $category_ids = [],
+    array $ingredient_ids = [],
     int $difficulty = -1,
-    int $source_id = 0
+    array $source_ids = [],
+    string $cat_mode = 'or',
+    string $ing_mode = 'or',
+    string $src_mode = 'or'
 ): array {
-    $pdo = db_connect();
-    $sql  = 'SELECT DISTINCT r.code, r.name, r.difficulty FROM recipes r';
-    $joins = [];
-    $where = [];
+    $pdo    = db_connect();
+    $sql    = 'SELECT DISTINCT r.code, r.name, r.difficulty FROM recipes r';
+    $where  = [];
     $params = [];
 
-    if ($category_id > 0) {
-        $joins[]  = 'JOIN recipe_categories rc ON rc.recipe_code=r.code';
-        $where[]  = 'rc.category_id = ?';
-        $params[] = $category_id;
+    if (!empty($category_ids)) {
+        $ids   = array_values(array_unique(array_map('intval', $category_ids)));
+        $ph    = implode(',', array_fill(0, count($ids), '?'));
+        if ($cat_mode === 'and') {
+            $where[]  = "r.code IN (SELECT recipe_code FROM recipe_categories WHERE category_id IN ($ph) GROUP BY recipe_code HAVING COUNT(DISTINCT category_id) = ?)";
+            $params   = array_merge($params, $ids, [count($ids)]);
+        } else {
+            $where[]  = "r.code IN (SELECT recipe_code FROM recipe_categories WHERE category_id IN ($ph))";
+            $params   = array_merge($params, $ids);
+        }
     }
-    if ($ingredient_id > 0) {
-        $joins[]  = 'JOIN recipe_ingredients ri ON ri.recipe_code=r.code';
-        $where[]  = 'ri.ingredient_id = ?';
-        $params[] = $ingredient_id;
+    if (!empty($ingredient_ids)) {
+        $ids   = array_values(array_unique(array_map('intval', $ingredient_ids)));
+        $ph    = implode(',', array_fill(0, count($ids), '?'));
+        if ($ing_mode === 'and') {
+            $where[]  = "r.code IN (SELECT recipe_code FROM recipe_ingredients WHERE ingredient_id IN ($ph) GROUP BY recipe_code HAVING COUNT(DISTINCT ingredient_id) = ?)";
+            $params   = array_merge($params, $ids, [count($ids)]);
+        } else {
+            $where[]  = "r.code IN (SELECT recipe_code FROM recipe_ingredients WHERE ingredient_id IN ($ph))";
+            $params   = array_merge($params, $ids);
+        }
     }
     if ($name !== '') {
         $where[]  = 'r.name LIKE ?';
@@ -154,13 +168,20 @@ function search_recipes(
         $where[]  = 'r.difficulty = ?';
         $params[] = $difficulty;
     }
-    if ($source_id > 0) {
-        $where[]  = 'r.source_id = ?';
-        $params[] = $source_id;
+    if (!empty($source_ids)) {
+        // source_id est une FK directe sur recipes (1 recette = 1 source).
+        // Le mode ET avec 2+ sources retourne logiquement 0 résultats.
+        $ids   = array_values(array_unique(array_map('intval', $source_ids)));
+        $ph    = implode(',', array_fill(0, count($ids), '?'));
+        if ($src_mode === 'and' && count($ids) > 1) {
+            $where[]  = '1=0';
+        } else {
+            $where[]  = "r.source_id IN ($ph)";
+            $params   = array_merge($params, $ids);
+        }
     }
 
-    if ($joins)  $sql .= ' ' . implode(' ', $joins);
-    if ($where)  $sql .= ' WHERE ' . implode(' AND ', $where);
+    if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

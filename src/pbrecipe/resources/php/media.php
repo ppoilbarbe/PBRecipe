@@ -5,12 +5,17 @@
  * GET ?recipe=RECIPE_CODE&code=IMG_CODE  → recipe_media (recette + code image)
  * GET ?diff=N                            → difficulty_levels (icône du niveau N)
  *
- * Cache disque optionnel dans ../media/ : évite de relire le BLOB à chaque
+ * Cache disque optionnel dans media/ : évite de relire le BLOB à chaque
  * requête. Si le répertoire n'est pas accessible en écriture, l'image est
  * servie directement depuis la mémoire sans erreur.
  */
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/db.php';
+// Supprimer tout affichage d'erreur avant les headers — un warning PHP
+// injecté avant Content-Type corrompt irrémédiablement une réponse binaire.
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+
+require_once __DIR__ . '/lib/config.php';
+require_once __DIR__ . '/lib/db.php';
 
 $_mime_ext = [
     'image/jpeg' => '.jpg',
@@ -61,7 +66,7 @@ if ($_data === '') {
 }
 
 // Cache disque optionnel
-$_cache_dir  = dirname(__DIR__) . '/media';
+$_cache_dir  = __DIR__ . '/media';
 $_ext        = $_mime_ext[$_mime] ?? '.bin';
 $_cache_file = $_cache_dir . '/' . $_cache_key . $_ext;
 
@@ -71,6 +76,10 @@ if (!is_file($_cache_file) || (time() - filemtime($_cache_file) > 7200)) {
     }
     @file_put_contents($_cache_file, $_data);
 }
+
+// Vider les buffers de sortie éventuels (ob_gzhandler, mb_output_handler…)
+// pour éviter toute corruption des données binaires.
+while (ob_get_level()) { ob_end_clean(); }
 
 header('Content-Type: ' . $_mime);
 header('Cache-Control: public, max-age=86400');

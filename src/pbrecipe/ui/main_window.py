@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
 from dataclasses import replace
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
@@ -19,6 +21,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QStackedWidget,
     QToolBar,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -59,9 +62,22 @@ class MainWindow(QMainWindow):
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self.setCentralWidget(self._splitter)
 
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(2)
+
         self._recipe_list = QListWidget()
         self._recipe_list.currentItemChanged.connect(self._on_recipe_selected)
-        self._splitter.addWidget(self._recipe_list)
+        left_layout.addWidget(self._recipe_list)
+
+        self._filter_edit = QLineEdit()
+        self._filter_edit.setPlaceholderText("Filtrer…")
+        self._filter_edit.setClearButtonEnabled(True)
+        self._filter_edit.textChanged.connect(self._apply_recipe_filter)
+        left_layout.addWidget(self._filter_edit)
+
+        self._splitter.addWidget(left_panel)
 
         self._stack = QStackedWidget()
         self._empty_widget = QWidget()
@@ -512,6 +528,22 @@ class MainWindow(QMainWindow):
     # Recipe list
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _normalize_filter(text: str) -> str:
+        """Lowercase + strip diacritics for accent-insensitive comparison."""
+        return "".join(
+            c
+            for c in unicodedata.normalize("NFD", text.lower())
+            if unicodedata.category(c) != "Mn"
+        )
+
+    def _apply_recipe_filter(self) -> None:
+        needle = self._normalize_filter(self._filter_edit.text())
+        for i in range(self._recipe_list.count()):
+            item = self._recipe_list.item(i)
+            hidden = bool(needle) and needle not in self._normalize_filter(item.text())
+            item.setHidden(hidden)
+
     def _refresh_recipe_list(self, select_code: str | None = None) -> None:
         self._recipe_list.currentItemChanged.disconnect(self._on_recipe_selected)
         self._recipe_list.clear()
@@ -523,12 +555,12 @@ class MainWindow(QMainWindow):
             item = QListWidgetItem(recipe.name)
             item.setData(Qt.ItemDataRole.UserRole, recipe.code)
             self._recipe_list.addItem(item)
+        self._apply_recipe_filter()
         if select_code is not None:
             for i in range(self._recipe_list.count()):
-                if (
-                    self._recipe_list.item(i).data(Qt.ItemDataRole.UserRole)
-                    == select_code
-                ):
+                item = self._recipe_list.item(i)
+                if item.data(Qt.ItemDataRole.UserRole) == select_code:
+                    item.setHidden(False)
                     self._recipe_list.setCurrentRow(i)
                     break
         self._recipe_list.currentItemChanged.connect(self._on_recipe_selected)
