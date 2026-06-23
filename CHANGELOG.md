@@ -5,7 +5,7 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
 
-## [Unreleased]
+## [2026.5] — 2026-06-23
 
 ### Added
 
@@ -29,13 +29,17 @@ et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
   - `tests/test_spellcheck.py` (37 tests) — `_html_to_plain` et `_patch_pygrammalecte`
     (correction JSON, NBSP, suggestions orthographiques)
   - `tests/test_recipe_filter.py` (14 tests) — `MainWindow._normalize_filter`
-  - 17 nouveaux fichiers de test Python (320 tests au total) ; couverture 20 % → 91 %.
-- **Coverage PHP** : `make coverage` génère également un rapport HTML via `phpdbg`
-  (`htmlcov/php/index.html`) ; couverture limitée aux modules `lib/`.
+  - 17 nouveaux fichiers de test Python (321 tests au total) ; couverture 20 % → 91 %.
+- **Coverage PHP** : `make coverage` génère un rapport HTML pour le code PHP
+  (`htmlcov/php/index.html`) via Xdebug (`XDEBUG_MODE=coverage`) ; couverture limitée aux
+  modules `lib/`. Détecte automatiquement le driver disponible : PHP conda (idéal), PHP système
+  avec Xdebug (fallback), ou skip gracieux avec avertissement si aucun driver n'est présent (CI).
 - `argparse_qt.py` : parsing des options Qt (`--style`, `--platform`, `--display`, etc.)
   en ligne de commande, importé de PBRenamer.
 - **Bundle PyInstaller** : `pygrammalecte` et `grammalecte` (modules + dictionnaires
   `graphspell/_dictionaries/`) inclus dans l'exécutable.
+- `README.md` : section **Développement** documentant les prérequis système pour la couverture
+  PHP (`php-xdebug`, `php-xml`, `php-sqlite3`) et la migration future vers conda.
 
 ### Changed
 
@@ -47,6 +51,11 @@ et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
   pour préserver les espaces insécables (`\xa0`) lors de la transmission au correcteur.
 - PHP : `media.php` déplacé de `lib/` vers la racine de l'export (`.htaccess` protège `lib/`
   entier, `media.php` doit être accessible directement par le navigateur).
+- `Makefile` : cible `designer` supprimée (non utilisée).
+- Tests : `grammalecte_info()` et `_run_with_suggestions()` marqués `# pragma: no cover` —
+  exécuter le moteur Grammalecte complet sous `coverage` multiplie la durée par ×250 ;
+  les tests qui construisent `PreferencesDialog` mockent désormais `grammalecte_info`.
+  Gain : suite Python 61 s → 26 s.
 
 ### Fixed
 
@@ -60,6 +69,9 @@ et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
   `test_spellcheck.py` échouaient (`ModuleNotFoundError`) sur les runners GitHub Actions.
 - Bundle : `_patch_pygrammalecte` cherchait `grammalecte-cli.py` via `get_paths()["scripts"]`,
   chemin invalide dans un exécutable PyInstaller — remplacé par l'import direct du module.
+- `make coverage` : couverture PHP désormais fonctionnelle (PHPUnit 11 ne supporte plus `phpdbg` ;
+  `XDEBUG_MODE=coverage` requis pour Xdebug 3 ; `php-sqlite3` requis pour éviter un `die()`
+  fatal dans `db.php` avant l'écriture du rapport).
 
 ## [2026.4] — 2026-06-03
 

@@ -77,9 +77,22 @@ test-php: _php-vendor ## Run PHP test suite (télécharge composer/phpunit si n�
 
 coverage: _php-vendor ## Run test suite and open HTML coverage report
 	PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) pytest --cov-report=term-missing --cov-report=html
-	PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) phpdbg -qrr ./vendor/bin/phpunit --coverage-html htmlcov/php
+	# Couverture PHP : nécessite Xdebug ou PCOV.
+	# PHP 8.5 (conda-forge) n'est pas encore supporté par Xdebug/PCOV ; on bascule
+	# sur le PHP système (ex. 8.3 + php-xdebug via apt) si disponible.
+	# Quand Xdebug/PCOV supporteront PHP 8.5, remplacer les deux branches elif/else
+	# par une seule invocation conda : $(CONDA_RUN) ./vendor/bin/phpunit --coverage-html htmlcov/php
+	@if $(CONDA_RUN) php -r 'exit(extension_loaded("xdebug") || extension_loaded("pcov") ? 0 : 1);' 2>/dev/null; then \
+		PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) ./vendor/bin/phpunit --coverage-html htmlcov/php; \
+		printf "$(G)Report PHP:$(R)    $(Y)htmlcov/php/index.html$(R)\n"; \
+	elif php -r 'exit(extension_loaded("xdebug") || extension_loaded("pcov") ? 0 : 1);' 2>/dev/null; then \
+		XDEBUG_MODE=coverage PBRECIPE_TEST_DB=$(PHP_TEST_DB) php ./vendor/bin/phpunit --coverage-html htmlcov/php; \
+		printf "$(G)Report PHP:$(R)    $(Y)htmlcov/php/index.html$(R)\n"; \
+	else \
+		printf "$(Y)Couverture PHP ignorée$(R) : aucun driver disponible (Xdebug ou PCOV requis).\n"; \
+		PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) ./vendor/bin/phpunit; \
+	fi
 	@printf "$(G)Report Python:$(R) $(Y)htmlcov/index.html$(R)\n"
-	@printf "$(G)Report PHP:$(R)    $(Y)htmlcov/php/index.html$(R)\n"
 
 hooks: ## Run all pre-commit hooks on all files
 	$(CONDA_RUN) pre-commit run --all-files
@@ -91,9 +104,6 @@ lint: ## Check code style
 format: ## Auto-format source code
 	$(CONDA_RUN) ruff format $(SRC)
 	$(CONDA_RUN) ruff check --fix $(SRC)
-
-designer: ## Launch Qt Designer
-	$(CONDA_RUN) pyside6-designer
 
 dist: ## Build a standalone executable for the current platform (pbrecipe-version-os-arch)
 	$(eval _VER  := $(shell bash tools/git_version.sh))

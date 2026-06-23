@@ -205,6 +205,12 @@ def test_edit_globals_and_preferences(window, monkeypatch):
     monkeypatch.setattr(
         "pbrecipe.ui.preferences_dialog.PreferencesDialog.exec", lambda self: 0
     )
+    # grammalecte_info() exécute le moteur Grammalecte complet ; sous coverage,
+    # le trace callback s'applique à chacune de ses lignes internes → ~35 s.
+    # On le neutralise : ce test couvre main_window, pas Grammalecte.
+    monkeypatch.setattr(
+        "pbrecipe.ui.spellcheck_dialog.grammalecte_info", lambda: (False, "")
+    )
     window._edit_globals()
     window._edit_preferences()
 

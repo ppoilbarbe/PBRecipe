@@ -148,6 +148,49 @@ erDiagram
     recipes           ||--o{  recipe_media       : "recipe_code"
 ```
 
+## Développement
+
+### Prérequis système
+
+En plus de Conda, les outils suivants doivent être installés au niveau système :
+
+```bash
+# Couverture PHP (Xdebug pour le PHP système)
+sudo apt install php-xdebug php-xml php-sqlite3   # Ubuntu/Debian
+```
+
+> **Pourquoi au niveau système ?** Le PHP embarqué dans l'environnement conda
+> (`conda-forge`, actuellement 8.5) n'est pas encore supporté par Xdebug ni PCOV.
+> `make coverage` bascule automatiquement sur le PHP système (8.3) quand le PHP
+> conda n'a pas de driver de couverture. Sans ces paquets, la couverture PHP est
+> ignorée (les tests s'exécutent quand même ; c'est le comportement normal en CI).
+>
+> `php-sqlite3` est requis car les tests PHP utilisent une base SQLite ; sans ce
+> paquet, PHPUnit est tué par un `die()` dans `db.php` avant d'écrire le rapport.
+
+### Couverture de code
+
+```bash
+make coverage   # rapport Python → htmlcov/index.html
+                # rapport PHP    → htmlcov/php/index.html (si Xdebug disponible)
+```
+
+La cible détecte automatiquement le driver de couverture PHP disponible :
+
+| Situation | Comportement |
+|---|---|
+| PHP conda + Xdebug/PCOV | Couverture via conda (optimal) |
+| PHP système + Xdebug | Couverture via PHP système (fallback actuel) |
+| Aucun driver | Tests PHP exécutés sans couverture + avertissement |
+
+### Migration future — Xdebug/PCOV dans conda
+
+Quand Xdebug ou PCOV supporteront PHP 8.5 et seront disponibles dans conda-forge,
+installer le paquet dans l'environnement et simplifier la cible `coverage` du
+Makefile : supprimer les branches `elif`/`else` et ne garder que l'invocation
+`$(CONDA_RUN) ./vendor/bin/phpunit --coverage-html htmlcov/php`. Le commentaire
+dans le Makefile rappelle exactement ce point.
+
 ## Licence
 
 GNU GPL v3 — voir [LICENSE](LICENSE).

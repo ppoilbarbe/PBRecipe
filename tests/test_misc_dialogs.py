@@ -65,6 +65,11 @@ def test_globals_dialog_empty(qtbot, db):
 
 def test_preferences_load_and_accept(qtbot, tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    # grammalecte_info() exécute le moteur Grammalecte complet ; sous coverage,
+    # le trace callback s'applique à chacune de ses lignes internes → ~35 s.
+    monkeypatch.setattr(
+        "pbrecipe.ui.spellcheck_dialog.grammalecte_info", lambda: (False, "")
+    )
     cfg = AppConfig(log_level="WARNING", php_debug=True)
     dlg = PreferencesDialog(cfg)
     qtbot.addWidget(dlg)

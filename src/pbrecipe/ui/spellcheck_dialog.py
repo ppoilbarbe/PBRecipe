@@ -73,7 +73,7 @@ def _patch_pygrammalecte() -> None:
         _pg._convert_to_messages = _fixed
 
         # Enable spelling suggestions (bSpellSugg is False in the original)
-        def _run_with_suggestions(filepath: str) -> str:
+        def _run_with_suggestions(filepath: str) -> str:  # pragma: no cover
             import grammalecte as _gc
             from grammalecte.grammalecte_cli import generateParagraphFromFile
 
@@ -117,11 +117,15 @@ _spellcheck_dialog: SpellCheckDialog | None = None  # non-modal singleton
 # Détection des correcteurs disponibles
 
 
-def grammalecte_info() -> tuple[bool, str]:
+def grammalecte_info() -> tuple[bool, str]:  # pragma: no cover
     """Retourne (disponible, version_ou_erreur).
 
     La version retournée est celle de grammalecte embarqué (ex. 2.1.1),
     pas celle du wrapper pygrammalecte.
+
+    Exclu de la couverture : exécute le moteur Grammalecte complet, dont
+    chaque ligne interne est tracée par coverage (~35 s). Les tests mockent
+    cette fonction ; cf. test_main_window / test_misc_dialogs.
     """
     try:
         importlib.invalidate_caches()

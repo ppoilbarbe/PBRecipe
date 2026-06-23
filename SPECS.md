@@ -524,7 +524,7 @@ target/
 - Recherche : `index.php?q=…&cat[]=ID&cat[]=ID&cat_mode=or&ing[]=ID&ing_mode=and&diff=N&src[]=ID&src_mode=or`
 
 ## Makefile (cible par défaut : `help`)
-`help venv venv-update install run test test-php coverage lint format hooks designer dist srcdist update-vendors clean`
+`help venv venv-update install run test test-php coverage lint format hooks dist srcdist update-vendors clean`
 
 ## Fichiers projet
 ```
@@ -539,3 +539,31 @@ src/  tests/
 - `tests/test_spellcheck.py`   : _html_to_plain (préservation NBSP, HTML stripping) +
                                    _patch_pygrammalecte (robustesse JSON, suggestions)
 - `tests/test_recipe_filter.py`: _normalize_filter (diacritiques, casse, cas réels)
+
+### Couverture Python
+
+`make coverage` lance pytest avec `--cov`. Les fonctions qui exécutent le moteur
+Grammalecte complet (`grammalecte_info`, `_run_with_suggestions` dans
+`spellcheck_dialog.py`) sont marquées `# pragma: no cover` : l'instrumentation
+coverage trace chaque ligne interne de Grammalecte, ce qui multiplie la durée
+par ×250 (~35 s au lieu de 0,1 s). Les tests qui construisent `PreferencesDialog`
+mockent `grammalecte_info` pour la même raison.
+
+### Couverture PHP
+
+La couverture PHP requiert Xdebug ou PCOV. La cible `coverage` détecte
+automatiquement le driver disponible dans l'ordre suivant :
+
+1. PHP conda (idéal, entièrement isolé) — non disponible tant que Xdebug/PCOV
+   ne supportent pas PHP 8.5.
+2. PHP système avec Xdebug (fallback actuel — voir README § Développement).
+   Prérequis système : `php-xdebug php-xml php-sqlite3`.
+   `XDEBUG_MODE=coverage` est passé explicitement car Xdebug 3 est en mode
+   `develop` par défaut ; sans cela PHPUnit génère un rapport vide.
+   `php-sqlite3` est requis car `db.php` appelle `die()` si PDO SQLite est
+   absent, ce qui tue PHPUnit avant qu'il écrive le rapport.
+3. Aucun driver : les tests PHP s'exécutent sans couverture, avec un avertissement.
+   La CI utilise ce mode (pas de driver natif installé).
+
+Quand Xdebug ou PCOV supporteront PHP 8.5 (`conda-forge`), supprimer les branches
+`elif`/`else` de la cible `coverage` et ne garder que l'invocation conda.
