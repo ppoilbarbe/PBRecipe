@@ -7,6 +7,16 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ## [Unreleased]
 
+### Fixed
+
+- Linux bundle: Ubuntu is now explicitly set as the application font after
+  registering bundled fonts. The bundled `libfontconfig.so` has its default
+  config path hardcoded to the build machine's conda prefix, which does not
+  exist on target machines; fontconfig therefore fails silently and Qt falls
+  back to an unpredictable font. Forcing Ubuntu bypasses fontconfig for font
+  selection; rendering settings (anti-aliasing, hinting) are still inherited
+  from `/etc/fonts/fonts.conf` via the runtime hook's generated `fonts.conf`.
+
 ### Changed
 
 - Documentation translated to English: README, CHANGELOG, SPECS, MAIN_DOM,

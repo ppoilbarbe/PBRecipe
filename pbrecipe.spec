@@ -19,7 +19,7 @@ _icons = {
 }
 icon = str(_icons.get(sys.platform, RESOURCES / "icons" / "pbrecipe-512x512.png"))
 
-datas = [
+_datas = [
     (str(RESOURCES / "icons"), "pbrecipe/resources/icons"),
     (str(RESOURCES / "php"),   "pbrecipe/resources/php"),
 ]
@@ -34,15 +34,15 @@ for _sp in site.getsitepackages():
         _grammalecte_dicts = [(str(_d), "grammalecte/graphspell/_dictionaries")]
         break
 
-datas += _grammalecte_dicts
+_datas += _grammalecte_dicts
 
-# Conda fonts: bundled to guarantee identical rendering on all machines.
-# On Linux, fontconfig looks up fonts via absolute paths written into fonts.conf at
-# build time; those paths do not exist on the target machine.
+# Conda fonts: bundled to guarantee identical rendering across machines.
+# On Linux, fontconfig resolves fonts via absolute paths written into fonts.conf
+# at build time; those paths do not exist on the target machine.
 # The runtime hook hooks/pyi_rth_fonts.py generates a portable fonts.conf at startup.
 _conda_fonts = Path(sys.prefix) / "fonts"
 if _conda_fonts.is_dir():
-    datas += [(str(_conda_fonts), "fonts")]
+    _datas += [(str(_conda_fonts), "fonts")]
 
 hiddenimports = [
     "ruamel.yaml",
@@ -70,7 +70,7 @@ a = Analysis(
     ["src/pbrecipe/__main__.py"],
     pathex=["src"],
     binaries=[],
-    datas=datas,
+    datas=_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

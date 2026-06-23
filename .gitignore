@@ -47,3 +47,6 @@ images/
 vendor/
 composer.phar
 composer.lock
+
+# jscpd
+report/
