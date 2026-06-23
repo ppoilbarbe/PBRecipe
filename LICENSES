@@ -1,55 +1,79 @@
-PBRecipe — Licences des composants tiers
-=========================================
+PBRecipe — Third-party component licences
+==========================================
 
-Ce projet est distribué sous licence GNU GPL v3 (voir LICENSE).
-Les bibliothèques et outils suivants sont utilisés en exécution ou en construction.
+This project is distributed under the GNU GPL v3 licence (see LICENSE).
+The following libraries and tools are used at runtime or during the build.
 
 -------------------------------------------------------------------------------
 PySide6
-  Rôle    : interface graphique (bindings Python pour Qt 6)
+  Role    : graphical interface (Python bindings for Qt 6)
   Licence : GNU Lesser General Public License v3 (LGPL-3.0)
   Source  : https://code.qt.io/cgit/pyside/pyside-setup.git
-  Note    : Qt lui-même est également distribué sous LGPL v3.
-            Les fichiers Qt utilisés dynamiquement ne sont pas modifiés.
+  Note    : Qt itself is also distributed under LGPL v3.
+            The Qt files used dynamically are not modified.
 
 -------------------------------------------------------------------------------
 ruamel.yaml
-  Rôle    : lecture/écriture YAML 1.2
+  Role    : YAML 1.2 read/write
   Licence : MIT
   Source  : https://sourceforge.net/p/ruamel-yaml/code/ci/default/tree/
-  Auteur  : Anthon van der Neut
+  Author  : Anthon van der Neut
 
 -------------------------------------------------------------------------------
 SQLAlchemy
-  Rôle    : abstraction base de données (SQLite / MariaDB / PostgreSQL)
+  Role    : database abstraction (SQLite / MariaDB / PostgreSQL)
   Licence : MIT
   Source  : https://github.com/sqlalchemy/sqlalchemy
-  Auteur  : Mike Bayer et contributeurs
+  Author  : Mike Bayer and contributors
 
 -------------------------------------------------------------------------------
 PyMySQL
-  Rôle    : pilote Python pour MariaDB / MySQL
+  Role    : Python driver for MariaDB / MySQL
   Licence : MIT
   Source  : https://github.com/PyMySQL/PyMySQL
-  Auteur  : Inada Naoki et contributeurs
+  Author  : Inada Naoki and contributors
 
 -------------------------------------------------------------------------------
 psycopg2
-  Rôle    : pilote Python pour PostgreSQL
+  Role    : Python driver for PostgreSQL
   Licence : GNU Lesser General Public License v3 (LGPL-3.0)
   Source  : https://github.com/psycopg/psycopg2
-  Auteur  : Daniele Varrazzo et contributeurs
+  Author  : Daniele Varrazzo and contributors
+
+-------------------------------------------------------------------------------
+Tom Select
+  Role    : enhanced multi-select widget for the PHP web interface (vendored)
+  Licence : Apache License 2.0
+  Source  : https://github.com/orchidjs/tom-select
+  Note    : bundled files: resources/php/js/tom-select.min.js
+                           resources/php/css/tom-select.min.css
 
 -------------------------------------------------------------------------------
 PyInstaller
-  Rôle    : création de l'exécutable autonome (usage build uniquement)
-  Licence : GNU GPL v2 avec exception bootloader
-            L'exception autorise la distribution du programme final
-            sans obligation de le placer sous GPL.
+  Role    : standalone executable creation (build only)
+  Licence : GNU GPL v2 with bootloader exception
+            The exception allows distribution of the final program
+            without requiring it to be placed under the GPL.
   Source  : https://github.com/pyinstaller/pyinstaller
 
 -------------------------------------------------------------------------------
+language-tool-python  (optional — spell checking)
+  Role    : Python wrapper around the LanguageTool grammar and spell checker
+  Licence : MIT
+  Source  : https://github.com/jxmorris12/language_tool_python
+  Note    : LanguageTool itself is distributed under LGPL 2.1+
+            (https://github.com/languagetool-org/languagetool).
+
+-------------------------------------------------------------------------------
+pygrammalecte  (optional — spell checking)
+  Role    : Python wrapper around the Grammalecte French grammar checker
+  Licence : BSD 3-Clause
+  Source  : https://github.com/vpoulailleau/pygrammalecte
+  Note    : Grammalecte itself is distributed under GPL v3
+            (https://grammalecte.net).
+
+-------------------------------------------------------------------------------
 Python
-  Rôle    : environnement d'exécution
-  Licence : Python Software Foundation License v2 (compatible GPL)
+  Role    : runtime environment
+  Licence : Python Software Foundation License v2 (GPL-compatible)
   Source  : https://www.python.org

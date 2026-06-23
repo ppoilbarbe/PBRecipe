@@ -1,32 +1,32 @@
 # PBRecipe
 
-Gestionnaire de recettes (cuisine, cocktails…) avec export vers un site PHP
-autonome ou en inclusion dans un site PHP plus large.
+Recipe manager (cooking, cocktails…) with export to a standalone PHP website
+or as an inclusion into a larger PHP site.
 
-Les recettes sont stockées dans une base de données locale (SQLite) ou partagée
-(MariaDB, PostgreSQL). L'application génère un site PHP complet prêt à déployer
-sur un hébergement web standard.
+Recipes are stored in a local database (SQLite) or a shared one
+(MariaDB, PostgreSQL). The application generates a complete PHP website ready to
+deploy on a standard web hosting service.
 
-## Fonctionnalités
+## Features
 
-- Saisie des recettes avec description HTML enrichie (titres, listes, liens, images).
-- Filtre instantané de la liste des recettes, insensible à la casse et aux accents.
-- Vérification orthographique et grammaticale (Grammalecte ou LanguageTool, F7).
-- Gestion des référentiels : catégories, ingrédients, unités, sources, techniques,
-  niveaux de difficulté (avec icône).
-- Marqueurs dynamiques dans les textes : `[RECIPE:code]`, `[IMG:code]`, `[TECH:code]`.
-- Import / export YAML (sauvegarde portable de toute la base).
-- Export PHP : génère un site statique + dynamique déployable sur Apache/Nginx + PHP + PDO.
-- Interface en français.
+- Recipe editing with rich HTML descriptions (headings, lists, links, images).
+- Instant recipe list filter, case- and accent-insensitive.
+- Spell and grammar checking (Grammalecte or LanguageTool, F7).
+- Reference management: categories, ingredients, units, sources, techniques,
+  difficulty levels (with icon).
+- Dynamic markers in text: `[RECIPE:code]`, `[IMG:code]`, `[TECH:code]`.
+- YAML import/export (portable backup of the entire database).
+- PHP export: generates a static + dynamic website deployable on Apache/Nginx + PHP + PDO.
+- Interface in French.
 
 ## Installation
 
-### Depuis les exécutables précompilés (recommandé)
+### From pre-built executables (recommended)
 
-Téléchargez l'exécutable correspondant à votre système depuis la page
-[Releases](https://github.com/ppoilbarbe/PBRecipe/releases) :
+Download the executable for your system from the
+[Releases](https://github.com/ppoilbarbe/PBRecipe/releases) page:
 
-| Système       | Fichier                  |
+| System        | File                     |
 |---------------|--------------------------|
 | Linux (x86-64)| `pbrecipe`               |
 | Windows       | `pbrecipe.exe`           |
@@ -38,160 +38,169 @@ chmod +x pbrecipe
 ./pbrecipe
 ```
 
-**Windows** : double-cliquez sur `pbrecipe.exe`.
+**Windows**: double-click `pbrecipe.exe`.
 
-**macOS** : décompressez l'archive et déplacez `PBRecipe.app` dans `/Applications`.
-Lors du premier lancement, autorisez l'application dans
+**macOS**: unzip the archive and move `PBRecipe.app` to `/Applications`.
+On first launch, allow the application in
 *Réglages système → Confidentialité et sécurité*.
 
-> Les exécutables sont autonomes — aucun Python ni bibliothèque tierce à installer.
+> Executables are self-contained — no Python or third-party library required.
 
-### Depuis les sources (développeurs)
+### From source (developers)
 
-Prérequis : [Conda](https://docs.conda.io/) (Miniforge recommandé).
+Prerequisites: [Conda](https://docs.conda.io/) (Miniforge recommended).
 
 ```bash
 git clone https://github.com/ppoilbarbe/PBRecipe.git
 cd PBRecipe
-make venv      # crée l'environnement conda 'pbrecipe'
-make install   # installe le paquet en mode éditable + git hooks
-make run       # lance l'application
+make venv      # creates the conda environment 'pbrecipe'
+make install   # installs the package in editable mode + git hooks
+make run       # launches the application
 ```
 
-## Utilisation
+## Usage
 
 ```
-pbrecipe [FICHIER] [OPTIONS]
+pbrecipe [FILE] [OPTIONS]
 ```
 
 | Argument / Option          | Description                                              |
 |----------------------------|----------------------------------------------------------|
-| `FICHIER`                  | Fichier de configuration `.yaml` à ouvrir au démarrage  |
-| `--export-php [RÉPERTOIRE]`| Export PHP sans interface graphique                      |
-| `--debug` / `--quiet`      | Niveau de journalisation (DEBUG / WARNING)               |
+| `FILE`                     | `.yaml` configuration file to open at startup           |
+| `--export-php [DIRECTORY]` | PHP export without graphical interface                   |
+| `--debug` / `--quiet`      | Log level (DEBUG / WARNING)                              |
 
-Au premier lancement, créez une nouvelle base via **Fichier → Nouvelle base…**.
+On first launch, create a new database via **Fichier → Nouvelle base…**.
 
-## Schéma de la base de données
+## Database schema
 
 ```mermaid
-erDiagram
-    categories {
-        int     id   PK
-        string  name
+classDiagram
+    class categories {
+        int id PK
+        string name
     }
-    units {
-        int     id   PK
-        string  name
+    class units {
+        int id PK
+        string name
+        string name_plural
     }
-    ingredients {
-        int     id   PK
-        string  name
+    class ingredients {
+        int id PK
+        string name
+        string name_plural
     }
-    sources {
-        int     id   PK
-        text    name
+    class sources {
+        int id PK
+        text name
     }
-    techniques {
-        string  code        PK
-        string  title
-        text    description
+    class techniques {
+        string code PK
+        string title
+        text description
     }
-    difficulty_levels {
-        int     level     PK
-        string  label
-        string  mime_type
-        blob    data
+    class difficulty_levels {
+        int level PK
+        string label
+        bool hide_label
+        string mime_type
+        blob data
     }
-    recipes {
-        string  code        PK
-        string  name
-        int     difficulty
-        string  serving
-        int     prep_time
-        int     wait_time
-        int     cook_time
-        text    description
-        text    comments
-        int     source_id   FK
+    class globals {
+        string key PK
+        text value
     }
-    recipe_categories {
-        string  recipe_code   FK
-        int     category_id   FK
+    class recipes {
+        string code PK
+        string name
+        int difficulty
+        string serving
+        int prep_time
+        int wait_time
+        int cook_time
+        text description
+        text comments
+        int source_id FK
     }
-    recipe_ingredients {
-        int     id            PK
-        string  recipe_code   FK
-        int     position
-        string  prefix
-        string  quantity
-        int     unit_id       FK
-        string  separator
-        int     ingredient_id FK
-        string  suffix
+    class recipe_categories {
+        string recipe_code FK
+        int category_id FK
     }
-    recipe_media {
-        int     id          PK
-        string  recipe_code FK
-        int     position
-        string  code
-        string  mime_type
-        blob    data
+    class recipe_ingredients {
+        int id PK
+        string recipe_code FK
+        int position
+        string prefix
+        string quantity
+        int unit_id FK
+        bool unit_plural
+        string separator
+        int ingredient_id FK
+        bool ingredient_plural
+        string suffix
+    }
+    class recipe_media {
+        int id PK
+        string recipe_code FK
+        int position
+        string code
+        string mime_type
+        blob data
     }
 
-    recipes           }o--o|  sources            : "source_id"
-    recipes           ||--o{  recipe_categories  : "recipe_code"
-    categories        ||--o{  recipe_categories  : "category_id"
-    recipes           ||--o{  recipe_ingredients : "recipe_code"
-    units             |o--o{  recipe_ingredients : "unit_id"
-    ingredients       |o--o{  recipe_ingredients : "ingredient_id"
-    recipes           ||--o{  recipe_media       : "recipe_code"
+    recipes "0..*" --> "0..1" sources : source_id
+    recipes "1" --> "0..*" recipe_categories
+    categories "1" --> "0..*" recipe_categories
+    recipes "1" --> "0..*" recipe_ingredients
+    units "0..1" --> "0..*" recipe_ingredients : unit_id
+    ingredients "0..1" --> "0..*" recipe_ingredients : ingredient_id
+    recipes "1" --> "0..*" recipe_media
 ```
 
-## Développement
+## Development
 
-### Prérequis système
+### System prerequisites
 
-En plus de Conda, les outils suivants doivent être installés au niveau système :
+In addition to Conda, the following tools must be installed at the system level:
 
 ```bash
-# Couverture PHP (Xdebug pour le PHP système)
+# PHP coverage (Xdebug for the system PHP)
 sudo apt install php-xdebug php-xml php-sqlite3   # Ubuntu/Debian
 ```
 
-> **Pourquoi au niveau système ?** Le PHP embarqué dans l'environnement conda
-> (`conda-forge`, actuellement 8.5) n'est pas encore supporté par Xdebug ni PCOV.
-> `make coverage` bascule automatiquement sur le PHP système (8.3) quand le PHP
-> conda n'a pas de driver de couverture. Sans ces paquets, la couverture PHP est
-> ignorée (les tests s'exécutent quand même ; c'est le comportement normal en CI).
+> **Why at the system level?** The PHP bundled in the conda environment
+> (`conda-forge`, currently 8.5) is not yet supported by Xdebug or PCOV.
+> `make coverage` automatically falls back to the system PHP (8.3) when the conda
+> PHP has no coverage driver. Without these packages, PHP coverage is skipped
+> (tests still run; this is the normal CI behaviour).
 >
-> `php-sqlite3` est requis car les tests PHP utilisent une base SQLite ; sans ce
-> paquet, PHPUnit est tué par un `die()` dans `db.php` avant d'écrire le rapport.
+> `php-sqlite3` is required because the PHP tests use a SQLite database; without
+> this package, PHPUnit is killed by a `die()` in `db.php` before writing the report.
 
-### Couverture de code
+### Code coverage
 
 ```bash
-make coverage   # rapport Python → htmlcov/index.html
-                # rapport PHP    → htmlcov/php/index.html (si Xdebug disponible)
+make coverage   # Python report → htmlcov/index.html
+                # PHP report    → htmlcov/php/index.html (if Xdebug available)
 ```
 
-La cible détecte automatiquement le driver de couverture PHP disponible :
+The target automatically detects the available PHP coverage driver:
 
-| Situation | Comportement |
+| Situation | Behaviour |
 |---|---|
-| PHP conda + Xdebug/PCOV | Couverture via conda (optimal) |
-| PHP système + Xdebug | Couverture via PHP système (fallback actuel) |
-| Aucun driver | Tests PHP exécutés sans couverture + avertissement |
+| conda PHP + Xdebug/PCOV | Coverage via conda (optimal) |
+| system PHP + Xdebug | Coverage via system PHP (current fallback) |
+| No driver | PHP tests run without coverage + warning |
 
-### Migration future — Xdebug/PCOV dans conda
+### Future migration — Xdebug/PCOV in conda
 
-Quand Xdebug ou PCOV supporteront PHP 8.5 et seront disponibles dans conda-forge,
-installer le paquet dans l'environnement et simplifier la cible `coverage` du
-Makefile : supprimer les branches `elif`/`else` et ne garder que l'invocation
-`$(CONDA_RUN) ./vendor/bin/phpunit --coverage-html htmlcov/php`. Le commentaire
-dans le Makefile rappelle exactement ce point.
+When Xdebug or PCOV support PHP 8.5 and become available in conda-forge,
+install the package in the environment and simplify the `coverage` Makefile target:
+remove the `elif`/`else` branches and keep only the
+`$(CONDA_RUN) ./vendor/bin/phpunit --coverage-html htmlcov/php` invocation. The
+comment in the Makefile notes exactly this point.
 
-## Licence
+## License
 
-GNU GPL v3 — voir [LICENSE](LICENSE).
-Licences des composants tiers : voir [LICENSES](LICENSES).
+GNU GPL v3 — see [LICENSE](LICENSE).
+Third-party component licenses: see [LICENSES](LICENSES).

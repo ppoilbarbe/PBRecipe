@@ -7,15 +7,15 @@ dependencies:
   - python=3.12
   # GUI
   - pyside6
-  # Polices (embarquées dans le bundle PyInstaller via pbrecipe.spec)
-  - fonts-conda-ecosystem   # meta-paquet : Ubuntu, DejaVu, Inconsolata, SourceCodePro
+  # Fonts (bundled in the PyInstaller bundle via pbrecipe.spec)
+  - fonts-conda-ecosystem   # meta-package: Ubuntu, DejaVu, Inconsolata, SourceCodePro
   # YAML
   - ruamel.yaml
   - ruamel.yaml.clib
   # Databases
-  - sqlalchemy       # abstraction DB (SQLite/MariaDB/PostgreSQL)
-  - pymysql          # driver MariaDB / MySQL
-  - psycopg2         # driver PostgreSQL
+  - sqlalchemy       # DB abstraction (SQLite/MariaDB/PostgreSQL)
+  - pymysql          # MariaDB / MySQL driver
+  - psycopg2         # PostgreSQL driver
   # Tests
   - pytest
   - pytest-qt
@@ -23,14 +23,14 @@ dependencies:
   # Lint / hooks
   - ruff
   - pre-commit
-  # PHP (pour les tests PHP)
+  # PHP (for PHP tests)
   - php
   # GitHub CLI
   - gh
   # Packaging
   - pyinstaller
   - python-build    # sdist via `python -m build`
-  - pillow          # génération des icônes .ico/.icns + conversion PyInstaller
+  - pillow          # .ico/.icns icon generation + PyInstaller conversion
   # Dev install (editable)
   - pip
   - pip:

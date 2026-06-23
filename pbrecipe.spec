@@ -1,10 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for PBRecipe — exécutable monofichier, Linux / Windows / macOS."""
+"""PyInstaller spec for PBRecipe — single-file executable, Linux / Windows / macOS."""
 
+import re
 import sys
 from pathlib import Path
 
 SRC = Path("src/pbrecipe")
+
+_version = re.search(
+    r'__version__\s*=\s*"([^"]+)"',
+    (SRC / "__init__.py").read_text(encoding="utf-8"),
+).group(1)
 RESOURCES = SRC / "resources"
 
 _icons = {
@@ -20,7 +26,7 @@ datas = [
 
 import site
 
-# Dictionnaires grammalecte (données de graphspell pour la correction orthographique)
+# Grammalecte dictionaries (graphspell data for spell checking)
 _grammalecte_dicts = []
 for _sp in site.getsitepackages():
     _d = Path(_sp) / "grammalecte" / "graphspell" / "_dictionaries"
@@ -30,10 +36,10 @@ for _sp in site.getsitepackages():
 
 datas += _grammalecte_dicts
 
-# Polices conda : bundlées pour garantir un rendu identique sur toutes les machines.
-# Sur Linux, fontconfig cherche les polices via des chemins absolus inscrits dans
-# fonts.conf au moment du build ; ces chemins n'existent pas sur la machine cible.
-# Le runtime hook hooks/pyi_rth_fonts.py génère un fonts.conf portable au démarrage.
+# Conda fonts: bundled to guarantee identical rendering on all machines.
+# On Linux, fontconfig looks up fonts via absolute paths written into fonts.conf at
+# build time; those paths do not exist on the target machine.
+# The runtime hook hooks/pyi_rth_fonts.py generates a portable fonts.conf at startup.
 _conda_fonts = Path(sys.prefix) / "fonts"
 if _conda_fonts.is_dir():
     datas += [(str(_conda_fonts), "fonts")]
@@ -46,7 +52,7 @@ hiddenimports = [
     "sqlalchemy.dialects.postgresql",
     "pymysql",
     "psycopg2",
-    # Correcteur grammatical (optionnel — absent = vérification désactivée)
+    # Grammar checker (optional — if absent, spell checking is disabled)
     "pygrammalecte",
     "pygrammalecte.pygrammalecte",
     "grammalecte",
@@ -78,7 +84,7 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,   # tout embarqué dans l'exécutable
+    a.binaries,   # everything embedded in the executable
     a.datas,
     name="pbrecipe",
     debug=False,
@@ -92,7 +98,7 @@ exe = EXE(
     onefile=True,
 )
 
-# macOS : bundle .app autour du binaire monofichier
+# macOS: wrap the single-file binary in a .app bundle
 if sys.platform == "darwin":
     app = BUNDLE(
         exe,
@@ -101,6 +107,6 @@ if sys.platform == "darwin":
         bundle_identifier="net.cardolan.pbrecipe",
         info_plist={
             "NSHighResolutionCapable": True,
-            "CFBundleShortVersionString": "0.1.0",
+            "CFBundleShortVersionString": _version,
         },
     )

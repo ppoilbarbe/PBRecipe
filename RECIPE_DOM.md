@@ -1,11 +1,11 @@
-# DOM — Fiche recette (`?RECIPE=CODE`)
+# DOM — Recipe card (`?RECIPE=CODE`)
 
-Structure HTML produite par `render_recipe()` dans `lib/display.php`.
-Les éléments en pointillés sont conditionnels (absents si la donnée est vide).
+HTML structure produced by `render_recipe()` in `lib/display.php`.
+Dashed elements are conditional (absent when the data is empty).
 
 ---
 
-## Structure générale
+## General structure
 
 ```mermaid
 graph TD
@@ -14,12 +14,12 @@ graph TD
     article["article.recipe"]
 
     article --> h1["h1.recipe-title"]
-    article --> cats["p.recipe-categories\n(noms séparés par virgules)"]:::opt
+    article --> cats["p.recipe-categories\n(names separated by commas)"]:::opt
     article --> card["div.recipe-card"]
 
     card --> meta["div.recipe-meta"]:::opt
-    card --> ingblock["div.recipe-ingredients-block.recipe-section\n(avec image héro — voir détail)"]:::opt
-    card --> ingsect["section.recipe-ingredients.recipe-section\n(sans image héro — voir détail)"]:::opt
+    card --> ingblock["div.recipe-ingredients-block.recipe-section\n(with hero image — see detail)"]:::opt
+    card --> ingsect["section.recipe-ingredients.recipe-section\n(without hero image — see detail)"]:::opt
     card --> desc["section.recipe-description.recipe-section"]:::opt
     card --> comm["section.recipe-comments.recipe-section"]:::opt
     card --> tech["section.recipe-techniques.recipe-section"]:::opt
@@ -28,27 +28,27 @@ graph TD
 
     meta --> serving["span.serving"]:::opt
     meta --> duration["span.duration"]:::opt
-    meta --> diff["span.difficulty\n→ voir Badge difficulté"]:::opt
+    meta --> diff["span.difficulty\n→ see Difficulty badge"]:::opt
 
-    desc --> h2desc["h2 · label Réalisation"]
-    desc --> bdesc["div.recipe-body\n(HTML + marqueurs parsés)"]
+    desc --> h2desc["h2 · Réalisation label"]
+    desc --> bdesc["div.recipe-body\n(HTML + parsed markers)"]
 
-    comm --> h2comm["h2 · label Commentaires"]
-    comm --> bcomm["div.recipe-body\n(HTML + marqueurs parsés)"]
+    comm --> h2comm["h2 · Commentaires label"]
+    comm --> bcomm["div.recipe-body\n(HTML + parsed markers)"]
 
-    tech --> h2tech["h2 · label Techniques"]
-    tech --> techitem["div.technique · id=tech-CODE\n(1 par technique, ordre récursif)"]
+    tech --> h2tech["h2 · Techniques label"]
+    tech --> techitem["div.technique · id=tech-CODE\n(1 per technique, recursive order)"]
 
-    techitem --> h3["h3 · titre"]
-    techitem --> tbody["div.technique-body\n(HTML + marqueurs parsés)"]
+    techitem --> h3["h3 · title"]
+    techitem --> tbody["div.technique-body\n(HTML + parsed markers)"]
 ```
 
 ---
 
-## Bloc ingrédients avec image héro
+## Ingredient block with hero image
 
-Rendu quand la recette a au moins un ingrédient **et** au moins une image.
-L'image héro est la première image déclarée dans les médias de la recette.
+Rendered when the recipe has at least one ingredient **and** at least one image.
+The hero image is the first image declared in the recipe media.
 
 ```mermaid
 graph TD
@@ -61,18 +61,18 @@ graph TD
 
     fig --> heroimg["img.recipe-hero-img · loading=lazy"]
     fig --> preview["span.hero-preview"]
-    preview --> previewimg["img (agrandissement)"]
+    preview --> previewimg["img (enlarged)"]
 
-    sect --> h2["h2 · label Ingrédients"]
-    sect --> table["table.ingredients-table\n→ voir Tableau des ingrédients"]
+    sect --> h2["h2 · Ingrédients label"]
+    sect --> table["table.ingredients-table\n→ see Ingredient table"]
 ```
 
 ---
 
-## Tableau des ingrédients
+## Ingredient table
 
-Rendu identiquement que l'image héro soit présente ou non.
-La colonne `ing-prefix` n'est incluse que si au moins un ingrédient porte un préfixe.
+Rendered identically whether or not a hero image is present.
+The `ing-prefix` column is only included when at least one ingredient has a prefix.
 
 ```mermaid
 graph TD
@@ -80,9 +80,9 @@ graph TD
 
     table["table.ingredients-table"]
     tbody["tbody"]
-    tr["tr (1 par ingrédient)"]
+    tr["tr (1 per ingredient)"]
     tdp["td.ing-prefix"]:::opt
-    tdq["td.ing-qty\n(quantité · unité)"]
+    tdq["td.ing-qty\n(quantity · unit)"]
     tdr["td.ing-rest"]
 
     table --> tbody --> tr
@@ -90,44 +90,44 @@ graph TD
     tr --> tdq
     tr --> tdr
 
-    tdr --> sep["texte : séparateur"]:::opt
-    tdr --> strong["strong · nom de l'ingrédient"]
-    tdr --> suffix["texte : suffixe"]:::opt
+    tdr --> sep["text: separator"]:::opt
+    tdr --> strong["strong · ingredient name"]
+    tdr --> suffix["text: suffix"]:::opt
 ```
 
 ---
 
-## Badge difficulté (`span.difficulty`)
+## Difficulty badge (`span.difficulty`)
 
 ```mermaid
 graph TD
     classDef opt stroke-dasharray:5 5
 
-    diff["span.difficulty · title=label\n(infobulle = libellé, toujours présente)"]
+    diff["span.difficulty · title=label\n(tooltip = label, always present)"]
 
-    diff --> icon["span.diff-icon\n(si icône définie)"]:::opt
-    diff --> label["span.diff-label\n(si label ≠ '' ET hide_label=false)"]:::opt
+    diff --> icon["span.diff-icon\n(if icon defined)"]:::opt
+    diff --> label["span.diff-label\n(if label ≠ '' AND hide_label=false)"]:::opt
 
     icon --> img["img.diff-icon-img\n(src=media.php?diff=N)"]
 ```
 
-> `hide_label=true` : seule l'icône est affichée ; le libellé reste accessible via l'attribut
-> `title` de `span.difficulty` (infobulle au survol). Si `hide_label=false`, libellé et icône
-> sont tous deux affichés.
+> `hide_label=true`: only the icon is displayed; the label remains accessible via the
+> `title` attribute of `span.difficulty` (tooltip on hover). If `hide_label=false`, both
+> label and icon are displayed.
 
 ---
 
-## Galerie d'images (`div.recipe-gallery`)
+## Image gallery (`div.recipe-gallery`)
 
-Images restantes après l'image héro. Non imprimée (`no-print`).
+Remaining images after the hero image. Not printed (`no-print`).
 
 ```mermaid
 graph TD
     gallery["div.recipe-gallery.no-print"]
-    fig["figure.gallery-item (1 par image)"]
+    fig["figure.gallery-item (1 per image)"]
     thumb["img.gallery-thumb · loading=lazy"]
     prev["span.gallery-preview"]
-    previmg["img (agrandissement)"]
+    previmg["img (enlarged)"]
 
     gallery --> fig --> thumb
     fig --> prev --> previmg
@@ -135,22 +135,22 @@ graph TD
 
 ---
 
-## Marqueurs parsés dans `recipe-body` / `technique-body`
+## Parsed markers in `recipe-body` / `technique-body`
 
-`parse_markers()` transforme trois types de marqueurs présents dans le HTML riche.
+`parse_markers()` transforms three types of markers present in the rich HTML.
 
 ```mermaid
 graph TD
     classDef opt stroke-dasharray:5 5
 
-    body["div.recipe-body\nou div.technique-body"]
+    body["div.recipe-body\nor div.technique-body"]
 
-    body --> recipelink["a · href=?RECIPE=CODE\n(issu de [RECIPE:CODE])"]
-    body --> imgref["span.recipe-img-ref\n(issu de [IMG:CODE])"]
-    body --> techlink["a.tech-link · href=#tech-CODE\n(issu de [TECH:CODE])"]
-    body --> imgmiss["span.img-missing\n(image introuvable)"]:::opt
+    body --> recipelink["a · href=?RECIPE=CODE\n(from [RECIPE:CODE])"]
+    body --> imgref["span.recipe-img-ref\n(from [IMG:CODE])"]
+    body --> techlink["a.tech-link · href=#tech-CODE\n(from [TECH:CODE])"]
+    body --> imgmiss["span.img-missing\n(image not found)"]:::opt
 
     imgref --> thumb["img.recipe-thumb · loading=lazy"]
     imgref --> imgprev["span.recipe-img-preview"]
-    imgprev --> imgfull["img (agrandissement)"]
+    imgprev --> imgfull["img (enlarged)"]
 ```

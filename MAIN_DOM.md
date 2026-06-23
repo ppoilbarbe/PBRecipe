@@ -1,14 +1,14 @@
-# DOM — Page principale (`index.php`)
+# DOM — Main page (`index.php`)
 
-La page principale gère trois routes selon les paramètres GET reçus.
-Les éléments en pointillés sont conditionnels ou optionnels.
+The main page handles three routes depending on the GET parameters received.
+Dashed elements are conditional or optional.
 
 ---
 
-## Squelette HTML (mode standalone)
+## HTML skeleton (standalone mode)
 
-> En mode intégré (`recipe_integration.lib.php` présent), `recipe_header()` / `recipe_body()` /
-> `recipe_footer()` du site hôte enveloppent le contenu à la place du squelette ci-dessous.
+> In integration mode (`recipe_integration.lib.php` present), the host site's `recipe_header()` /
+> `recipe_body()` / `recipe_footer()` wrap the content instead of the skeleton below.
 
 ```mermaid
 graph TD
@@ -36,82 +36,82 @@ graph TD
     footer  --> sitename["p · SITE_TITLE"]
 
     main --> route{"Route"}
-    route -- "?RECIPE=CODE" --> recipe["article.recipe\n→ voir RECIPE_DOM.md"]
-    route -- "?tech=CODE"   --> techpanel["section.recipe-techniques\n→ voir Panneau techniques"]
-    route -- "accueil"      --> home["form.search-form\n+ div.category-listing"]
-    route -- "recherche"    --> search["form.search-form\n+ ul.recipe-links.search-results"]
+    route -- "?RECIPE=CODE" --> recipe["article.recipe\n→ see RECIPE_DOM.md"]
+    route -- "?tech=CODE"   --> techpanel["section.recipe-techniques\n→ see Techniques panel"]
+    route -- "home"         --> home["form.search-form\n+ div.category-listing"]
+    route -- "search"       --> search["form.search-form\n+ ul.recipe-links.search-results"]
 ```
 
 ---
 
-## Route accueil — listing par catégorie
+## Home route — category listing
 
-Affiché quand aucun filtre de recherche n'est actif.
+Displayed when no search filter is active.
 
 ```mermaid
 graph TD
     main["main.site-main"]
 
-    main --> form["form.search-form\n→ voir Formulaire de recherche"]
+    main --> form["form.search-form\n→ see Search form"]
     main --> listing["div.category-listing"]
 
-    listing --> details["details.category-block · open\n(1 par catégorie)"]
+    listing --> details["details.category-block · open\n(1 per category)"]
 
     details --> summary["summary.category-name"]
     details --> ul["ul.recipe-links"]
 
-    ul --> li["li (1 par recette)"]
+    ul --> li["li (1 per recipe)"]
     li --> a["a · href=?RECIPE=CODE"]
 ```
 
 ---
 
-## Route recherche — résultats
+## Search route — results
 
-Affiché quand au moins un filtre est actif (`q`, `cat`, `ing` ou `diff`).
+Displayed when at least one filter is active (`q`, `cat`, `ing` or `diff`).
 
 ```mermaid
 graph TD
     main["main.site-main"]
 
-    main --> form["form.search-form\n→ voir Formulaire de recherche"]
-    main --> results{"Résultats ?"}
+    main --> form["form.search-form\n→ see Search form"]
+    main --> results{"Results?"}
 
-    results -- "aucun" --> nores["p.no-results"]
-    results -- "trouvés" --> ul["ul.recipe-links.search-results"]
+    results -- "none" --> nores["p.no-results"]
+    results -- "found" --> ul["ul.recipe-links.search-results"]
 
-    ul --> li["li (1 par recette)"]
+    ul --> li["li (1 per recipe)"]
     li --> a["a · href=?RECIPE=CODE"]
 ```
 
 ---
 
-## Route technique — `?tech=CODE`
+## Technique route — `?tech=CODE`
 
-Affiche une technique isolée (sans fiche recette).
+Displays a standalone technique (without a recipe card).
 
 ```mermaid
 graph TD
     main["main.site-main"]
 
-    main --> form["form.search-form\n→ voir Formulaire de recherche"]
-    main --> found{"Technique trouvée ?"}
+    main --> form["form.search-form\n→ see Search form"]
+    main --> found{"Technique found?"}
 
-    found -- "non"  --> err["p.error"]
-    found -- "oui"  --> panel["section.recipe-techniques.recipe-section"]
+    found -- "no"  --> err["p.error"]
+    found -- "yes" --> panel["section.recipe-techniques.recipe-section"]
 
-    panel --> h2["h2 · label Techniques"]
-    panel --> tech["div.technique · id=tech-CODE\n(1 par technique, résolution récursive)"]
+    panel --> h2["h2 · Techniques label"]
+    panel --> tech["div.technique · id=tech-CODE\n(1 per technique, recursive resolution)"]
 
-    tech --> h3["h3 · titre"]
-    tech --> body["div.technique-body\n(HTML + marqueurs parsés)"]
+    tech --> h3["h3 · title"]
+    tech --> body["div.technique-body\n(HTML + parsed markers)"]
 ```
 
 ---
 
-## Formulaire de recherche (`form.search-form`)
+## Search form (`form.search-form`)
 
-Présent dans toutes les routes de la page principale.
+Present in all routes of the main page.
 
 ```mermaid
 graph TD
@@ -120,33 +120,33 @@ graph TD
     form["form.search-form · method=GET"]
 
     form --> q["input[type=text] · name=q"]
-    form --> grpcat["div.search-filter-group\n(si catégories disponibles)"]:::opt
-    form --> grping["div.search-filter-group\n(si ingrédients disponibles)"]:::opt
-    form --> seldiff["select · name=diff\n(si niveaux > 0 définis)"]:::opt
-    form --> grpsrc["div.search-filter-group\n(si sources disponibles)"]:::opt
-    form --> seltech["select · name=tech\n(si techniques disponibles)"]:::opt
+    form --> grpcat["div.search-filter-group\n(if categories available)"]:::opt
+    form --> grping["div.search-filter-group\n(if ingredients available)"]:::opt
+    form --> seldiff["select · name=diff\n(if difficulty levels > 0 defined)"]:::opt
+    form --> grpsrc["div.search-filter-group\n(if sources available)"]:::opt
+    form --> seltech["select · name=tech\n(if techniques available)"]:::opt
     form --> btn["button[type=submit]"]
 
     grpcat --> selcat["select · name=cat[] · id=ts-cat · multiple\n(Tom Select)"]
     grpcat --> togcat["div.search-mode-toggle\n(radio cat_mode=or|and)"]
-    selcat --> optcatn["option · valeur=id (1 par catégorie)"]
+    selcat --> optcatn["option · value=id (1 per category)"]
 
     grping --> seling["select · name=ing[] · id=ts-ing · multiple\n(Tom Select)"]
     grping --> toging["div.search-mode-toggle\n(radio ing_mode=or|and)"]
-    seling --> optingn["option · valeur=id (1 par ingrédient)"]
+    seling --> optingn["option · value=id (1 per ingredient)"]
 
-    seldiff --> optdiff0["option · valeur=-1 · Toutes difficultés"]
-    seldiff --> optdiffn["option · valeur=level (1 par niveau)"]
+    seldiff --> optdiff0["option · value=-1 · Toutes difficultés"]
+    seldiff --> optdiffn["option · value=level (1 per level)"]
 
     grpsrc --> selsrc["select · name=src[] · id=ts-src · multiple\n(Tom Select)"]
     grpsrc --> togsrc["div.search-mode-toggle\n(radio src_mode=or|and)"]
-    selsrc --> optsrcn["option · valeur=id (1 par source)"]
+    selsrc --> optsrcn["option · value=id (1 per source)"]
 
-    seltech --> opttech0["option · valeur=vide · Afficher une technique"]:::opt
-    seltech --> opttechn["option · valeur=code (1 par technique)"]:::opt
+    seltech --> opttech0["option · value=empty · Afficher une technique"]:::opt
+    seltech --> opttechn["option · value=code (1 per technique)"]:::opt
 ```
 
-> Les multi-selects catégorie / ingrédient / source sont initialisés par Tom Select
-> (`js/recipe.js`). Logique : ET entre dimensions ; OU ou ET au sein d'une dimension.
-> Note : le mode ET sur les sources renvoie toujours 0 résultat car `source_id` est une
-> FK directe 1:1 — une recette ne peut appartenir qu'à une seule source.
+> The category / ingredient / source multi-selects are initialised by Tom Select
+> (`js/recipe.js`). Logic: AND between dimensions; OR or AND within a dimension.
+> Note: AND mode on sources always returns 0 results because `source_id` is a direct
+> 1:1 FK — a recipe can only belong to one source.
