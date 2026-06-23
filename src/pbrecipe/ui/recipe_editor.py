@@ -305,12 +305,21 @@ class RecipeEditor(QWidget):
     def _check_spelling(self) -> None:
         from pbrecipe.ui.spellcheck_dialog import run_spellcheck
 
+        title_map: dict[str, str] | None = None
+        if self._db is not None:
+            title_map = {
+                f"RECIPE:{r.code.upper()}": r.name for r in self._db.list_recipes()
+            }
+            title_map.update(
+                {f"TECH:{t.code.upper()}": t.title for t in self._db.list_techniques()}
+            )
         run_spellcheck(
             [
                 ("Réalisation", self._desc_editor.get_html()),
                 ("Commentaires", self._comment_editor.get_html()),
             ],
             self,
+            title_map=title_map,
         )
 
     def _save(self) -> None:

@@ -28,7 +28,6 @@ class BaseListDialog(GeometryMixin, QDialog):
         self,
         title: str,
         db: Database,
-        app_config=None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -37,7 +36,7 @@ class BaseListDialog(GeometryMixin, QDialog):
         self.setMinimumWidth(360)
         self._setup_ui()
         self._refresh()
-        self._init_geometry(app_config, type(self).__name__)
+        self._init_geometry(type(self).__name__)
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)

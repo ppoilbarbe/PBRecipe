@@ -5,7 +5,7 @@ import unicodedata
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, Qt
+from PySide6.QtCore import QByteArray, Qt, QTimer
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -545,6 +545,7 @@ class MainWindow(QMainWindow):
             item.setHidden(hidden)
 
     def _refresh_recipe_list(self, select_code: str | None = None) -> None:
+        scroll_pos = self._recipe_list.verticalScrollBar().value()
         self._recipe_list.currentItemChanged.disconnect(self._on_recipe_selected)
         self._recipe_list.clear()
         if self._db is None:
@@ -564,6 +565,7 @@ class MainWindow(QMainWindow):
                     self._recipe_list.setCurrentRow(i)
                     break
         self._recipe_list.currentItemChanged.connect(self._on_recipe_selected)
+        self._recipe_list.verticalScrollBar().setValue(scroll_pos)
         _log.debug("Liste recettes rafraîchie : %d recettes", len(recipes))
 
     def _on_recipe_selected(self, current: QListWidgetItem | None, _prev) -> None:
@@ -571,17 +573,46 @@ class MainWindow(QMainWindow):
             self._recipe_editor.clear()
             self._stack.setCurrentWidget(self._empty_widget)
             return
+        # Lire les codes AVANT _confirm_discard : en cas de sauvegarde implicite,
+        # _refresh_recipe_list() est appelé et détruit les items Qt courants.
+        target_code = current.data(Qt.ItemDataRole.UserRole)
+        prev_code = _prev.data(Qt.ItemDataRole.UserRole) if _prev else None
         if not self._confirm_discard():
-            self._recipe_list.currentItemChanged.disconnect(self._on_recipe_selected)
-            self._recipe_list.setCurrentItem(_prev)
-            self._recipe_list.currentItemChanged.connect(self._on_recipe_selected)
+            # Différer la restauration : Qt finit de traiter le clic souris
+            # (qui sélectionnerait B) après le retour de ce gestionnaire.
+            # singleShot(0) remet A en sélection une fois la pile d'événements vidée.
+            QTimer.singleShot(0, lambda: self._restore_recipe_selection(prev_code))
             return
-        code = current.data(Qt.ItemDataRole.UserRole)
-        _log.debug("Recette sélectionnée : %s", code)
-        recipe = self._db.get_recipe(code)
+        # Sauvegarder ou Abandonner : naviguer vers la recette cible.
+        # Si la liste a été reconstruite (cas Sauvegarder), l'item original est mort ;
+        # on recherche le bon item par code.
+        self._recipe_list.currentItemChanged.disconnect(self._on_recipe_selected)
+        self._select_recipe_by_code(target_code)
+        self._recipe_list.currentItemChanged.connect(self._on_recipe_selected)
+        _log.debug("Recette sélectionnée : %s", target_code)
+        recipe = self._db.get_recipe(target_code)
         if recipe:
             self._recipe_editor.load(recipe, self._db, self._config)
             self._stack.setCurrentWidget(self._recipe_editor)
+
+    def _select_recipe_by_code(self, code: str | None) -> None:
+        """Sélectionne l'item de la liste dont le code correspond.
+
+        Signal currentItemChanged déjà déconnecté par l'appelant.
+        """
+        if code is None:
+            return
+        for i in range(self._recipe_list.count()):
+            if self._recipe_list.item(i).data(Qt.ItemDataRole.UserRole) == code:
+                self._recipe_list.setCurrentRow(i)
+                return
+
+    def _restore_recipe_selection(self, code: str | None) -> None:
+        """Rétablit la sélection sur `code` après que Qt a fini de traiter le clic."""
+        self._recipe_list.currentItemChanged.disconnect(self._on_recipe_selected)
+        self._select_recipe_by_code(code)
+        self._recipe_list.currentItemChanged.connect(self._on_recipe_selected)
+        self._recipe_list.setFocus()
 
     def _new_recipe(self) -> None:
         if self._db is None:
@@ -684,7 +715,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.category_dialog import CategoryDialog
 
-        CategoryDialog(self._db, app_config=self._app_config, parent=self).exec()
+        CategoryDialog(self._db, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_ingredients(self) -> None:
@@ -692,7 +723,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.ingredient_dialog import IngredientDialog
 
-        IngredientDialog(self._db, app_config=self._app_config, parent=self).exec()
+        IngredientDialog(self._db, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_units(self) -> None:
@@ -700,7 +731,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.unit_dialog import UnitDialog
 
-        UnitDialog(self._db, app_config=self._app_config, parent=self).exec()
+        UnitDialog(self._db, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_techniques(self) -> None:
@@ -708,7 +739,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.technique_dialog import TechniqueDialog
 
-        TechniqueDialog(self._db, app_config=self._app_config, parent=self).exec()
+        TechniqueDialog(self._db, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_sources(self) -> None:
@@ -716,7 +747,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.source_dialog import SourceDialog
 
-        SourceDialog(self._db, app_config=self._app_config, parent=self).exec()
+        SourceDialog(self._db, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_difficulty_levels(self) -> None:
@@ -724,7 +755,7 @@ class MainWindow(QMainWindow):
             return
         from pbrecipe.ui.dialogs.difficulty_dialog import DifficultyDialog
 
-        DifficultyDialog(self._db, app_config=self._app_config, parent=self).exec()
+        DifficultyDialog(self._db, parent=self).exec()
 
     # ------------------------------------------------------------------
     # YAML export / import
@@ -1076,17 +1107,26 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard():
             event.ignore()
             return
+        from pbrecipe.config.app_config import AppConfig
+        from pbrecipe.ui.spellcheck_dialog import close_spellcheck
+
+        close_spellcheck()
+        # Recharger depuis le disque pour capturer toutes les géométries de
+        # dialogues sauvegardées pendant la session, puis ajouter l'état de
+        # la fenêtre principale avant la sauvegarde finale.
+        cfg = AppConfig.load()
         pos = self.pos()
         size = self.size()
-        self._app_config.window_geometry = {
+        cfg.window_geometry = {
             "x": pos.x(),
             "y": pos.y(),
             "width": size.width(),
             "height": size.height(),
         }
-        self._app_config.splitter_sizes = self._splitter.sizes()
-        self._app_config.toolbar_state = self.saveState().toBase64().data().decode()
-        self._app_config.save()
+        cfg.splitter_sizes = self._splitter.sizes()
+        cfg.toolbar_state = self.saveState().toBase64().data().decode()
+        cfg.save()
+        self._app_config = cfg
         _log.debug("Fermeture de l'application")
         if self._db:
             self._db.disconnect()

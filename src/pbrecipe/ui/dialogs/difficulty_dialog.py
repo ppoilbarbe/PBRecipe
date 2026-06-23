@@ -47,9 +47,7 @@ def _pixmap_from_bytes(data: bytes) -> QPixmap:
 
 
 class DifficultyDialog(GeometryMixin, QDialog):
-    def __init__(
-        self, db: Database, app_config=None, parent: QWidget | None = None
-    ) -> None:
+    def __init__(self, db: Database, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._db = db
         self._levels: list[DifficultyLevel] = []
@@ -61,7 +59,7 @@ class DifficultyDialog(GeometryMixin, QDialog):
         self._reload_levels()
         if self._list.count():
             self._list.setCurrentRow(0)
-        self._init_geometry(app_config, "DifficultyDialog")
+        self._init_geometry("DifficultyDialog")
 
     # ------------------------------------------------------------------
     # UI

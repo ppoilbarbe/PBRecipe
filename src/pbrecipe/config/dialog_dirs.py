@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -12,9 +11,9 @@ _log = logging.getLogger(__name__)
 
 
 def _dialog_dirs_path() -> Path:
-    xdg = os.environ.get("XDG_CONFIG_HOME", "")
-    base = Path(xdg).expanduser() if xdg else Path.home() / ".config"
-    return base / "pbrecipe" / "dialog_dirs.yaml"
+    from pbrecipe.config._config_root import get_config_dir
+
+    return get_config_dir() / "dialog_dirs.yaml"
 
 
 class DialogDirs:

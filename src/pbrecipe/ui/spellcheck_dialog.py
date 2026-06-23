@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pbrecipe.ui.dialogs._geometry_mixin import GeometryMixin
+
 _log = logging.getLogger(__name__)
 
 _MARKER_RE = re.compile(r"\[(IMG|TECH|RECIPE):[^\]]+\]", re.IGNORECASE)
@@ -109,6 +111,18 @@ def _html_to_plain(html: str) -> str:
     return text.strip()
 
 
+def _resolve_markers(text: str, title_map: dict[str, str] | None) -> str:
+    """Remplace [RECIPE:CODE]/[TECH:CODE] par leur titre ; supprime [IMG:...]."""
+    if not title_map:
+        return _MARKER_RE.sub("", text)
+
+    def _replace(m: re.Match) -> str:
+        inner = m.group(0)[1:-1].upper()  # "RECIPE:CODE" ou "TECH:CODE" ou "IMG:..."
+        return title_map.get(inner, "")
+
+    return _MARKER_RE.sub(_replace, text)
+
+
 _lt_tool = None  # lazy singleton LanguageTool
 _spellcheck_dialog: SpellCheckDialog | None = None  # non-modal singleton
 
@@ -163,9 +177,18 @@ def language_tool_info() -> tuple[bool, str]:
 # Point d'entrée public
 
 
+def close_spellcheck() -> None:
+    """Ferme la fenêtre de vérification orthographique si elle est ouverte."""
+    global _spellcheck_dialog
+    if _spellcheck_dialog is not None:
+        _spellcheck_dialog.close()
+        _spellcheck_dialog = None
+
+
 def run_spellcheck(
     sections: list[tuple[str, str]],
     parent: QWidget | None = None,
+    title_map: dict[str, str] | None = None,
 ) -> None:
     """Ouvre (ou met à jour) la fenêtre de vérification orthographique non modale."""
     global _spellcheck_dialog
@@ -187,13 +210,13 @@ def run_spellcheck(
         return
 
     if _spellcheck_dialog is not None and _spellcheck_dialog.isVisible():
-        _spellcheck_dialog.update_check(sections, engine)
+        _spellcheck_dialog.update_check(sections, engine, title_map)
         _spellcheck_dialog.raise_()
-        _spellcheck_dialog.activateWindow()
     else:
         # Parent=None : fenêtre indépendante dont la durée de vie n'est pas
         # liée à la fenêtre appelante (évite un crash si l'appelant est détruit)
-        _spellcheck_dialog = SpellCheckDialog(sections, engine)
+        _spellcheck_dialog = SpellCheckDialog(sections, engine, title_map=title_map)
+        _spellcheck_dialog.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         _spellcheck_dialog.show()
 
 
@@ -221,22 +244,25 @@ def _no_checker_warning(parent: QWidget | None, grammalecte_preferred: bool) -> 
 # Dialogue de résultats
 
 
-class SpellCheckDialog(QDialog):
+class SpellCheckDialog(GeometryMixin, QDialog):
     def __init__(
         self,
         sections: list[tuple[str, str]],
         engine: str,
         parent: QWidget | None = None,
+        title_map: dict[str, str] | None = None,
     ) -> None:
         super().__init__(parent)
         self._sections = sections
         self._engine = engine
+        self._title_map = title_map
         engine_label = "Grammalecte" if engine == "grammalecte" else "LanguageTool"
         self.setWindowTitle(
             f"Vérification orthographique et grammaticale — {engine_label}"
         )
         self.setMinimumSize(700, 500)
         self._setup_ui()
+        self._init_geometry("spellcheck_dialog")
         self._run_check()
 
     def _setup_ui(self) -> None:
@@ -248,10 +274,16 @@ class SpellCheckDialog(QDialog):
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
 
-    def update_check(self, sections: list[tuple[str, str]], engine: str) -> None:
+    def update_check(
+        self,
+        sections: list[tuple[str, str]],
+        engine: str,
+        title_map: dict[str, str] | None = None,
+    ) -> None:
         """Met à jour le contenu sans ouvrir une nouvelle fenêtre."""
         self._sections = sections
         self._engine = engine
+        self._title_map = title_map
         engine_label = "Grammalecte" if engine == "grammalecte" else "LanguageTool"
         self.setWindowTitle(
             f"Vérification orthographique et grammaticale — {engine_label}"
@@ -285,7 +317,7 @@ class SpellCheckDialog(QDialog):
         any_text = False
 
         for label, text in self._sections:
-            clean = _html_to_plain(_MARKER_RE.sub("", text))
+            clean = _html_to_plain(_resolve_markers(text, self._title_map))
             if not clean:
                 continue
             any_text = True
@@ -333,7 +365,7 @@ class SpellCheckDialog(QDialog):
         any_text = False
 
         for label, text in self._sections:
-            clean = _html_to_plain(_MARKER_RE.sub("", text))
+            clean = _html_to_plain(_resolve_markers(text, self._title_map))
             if not clean:
                 continue
             any_text = True

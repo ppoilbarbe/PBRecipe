@@ -3,8 +3,8 @@ from pbrecipe.ui.dialogs._base_list_dialog import BaseListDialog
 
 
 class SourceDialog(BaseListDialog):
-    def __init__(self, db, app_config=None, parent=None):
-        super().__init__("Sources", db, app_config=app_config, parent=parent)
+    def __init__(self, db, parent=None):
+        super().__init__("Sources", db, parent=parent)
 
     def _load_items(self):
         return self._db.list_sources()

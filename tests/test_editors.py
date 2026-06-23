@@ -363,7 +363,7 @@ def test_recipe_editor_check_spelling(qtbot, db, monkeypatch):
     captured = {}
     monkeypatch.setattr(
         "pbrecipe.ui.spellcheck_dialog.run_spellcheck",
-        lambda items, parent: captured.setdefault("items", items),
+        lambda items, parent, title_map=None: captured.setdefault("items", items),
     )
     editor._check_spelling()
     assert captured["items"][0][0] == "Réalisation"

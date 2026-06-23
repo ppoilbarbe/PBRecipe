@@ -41,8 +41,8 @@ def _plural_dialog(
 
 
 class IngredientDialog(BaseListDialog):
-    def __init__(self, db, app_config=None, parent=None):
-        super().__init__("Ingrédients", db, app_config=app_config, parent=parent)
+    def __init__(self, db, parent=None):
+        super().__init__("Ingrédients", db, parent=parent)
 
     def _load_items(self):
         return self._db.list_ingredients()

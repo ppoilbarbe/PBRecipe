@@ -75,12 +75,21 @@ class TechniqueEditDialog(QDialog):
     def _check_spelling(self) -> None:
         from pbrecipe.ui.spellcheck_dialog import run_spellcheck
 
+        title_map: dict[str, str] | None = None
+        if self._db is not None:
+            title_map = {
+                f"RECIPE:{r.code.upper()}": r.name for r in self._db.list_recipes()
+            }
+            title_map.update(
+                {f"TECH:{t.code.upper()}": t.title for t in self._db.list_techniques()}
+            )
         run_spellcheck(
             [
                 ("Titre", self._title_edit.text()),
                 ("Description", self._desc_editor.get_html()),
             ],
             self,
+            title_map=title_map,
         )
 
     def _accept(self) -> None:
@@ -95,16 +104,14 @@ class TechniqueEditDialog(QDialog):
 
 
 class TechniqueDialog(GeometryMixin, QDialog):
-    def __init__(
-        self, db: Database, app_config=None, parent: QWidget | None = None
-    ) -> None:
+    def __init__(self, db: Database, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._db = db
         self.setWindowTitle("Techniques")
         self.setMinimumWidth(420)
         self._setup_ui()
         self._refresh()
-        self._init_geometry(app_config, "TechniqueDialog")
+        self._init_geometry("TechniqueDialog")
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)

@@ -181,8 +181,9 @@ def test_dialog_geometry_persisted(qtbot, db, tmp_path, monkeypatch):
         "width": 400,
         "height": 300,
     }
-    dlg = CategoryDialog(db, app_config=cfg)
+    cfg.save()  # _init_geometry relit depuis le disque
+    dlg = CategoryDialog(db)
     qtbot.addWidget(dlg)
     assert dlg.width() == 400
     dlg.done(0)
-    assert "CategoryDialog" in cfg.dialog_geometries
+    assert "CategoryDialog" in AppConfig.load().dialog_geometries

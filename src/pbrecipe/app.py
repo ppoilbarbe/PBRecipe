@@ -67,6 +67,16 @@ def _load_bundled_fonts(app: object) -> None:
 
 
 def main() -> None:
+    # Pre-parse --config-dir avant AppConfig.load() pour rediriger la config
+    # (option développement : évite d'écraser ~/.config/pbrecipe/).
+    _pre = argparse.ArgumentParser(add_help=False)
+    _pre.add_argument("--config-dir", dest="config_dir")
+    _pre_args, _ = _pre.parse_known_args()
+    if _pre_args.config_dir:
+        from pbrecipe.config._config_root import set_config_dir
+
+        set_config_dir(Path(_pre_args.config_dir))
+
     from pbrecipe.config import AppConfig
 
     app_config = AppConfig.load()
@@ -78,6 +88,16 @@ def main() -> None:
         nargs="?",
         metavar="FICHIER",
         help="Fichier de configuration YAML à ouvrir",
+    )
+    parser.add_argument(
+        "--config-dir",
+        metavar="RÉPERTOIRE",
+        dest="config_dir",
+        help=(
+            "Répertoire de configuration à utiliser à la place de"
+            " $XDG_CONFIG_HOME/pbrecipe. Utile en développement pour ne pas"
+            " écraser la configuration réelle."
+        ),
     )
     parser.add_argument(
         "--export-php",

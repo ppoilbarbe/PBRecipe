@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-from importlib.metadata import PackageNotFoundError, metadata
 from pathlib import Path
 
 import PySide6
@@ -16,16 +15,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-try:
-    _meta = metadata("pbrecipe")
-    _APP_VERSION = _meta["Version"] or "?"
-    _APP_AUTHOR = _meta["Author-email"] or _meta["Author"] or "?"
-    # "Name <email>" → garder uniquement le nom
-    if "<" in _APP_AUTHOR:
-        _APP_AUTHOR = _APP_AUTHOR[: _APP_AUTHOR.index("<")].strip()
-except PackageNotFoundError:
-    _APP_VERSION = "?"
-    _APP_AUTHOR = "?"
+from pbrecipe import __version__
+
+_APP_VERSION = __version__
+
+_APP_AUTHOR = "Philippe Poilbarbe"
 
 _PY_VERSION = sys.version.split()[0]
 _QT_VERSION = PySide6.__version__

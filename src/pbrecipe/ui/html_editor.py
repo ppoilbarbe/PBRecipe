@@ -40,7 +40,7 @@ _HEADING_SIZES: dict[int, int] = {1: 20, 2: 16, 3: 14, 4: 12}
 
 # Feuille de style appliquée au QTextDocument pour que setHtml() rende les
 # titres correctement lorsque le contenu nettoyé est rechargé.
-_EDITOR_CSS = "p { margin: 0; } " + " ".join(
+_EDITOR_CSS = "p { margin: 0.5em 0; } " + " ".join(
     f"h{lvl} {{ font-size: {pt}pt; font-weight: bold; margin: 4px 0; }}"
     for lvl, pt in _HEADING_SIZES.items()
 )
@@ -133,6 +133,10 @@ def _clean_html(raw: str) -> str:
 
 def _pretty_html(html: str) -> str:
     """Indente le HTML avec minidom ; retourne le HTML brut en cas d'erreur."""
+    # Qt écrit les espaces insécables comme \xa0 (U+00A0) dans toHtml().
+    # On les normalise en &nbsp; pour que QPlainTextEdit ne les perde pas
+    # (toPlainText() convertit \xa0 en espace ordinaire).
+    html = html.replace("\xa0", "&nbsp;")
     try:
         dom = xml.dom.minidom.parseString(f"<root>{html}</root>")
         pretty = dom.toprettyxml(indent="  ")

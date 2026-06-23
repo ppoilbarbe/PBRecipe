@@ -54,7 +54,7 @@ def test_technique_edit_check_spelling(qtbot, db, monkeypatch):
     captured = {}
     monkeypatch.setattr(
         "pbrecipe.ui.spellcheck_dialog.run_spellcheck",
-        lambda items, parent: captured.setdefault("items", items),
+        lambda items, parent, title_map=None: captured.setdefault("items", items),
     )
     dlg = TechniqueEditDialog(Technique(code="X", title="Titre"), db)
     qtbot.addWidget(dlg)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,9 +14,9 @@ _MAX_RECENT = 10
 
 
 def _config_path() -> Path:
-    xdg = os.environ.get("XDG_CONFIG_HOME", "")
-    base = Path(xdg).expanduser() if xdg else Path.home() / ".config"
-    return base / "pbrecipe" / "app.yaml"
+    from pbrecipe.config._config_root import get_config_dir
+
+    return get_config_dir() / "app.yaml"
 
 
 _VALID_LEVELS = {"DEBUG", "INFO", "WARNING"}

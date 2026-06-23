@@ -21,7 +21,8 @@ PY_SOURCES := $(shell find $(SRC)/pbrecipe -name "*.py" ! -path "*/__pycache__/*
 
 .DEFAULT_GOAL := help
 .PHONY: all help icons venv venv-update install run test test-php coverage lint format \
-        dist srcdist clean hooks update-vendors _php-vendor
+        dist srcdist clean hooks update-vendors _php-vendor \
+        bump-release bump-year bump-set
 
 all: icons ## Génère tous les artefacts (icônes)
 
@@ -132,6 +133,19 @@ update-vendors: ## Update vendored JS/CSS libraries (Tom Select, …)
 	curl -sL "https://cdn.jsdelivr.net/npm/tom-select@$$TS_VER/dist/css/tom-select.min.css" \
 	    -o src/pbrecipe/resources/php/css/tom-select.min.css
 	@printf "$(G)Libraries updated.$(R)\n"
+
+# ── Versioning ────────────────────────────────────────────────────────────────
+
+bump-release: ## Bump release number (2026.5 → 2026.6)
+	@$(CONDA_RUN) python tools/bump_version.py release
+
+bump-year: ## New year, reset release to 1 (2026.5 → 2027.1)
+	@$(CONDA_RUN) python tools/bump_version.py year
+
+bump-set: ## Force a specific version (usage: make bump-set VERSION=2026.x)
+	@test -n "$(VERSION)" || { \
+	    printf "$(Y)Usage:$(R) make bump-set VERSION=<AAAA.x>\n"; exit 1; }
+	@$(CONDA_RUN) python tools/bump_version.py set $(VERSION)
 
 clean: ## Remove all build/cache artifacts
 	rm -rf build dist *.egg-info .pytest_cache .coverage htmlcov vendor composer.phar

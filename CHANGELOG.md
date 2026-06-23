@@ -7,6 +7,53 @@ et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
 
 ## [2026.6] — 2026-06-23
 
+### Added
+
+- **Option `--config-dir RÉPERTOIRE`** : redirige toute la configuration
+  (`app.yaml`, `dialog_dirs.yaml`) vers un répertoire alternatif. Destinée au
+  développement pour éviter d'écraser la configuration réelle.
+- **Cibles Makefile `bump-release` / `bump-year` / `bump-set VERSION=AAAA.x`** :
+  incrémentent la version dans `src/pbrecipe/__init__.py` et `pyproject.toml`
+  via `tools/bump_version.py`.
+- **Répertoire de configuration multi-plateforme** (`config/_config_root.py`) :
+  Linux (`$XDG_CONFIG_HOME/pbrecipe` ou `~/.config/pbrecipe`),
+  macOS (`~/Library/Preferences/pbrecipe`),
+  Windows (`%APPDATA%\pbrecipe`).
+
+### Changed
+
+- **Vérification orthographique — références internes** : les marqueurs
+  `[RECIPE:CODE]` et `[TECH:CODE]` sont remplacés par le titre de la recette ou
+  de la technique avant envoi au correcteur, au lieu d'être simplement supprimés
+  (évitait des phrases tronquées et des faux positifs).
+- **Fenêtre de vérification orthographique — géométrie persistante** : position
+  et taille mémorisées dans le fichier YAML de configuration (entiers), restaurées
+  à la prochaine ouverture.
+- **Fenêtre de vérification orthographique — focus** : l'ouverture et la mise à
+  jour du contenu ne volent plus le focus à la fenêtre principale.
+- **Fenêtre de vérification orthographique — fermeture** : se ferme
+  automatiquement à la fermeture de la fenêtre principale.
+- **`GeometryMixin` autonome** : plus aucun paramètre `app_config` requis ; le
+  mixin recharge lui-même la configuration au besoin.
+- **Position de la liste des recettes** : la position de défilement est préservée
+  lors de la sauvegarde d'une recette (plus de remontée intempestive en haut).
+- **Dialogue Save / Cancel / Discard** : correction de trois anomalies lors du
+  clic sur une recette alors qu'une autre a des modifications non sauvegardées —
+  sélection, surbrillance et affichage sont maintenant cohérents pour les trois
+  boutons.
+- **Éditeurs HTML** : espacement visuel entre paragraphes doublé (CSS
+  `margin: 0.5em 0`) pour améliorer la lisibilité ; le contenu stocké est
+  inchangé.
+- **Édition HTML directe** : les espaces insécables (`&nbsp;`) ne sont plus
+  convertis en espaces ordinaires lors de la validation du dialogue source HTML
+  (Qt sérialisait les espaces insécables en `\xa0` que `QPlainTextEdit` perdait ;
+  la correction normalise en `&nbsp;` avant affichage).
+- **Dialogue « À propos »** : la version est lue depuis `pbrecipe.__version__`
+  (déclaré dans `__init__.py`) au lieu d'`importlib.metadata`, cohérent avec la
+  gestion de la version dans PBRenamer.
+- **Version** : `pyproject.toml` et `__init__.py` alignés sur `2026.6` (étaient
+  à `0.1.0`).
+
 ### Fixed
 
 - Bundle Linux : polices identiques entre le build local et le build CI. Le
