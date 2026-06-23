@@ -5,6 +5,19 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au versionnement **AAAA.x** (année civile + séquence).
 
+## [2026.6] — 2026-06-23
+
+### Fixed
+
+- Bundle Linux : polices identiques entre le build local et le build CI. Le
+  `fonts.conf` embarqué par PyInstaller contenait des chemins absolus vers
+  l'environnement conda de la machine de build ; sur une autre machine, ces
+  chemins sont introuvables et Qt se rabattait sur les seules polices système.
+  Fix : les polices conda (`fonts-conda-ecosystem` : Ubuntu, DejaVu, Inconsolata,
+  SourceCodePro) sont désormais incluses dans le bundle via `pbrecipe.spec`, et
+  un runtime hook (`hooks/pyi_rth_fonts.py`) génère un `fonts.conf` portable
+  pointant vers `_MEIPASS/fonts/` au démarrage du binaire frozen.
+
 ## [2026.5] — 2026-06-23
 
 ### Added

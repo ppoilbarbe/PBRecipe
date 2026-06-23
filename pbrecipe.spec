@@ -30,6 +30,14 @@ for _sp in site.getsitepackages():
 
 datas += _grammalecte_dicts
 
+# Polices conda : bundlées pour garantir un rendu identique sur toutes les machines.
+# Sur Linux, fontconfig cherche les polices via des chemins absolus inscrits dans
+# fonts.conf au moment du build ; ces chemins n'existent pas sur la machine cible.
+# Le runtime hook hooks/pyi_rth_fonts.py génère un fonts.conf portable au démarrage.
+_conda_fonts = Path(sys.prefix) / "fonts"
+if _conda_fonts.is_dir():
+    datas += [(str(_conda_fonts), "fonts")]
+
 hiddenimports = [
     "ruamel.yaml",
     "ruamel.yaml.clib",
@@ -60,7 +68,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=["hooks/pyi_rth_fonts.py"],
     excludes=["pytest", "ruff", "pre_commit"],
     noarchive=False,
 )

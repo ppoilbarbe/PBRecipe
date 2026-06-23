@@ -7,6 +7,8 @@ dependencies:
   - python=3.12
   # GUI
   - pyside6
+  # Polices (embarquées dans le bundle PyInstaller via pbrecipe.spec)
+  - fonts-conda-ecosystem   # meta-paquet : Ubuntu, DejaVu, Inconsolata, SourceCodePro
   # YAML
   - ruamel.yaml
   - ruamel.yaml.clib
