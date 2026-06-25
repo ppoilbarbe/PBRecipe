@@ -31,6 +31,11 @@ dependencies:
   - pyinstaller
   - python-build    # sdist via `python -m build`
   - pillow          # .ico/.icns icon generation + PyInstaller conversion
+  # Documentation
+  - sphinx>=7
+  - sphinx-rtd-theme>=2
+  - sphinx-autobuild>=2024
+  - sphinxcontrib-mermaid>=0.9
   # Dev install (editable)
   - pip
   - pip:

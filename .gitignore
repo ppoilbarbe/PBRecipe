@@ -50,3 +50,7 @@ composer.lock
 
 # jscpd
 report/
+
+# Sphinx
+docs/_build/
+docs/changelog.rst

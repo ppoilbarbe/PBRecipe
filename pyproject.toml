@@ -43,6 +43,10 @@ dev = [
     "pytest-cov>=5",
     "build>=1.0",
     "pygrammalecte>=1.5",
+    "sphinx>=7",
+    "sphinx-rtd-theme>=2",
+    "sphinx-autobuild>=2024",
+    "sphinxcontrib-mermaid>=0.9",
 ]
 
 [project.scripts]

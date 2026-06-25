@@ -1,0 +1,89 @@
+.mermaid {
+    cursor: zoom-in;
+    position: relative;
+}
+
+/* Small hint visible on hover */
+.mermaid::after {
+    content: "🔍";
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+}
+
+.mermaid:hover::after {
+    opacity: 0.5;
+}
+
+/* Backdrop */
+#mermaid-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+#mermaid-overlay.visible {
+    display: flex;
+}
+
+/* Scrollable SVG container */
+#mermaid-overlay-box {
+    background: #fff;
+    border-radius: 4px;
+    padding: 1.5rem;
+    max-width: 95vw;
+    max-height: 85vh;
+    overflow: auto;
+    position: relative;
+}
+
+#mermaid-overlay-box svg {
+    display: block;
+}
+
+/* Toolbar: zoom buttons + close, fixed in the top-right corner */
+#mermaid-overlay-toolbar {
+    position: fixed;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    gap: 0.3rem;
+    z-index: 10000;
+}
+
+#mermaid-overlay-toolbar button {
+    background: #fff;
+    border: none;
+    border-radius: 4px;
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    color: #333;
+}
+
+#mermaid-overlay-toolbar button:hover {
+    background: #f0f0f0;
+}
+
+/* Close button is slightly wider to accommodate the × glyph */
+#mermaid-overlay-close {
+    border-radius: 50%;
+    font-size: 1.4rem;
+}

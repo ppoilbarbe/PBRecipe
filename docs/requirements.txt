@@ -1,0 +1,4 @@
+sphinx>=7.0
+sphinx-rtd-theme>=2.0
+sphinx-autobuild>=2024
+sphinxcontrib-mermaid>=0.9

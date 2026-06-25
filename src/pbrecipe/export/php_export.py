@@ -14,26 +14,27 @@ _log = logging.getLogger(__name__)
 class PhpExport:
     """Export the PHP site files to a target directory.
 
-    Layout of the target directory after export:
-      target/
-        index.php
-        media.php       ← serves images from DB (with disk cache in media/)
-        lib/
-          .htaccess     ← deny all direct browser access
-          config.php    ← generated from config.php.tpl
-          db.php
-          recipe.php
-          display.php
-          technique.php
-          search.php
-        css/
-          base.css
-          recipes.css
-          tom-select.min.css
-        js/
-          tom-select.min.js
-          recipe.js
-        media/          ← cache disque pour media.php (créé vide à l'export)
+    Layout of the target directory after export::
+
+        target/
+          index.php
+          media.php         (serves images from DB, with disk cache in media/)
+          lib/
+            .htaccess       (deny all direct browser access)
+            config.php      (generated from config.php.tpl)
+            db.php
+            recipe.php
+            display.php
+            technique.php
+            search.php
+          css/
+            base.css
+            recipes.css
+            tom-select.min.css
+          js/
+            tom-select.min.js
+            recipe.js
+          media/            (disk cache for media.php, created empty on export)
     """
 
     def __init__(

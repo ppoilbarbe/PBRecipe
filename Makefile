@@ -6,6 +6,7 @@ else
 CONDA_RUN  := conda run -n $(CONDA_ENV) --no-capture-output
 endif
 SRC        := src
+DOCS       := docs
 
 ICON_SRC   := src/pbrecipe/resources/icons/pbrecipe-512x512.png
 ICON_ICO   := src/pbrecipe/resources/icons/pbrecipe.ico
@@ -22,7 +23,8 @@ PY_SOURCES := $(shell find $(SRC)/pbrecipe -name "*.py" ! -path "*/__pycache__/*
 .DEFAULT_GOAL := help
 .PHONY: all help icons venv venv-update install run test test-php coverage lint format \
         dist srcdist clean hooks update-vendors _php-vendor \
-        bump-release bump-year bump-set
+        bump-release bump-year bump-set \
+        docs docs-live
 
 all: icons ## Génère tous les artefacts (icônes)
 
@@ -147,7 +149,15 @@ bump-set: ## Force a specific version (usage: make bump-set VERSION=2026.x)
 	    printf "$(Y)Usage:$(R) make bump-set VERSION=<AAAA.x>\n"; exit 1; }
 	@$(CONDA_RUN) python tools/bump_version.py set $(VERSION)
 
+docs: ## Build HTML documentation
+	$(CONDA_RUN) sphinx-build -b html $(DOCS) $(DOCS)/_build/html
+	@printf "$(G)Open:$(R) $(DOCS)/_build/html/index.html\n"
+
+docs-live: ## Build docs and watch for changes (hot reload)
+	$(CONDA_RUN) sphinx-autobuild $(DOCS) $(DOCS)/_build/html
+
 clean: ## Remove all build/cache artifacts
-	rm -rf build dist *.egg-info .pytest_cache .coverage htmlcov vendor composer.phar
+	rm -rf build dist *.egg-info .pytest_cache .coverage htmlcov vendor composer.phar \
+	    $(DOCS)/_build $(DOCS)/changelog.rst
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -name "*.pyc" -delete

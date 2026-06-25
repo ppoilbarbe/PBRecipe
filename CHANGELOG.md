@@ -17,10 +17,23 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
   selection; rendering settings (anti-aliasing, hinting) are still inherited
   from `/etc/fonts/fonts.conf` via the runtime hook's generated `fonts.conf`.
 
+### Added
+
+- **Sphinx documentation** (`docs/`): user guide, Python API reference (autodoc),
+  and PHP web export documentation (overview, routing, marker syntax, CSS reference,
+  library reference, YAML backup, DOM structure pages with 11 Mermaid diagrams);
+  RST files for changelog and DOM pages are regenerated from their Markdown sources
+  at build time by `docs/conf.py`.
+- **Mermaid diagrams** in DOM pages rendered via `sphinxcontrib-mermaid`.
+- **ReadTheDocs** (`.readthedocs.yaml`): configuration for automated hosted builds.
+- **CI — `docs` job**: builds HTML documentation and uploads it as a workflow
+  artifact; runs after the `test` job.
+- **`make docs`** / **`make docs-live`**: build documentation locally, with optional
+  live-reload via `sphinx-autobuild`.
+
 ### Changed
 
-- Documentation translated to English: README, CHANGELOG, SPECS, MAIN_DOM,
-  RECIPE_DOM, CLAUDE.md.
+- Documentation translated to English: README, CHANGELOG, SPECS, CLAUDE.md.
 - README: database schema diagram replaced with `classDiagram` (Mermaid) and updated
   to include all missing columns (`name_plural`, `hide_label`, `unit_plural`,
   `ingredient_plural`) and the `globals` table.
@@ -252,8 +265,8 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 - Drag handle (⠿) in the ingredient list to reorder rows; replaces the ↑↓ buttons.
 - Automatic focus on the Préfixe field when adding a new ingredient row.
 - Explicit tooltips on the ingredient list buttons and the `HtmlEditor` toolbar.
-- PHP DOM documentation: `MAIN_DOM.md` (main page) and `RECIPE_DOM.md` (recipe card),
-  with Mermaid diagrams.
+- PHP DOM documentation: main page (`index.php`) and recipe card (`?RECIPE=CODE`),
+  with Mermaid diagrams (now part of the Sphinx documentation).
 - Extended unit tests for `HtmlEditor._clean_html()` (`tests/test_html_editor.py`).
 
 ### Changed
