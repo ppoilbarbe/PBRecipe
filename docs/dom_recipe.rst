@@ -16,12 +16,12 @@ General structure
        article["article.recipe"]
 
        article --> h1["h1.recipe-title"]
-       article --> cats["p.recipe-categories\n(names separated by commas)"]:::opt
+       article --> cats["p.recipe-categories<br/>(names separated by commas)"]:::opt
        article --> card["div.recipe-card"]
 
        card --> meta["div.recipe-meta"]:::opt
-       card --> ingblock["div.recipe-ingredients-block.recipe-section\n(with hero image — see detail)"]:::opt
-       card --> ingsect["section.recipe-ingredients.recipe-section\n(without hero image — see detail)"]:::opt
+       card --> ingblock["div.recipe-ingredients-block.recipe-section<br/>(with hero image — see detail)"]:::opt
+       card --> ingsect["section.recipe-ingredients.recipe-section<br/>(without hero image — see detail)"]:::opt
        card --> desc["section.recipe-description.recipe-section"]:::opt
        card --> comm["section.recipe-comments.recipe-section"]:::opt
        card --> tech["section.recipe-techniques.recipe-section"]:::opt
@@ -30,19 +30,19 @@ General structure
 
        meta --> serving["span.serving"]:::opt
        meta --> duration["span.duration"]:::opt
-       meta --> diff["span.difficulty\n→ see Difficulty badge"]:::opt
+       meta --> diff["span.difficulty<br/>→ see Difficulty badge"]:::opt
 
        desc --> h2desc["h2 · Réalisation label"]
-       desc --> bdesc["div.recipe-body\n(HTML + parsed markers)"]
+       desc --> bdesc["div.recipe-body<br/>(HTML + parsed markers)"]
 
        comm --> h2comm["h2 · Commentaires label"]
-       comm --> bcomm["div.recipe-body\n(HTML + parsed markers)"]
+       comm --> bcomm["div.recipe-body<br/>(HTML + parsed markers)"]
 
        tech --> h2tech["h2 · Techniques label"]
-       tech --> techitem["div.technique · id=tech-CODE\n(1 per technique, recursive order)"]
+       tech --> techitem["div.technique · id=tech-CODE<br/>(1 per technique, recursive order)"]
 
        techitem --> h3["h3 · title"]
-       techitem --> tbody["div.technique-body\n(HTML + parsed markers)"]
+       techitem --> tbody["div.technique-body<br/>(HTML + parsed markers)"]
 
 Ingredient block with hero image
 --------------------------------
@@ -66,7 +66,7 @@ The hero image is the first image declared in the recipe media.
        preview --> previewimg["img (enlarged)"]
 
        sect --> h2["h2 · Ingrédients label"]
-       sect --> table["table.ingredients-table\n→ see Ingredient table"]
+       sect --> table["table.ingredients-table<br/>→ see Ingredient table"]
 
 Ingredient table
 ----------------
@@ -84,7 +84,7 @@ The ``ing-prefix`` column is only included when at least one ingredient has a pr
        tbody["tbody"]
        tr["tr (1 per ingredient)"]
        tdp["td.ing-prefix"]:::opt
-       tdq["td.ing-qty\n(quantity · unit)"]
+       tdq["td.ing-qty<br/>(quantity · unit)"]
        tdr["td.ing-rest"]
 
        table --> tbody --> tr
@@ -105,12 +105,12 @@ Difficulty badge (``span.difficulty``)
    graph TD
        classDef opt stroke-dasharray:5 5
 
-       diff["span.difficulty · title=label\n(tooltip = label, always present)"]
+       diff["span.difficulty · title=label<br/>(tooltip = label, always present)"]
 
-       diff --> icon["span.diff-icon\n(if icon defined)"]:::opt
-       diff --> label["span.diff-label\n(if label ≠ '' AND hide_label=false)"]:::opt
+       diff --> icon["span.diff-icon<br/>(if icon defined)"]:::opt
+       diff --> label["span.diff-label<br/>(if label ≠ '' AND hide_label=false)"]:::opt
 
-       icon --> img["img.diff-icon-img\n(src=media.php?diff=N)"]
+       icon --> img["img.diff-icon-img<br/>(src=media.php?diff=N)"]
 
 
 .. note::
@@ -148,12 +148,12 @@ Parsed markers in ``recipe-body`` / ``technique-body``
    graph TD
        classDef opt stroke-dasharray:5 5
 
-       body["div.recipe-body\nor div.technique-body"]
+       body["div.recipe-body<br/>or div.technique-body"]
 
-       body --> recipelink["a · href=?RECIPE=CODE\n(from [RECIPE:CODE])"]
-       body --> imgref["span.recipe-img-ref\n(from [IMG:CODE])"]
-       body --> techlink["a.tech-link · href=#tech-CODE\n(from [TECH:CODE])"]
-       body --> imgmiss["span.img-missing\n(image not found)"]:::opt
+       body --> recipelink["a · href=?RECIPE=CODE<br/>(from [RECIPE:CODE])"]
+       body --> imgref["span.recipe-img-ref<br/>(from [IMG:CODE])"]
+       body --> techlink["a.tech-link · href=#tech-CODE<br/>(from [TECH:CODE])"]
+       body --> imgmiss["span.img-missing<br/>(image not found)"]:::opt
 
        imgref --> thumb["img.recipe-thumb · loading=lazy"]
        imgref --> imgprev["span.recipe-img-preview"]

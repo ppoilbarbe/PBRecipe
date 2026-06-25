@@ -92,7 +92,7 @@ the schema automatically on first connection.
 Managing reference data
 -----------------------
 
-Before adding recipes, populate the reference tables via the **Edit** menu:
+Before adding recipes, populate the reference tables via the **Référentiels** menu:
 
 Categories
 ~~~~~~~~~~
@@ -137,13 +137,12 @@ Recipes
 Creating a recipe
 ~~~~~~~~~~~~~~~~~
 
-Click **New recipe** or press :kbd:`Ctrl+N`.  Fill in:
+Click **Nouvelle recette** or press :kbd:`Ctrl+R`.  Fill in:
 
 - **Title** — required
 - **Category**, **Difficulty**, **Source** — selected from drop-down lists
-- **Portions** — number of servings
-- **Preparation / Cooking / Rest time** — in minutes
-- **Notes** — free-text field
+- **Quantité** — number of servings
+- **Preparation / Rest / Cooking time** — in minutes
 
 Adding ingredients
 ~~~~~~~~~~~~~~~~~~
@@ -167,16 +166,27 @@ Steps are written in the embedded **HTML editor**, which provides:
 - hyperlinks
 - undo / redo
 
+Writing comments
+~~~~~~~~~~~~~~~~
+
+The **Commentaires** tab (below the preparation steps) holds a second rich-text
+field for personal notes, variations, wine pairings, etc.
+
 Spell checking
 ~~~~~~~~~~~~~~
 
-Open the spell-check panel from **Tools → Spell check**.  PBRecipe supports
-two backends (installed separately):
+Click the **Vérifier…** button (or press :kbd:`F7`) in the recipe editor to open
+the spell-check panel.  PBRecipe supports two backends, configured in
+**Outils → Préférences du programme** :
 
-- `LanguageTool <https://languagetool.org/>`_ (``pip install language-tool-python``)
-- `Grammalecte <https://grammalecte.net/>`_ (``pip install pygrammalecte``)
+- `Grammalecte <https://grammalecte.net/>`_ — French grammar and spell checker;
+  install with ``pip install pygrammalecte``
+- `LanguageTool <https://languagetool.org/>`_ — multilingual checker via a remote
+  server (public API or self-hosted); install the Python wrapper with
+  ``pip install language-tool-python``
 
-The spell-check window is non-modal and updates live as you edit.
+Grammalecte takes priority when both are enabled.  The spell-check window is
+non-modal; it reports each error with its line number and suggested corrections.
 
 Media
 ~~~~~
@@ -193,17 +203,24 @@ Saving and discarding
 Consistency check
 -----------------
 
-**Tools → Check consistency** scans the database for common issues:
+**Référentiels → Vérifier la cohérence** scans the entire database for broken
+cross-references and reports them grouped by context (recipes, techniques,
+global presentation field):
 
-- recipes with no ingredients
-- ingredients referenced in recipes but missing from the ingredient table
-- orphan reference rows
+- ``[IMG:RECIPE:CODE]`` — image code not found in the recipe's media list
+- ``[IMG:CODE]`` — old single-argument format (should be ``[IMG:RECIPE:CODE]``)
+- ``[RECIPE:CODE]`` — reference to a recipe that does not exist
+- ``[TECH:CODE]`` — reference to a technique that does not exist
+
+Each issue shows the marker type, the unresolved code, and the field where it
+was found (description, commentaires, présentation).  If no issues are found,
+an information dialog confirms that the database is consistent.
 
 Globals
 -------
 
-**Edit → Global settings** manages application-wide strings used in the web
-export (site title, footer text, etc.).
+**Outils → Présentation et libellés…** manages application-wide strings used in
+the web export (site title, footer text, etc.).
 
 PHP web export
 --------------

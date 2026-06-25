@@ -41,10 +41,10 @@ HTML skeleton (standalone mode)
        footer  --> sitename["p · SITE_TITLE"]
 
        main --> route{"Route"}
-       route -- "?RECIPE=CODE" --> recipe["article.recipe\n→ see DOM — Recipe card"]
-       route -- "?tech=CODE"   --> techpanel["section.recipe-techniques\n→ see Techniques panel"]
-       route -- "home"         --> home["form.search-form\n+ div.category-listing"]
-       route -- "search"       --> search["form.search-form\n+ ul.recipe-links.search-results"]
+       route -- "?RECIPE=CODE" --> recipe["article.recipe<br/>→ see DOM — Recipe card"]
+       route -- "?tech=CODE"   --> techpanel["section.recipe-techniques<br/>→ see Techniques panel"]
+       route -- "home"         --> home["form.search-form<br/>+ div.category-listing"]
+       route -- "search"       --> search["form.search-form<br/>+ ul.recipe-links.search-results"]
 
 Home route — category listing
 -----------------------------
@@ -57,10 +57,10 @@ Displayed when no search filter is active.
    graph TD
        main["main.site-main"]
 
-       main --> form["form.search-form\n→ see Search form"]
+       main --> form["form.search-form<br/>→ see Search form"]
        main --> listing["div.category-listing"]
 
-       listing --> details["details.category-block · open\n(1 per category)"]
+       listing --> details["details.category-block · open<br/>(1 per category)"]
 
        details --> summary["summary.category-name"]
        details --> ul["ul.recipe-links"]
@@ -79,7 +79,7 @@ Displayed when at least one filter is active (``q``, ``cat``, ``ing`` or ``diff`
    graph TD
        main["main.site-main"]
 
-       main --> form["form.search-form\n→ see Search form"]
+       main --> form["form.search-form<br/>→ see Search form"]
        main --> results{"Results?"}
 
        results -- "none" --> nores["p.no-results"]
@@ -99,17 +99,17 @@ Displays a standalone technique (without a recipe card).
    graph TD
        main["main.site-main"]
 
-       main --> form["form.search-form\n→ see Search form"]
+       main --> form["form.search-form<br/>→ see Search form"]
        main --> found{"Technique found?"}
 
        found -- "no"  --> err["p.error"]
        found -- "yes" --> panel["section.recipe-techniques.recipe-section"]
 
        panel --> h2["h2 · Techniques label"]
-       panel --> tech["div.technique · id=tech-CODE\n(1 per technique, recursive resolution)"]
+       panel --> tech["div.technique · id=tech-CODE<br/>(1 per technique, recursive resolution)"]
 
        tech --> h3["h3 · title"]
-       tech --> body["div.technique-body\n(HTML + parsed markers)"]
+       tech --> body["div.technique-body<br/>(HTML + parsed markers)"]
 
 Search form (``form.search-form``)
 ----------------------------------
@@ -125,26 +125,26 @@ Present in all routes of the main page.
        form["form.search-form · method=GET"]
 
        form --> q["input[type=text] · name=q"]
-       form --> grpcat["div.search-filter-group\n(if categories available)"]:::opt
-       form --> grping["div.search-filter-group\n(if ingredients available)"]:::opt
-       form --> seldiff["select · name=diff\n(if difficulty levels > 0 defined)"]:::opt
-       form --> grpsrc["div.search-filter-group\n(if sources available)"]:::opt
-       form --> seltech["select · name=tech\n(if techniques available)"]:::opt
+       form --> grpcat["div.search-filter-group<br/>(if categories available)"]:::opt
+       form --> grping["div.search-filter-group<br/>(if ingredients available)"]:::opt
+       form --> seldiff["select · name=diff<br/>(if difficulty levels > 0 defined)"]:::opt
+       form --> grpsrc["div.search-filter-group<br/>(if sources available)"]:::opt
+       form --> seltech["select · name=tech<br/>(if techniques available)"]:::opt
        form --> btn["button[type=submit]"]
 
-       grpcat --> selcat["select · name=cat[] · id=ts-cat · multiple\n(Tom Select)"]
-       grpcat --> togcat["div.search-mode-toggle\n(radio cat_mode=or|and)"]
+       grpcat --> selcat["select · name=cat[] · id=ts-cat · multiple<br/>(Tom Select)"]
+       grpcat --> togcat["div.search-mode-toggle<br/>(radio cat_mode=or|and)"]
        selcat --> optcatn["option · value=id (1 per category)"]
 
-       grping --> seling["select · name=ing[] · id=ts-ing · multiple\n(Tom Select)"]
-       grping --> toging["div.search-mode-toggle\n(radio ing_mode=or|and)"]
+       grping --> seling["select · name=ing[] · id=ts-ing · multiple<br/>(Tom Select)"]
+       grping --> toging["div.search-mode-toggle<br/>(radio ing_mode=or|and)"]
        seling --> optingn["option · value=id (1 per ingredient)"]
 
        seldiff --> optdiff0["option · value=-1 · Toutes difficultés"]
        seldiff --> optdiffn["option · value=level (1 per level)"]
 
-       grpsrc --> selsrc["select · name=src[] · id=ts-src · multiple\n(Tom Select)"]
-       grpsrc --> togsrc["div.search-mode-toggle\n(radio src_mode=or|and)"]
+       grpsrc --> selsrc["select · name=src[] · id=ts-src · multiple<br/>(Tom Select)"]
+       grpsrc --> togsrc["div.search-mode-toggle<br/>(radio src_mode=or|and)"]
        selsrc --> optsrcn["option · value=id (1 per source)"]
 
        seltech --> opttech0["option · value=empty · Afficher une technique"]:::opt

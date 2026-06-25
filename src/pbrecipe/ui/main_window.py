@@ -125,23 +125,6 @@ class MainWindow(QMainWindow):
         file_menu.addMenu(self._recent_menu)
         self._rebuild_recent_menu()
 
-        self._act_settings = QAction("&Paramètres de la base…", self)
-        self._act_settings.setStatusTip("Modifier les paramètres de la base ouverte")
-        self._act_settings.triggered.connect(self._edit_config)
-        file_menu.addAction(self._act_settings)
-
-        self._act_globals = QAction("Présentation et &libellés…", self)
-        self._act_globals.setStatusTip(
-            "Modifier la présentation et les libellés propres à cette base"
-        )
-        self._act_globals.triggered.connect(self._edit_globals)
-        file_menu.addAction(self._act_globals)
-
-        act_prefs = QAction("P&références du programme…", self)
-        act_prefs.setStatusTip("Modifier les préférences du programme")
-        act_prefs.triggered.connect(self._edit_preferences)
-        file_menu.addAction(act_prefs)
-
         file_menu.addSeparator()
 
         self._act_export_php = QAction("&Export PHP", self)
@@ -245,6 +228,27 @@ class MainWindow(QMainWindow):
         )
         self._act_consistency.triggered.connect(self._check_consistency)
         ref_menu.addAction(self._act_consistency)
+
+        # Tools
+        tools_menu = menu_bar.addMenu("&Outils")
+        self._act_settings = QAction("&Paramètres de la base…", self)
+        self._act_settings.setStatusTip("Modifier les paramètres de la base ouverte")
+        self._act_settings.triggered.connect(self._edit_config)
+        tools_menu.addAction(self._act_settings)
+
+        self._act_globals = QAction("Présentation et &libellés…", self)
+        self._act_globals.setStatusTip(
+            "Modifier la présentation et les libellés propres à cette base"
+        )
+        self._act_globals.triggered.connect(self._edit_globals)
+        tools_menu.addAction(self._act_globals)
+
+        tools_menu.addSeparator()
+
+        act_prefs = QAction("P&références du programme…", self)
+        act_prefs.setStatusTip("Modifier les préférences du programme")
+        act_prefs.triggered.connect(self._edit_preferences)
+        tools_menu.addAction(act_prefs)
 
         # Help
         help_menu = menu_bar.addMenu("&Aide")

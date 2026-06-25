@@ -30,7 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 spellcheck = [
-    "language-tool-python>=2.7",
+    "language-tool-python>=3.0",
 ]
 grammalecte = [
     "pygrammalecte>=1.5",
@@ -42,6 +42,7 @@ dev = [
     "pytest-qt>=4",
     "pytest-cov>=5",
     "build>=1.0",
+    "language-tool-python>=3.0",
     "pygrammalecte>=1.5",
     "sphinx>=7",
     "sphinx-rtd-theme>=2",

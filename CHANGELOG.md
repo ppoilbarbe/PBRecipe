@@ -19,12 +19,30 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ### Added
 
+- **LanguageTool remote server**: new option in Preferences to use LanguageTool
+  without Java or a local download. Supports the public API (`api.languagetool.org`,
+  default when the URL field is empty) and any self-hosted server (e.g. Docker).
+  The URL field is disabled when the checkbox is unchecked; an HTML tooltip describes
+  the public API rate limits and the Docker self-hosting alternative. When neither
+  Grammalecte nor LanguageTool is enabled, clicking "Vérifier…" shows an informational
+  dialog inviting the user to enable a checker in Preferences.
+- **LanguageTool — connection error**: when the server is unreachable or the URL is
+  wrong, the spell-check window displays a clear error message (yellow banner) with
+  a contextual hint (network issue for the public API; start command for a local
+  server). No traceback is shown to the user.
+- **Spell check — line numbers**: each reported error now shows the line number in
+  the source text (both Grammalecte and LanguageTool).
+- **Tools menu**: "Paramètres de la base…", "Présentation et libellés…" and
+  "Préférences du programme…" moved from the File menu to a new "&Outils" menu,
+  between "Référentiels" and "Aide".
 - **Sphinx documentation** (`docs/`): user guide, Python API reference (autodoc),
   and PHP web export documentation (overview, routing, marker syntax, CSS reference,
   library reference, YAML backup, DOM structure pages with 11 Mermaid diagrams);
   RST files for changelog and DOM pages are regenerated from their Markdown sources
   at build time by `docs/conf.py`.
-- **Mermaid diagrams** in DOM pages rendered via `sphinxcontrib-mermaid`.
+- **Mermaid diagrams** in DOM pages: rendered via `sphinxcontrib-mermaid`; node
+  labels with line breaks use `<br/>` (was `\n`, rendered literally); click-to-zoom
+  lightbox with zoom-in / zoom-out / reset buttons and keyboard shortcuts.
 - **ReadTheDocs** (`.readthedocs.yaml`): configuration for automated hosted builds.
 - **CI — `docs` job**: builds HTML documentation and uploads it as a workflow
   artifact; runs after the `test` job.
@@ -37,6 +55,16 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 - README: database schema diagram replaced with `classDiagram` (Mermaid) and updated
   to include all missing columns (`name_plural`, `hide_label`, `unit_plural`,
   `ingredient_plural`) and the `globals` table.
+- **Preferences — Grammalecte**: checkbox label changed from "Utiliser Grammalecte
+  en priorité" to "Utiliser Grammalecte"; tooltip updated to mention that Grammalecte
+  handles French text only; "Installer / Mettre à jour" button is disabled when the
+  checkbox is unchecked.
+- **Preferences — LanguageTool**: status label added showing whether the
+  `language-tool-python` module is installed and which version, consistent with the
+  Grammalecte section.
+- `language-tool-python>=3.0` added to dev dependencies (`pyproject.toml`) and to
+  PyInstaller hidden imports (`pbrecipe.spec`); minimum version set to 3.0 (API
+  change: `errorLength` → `error_length`).
 
 ## [2026.6] — 2026-06-23
 

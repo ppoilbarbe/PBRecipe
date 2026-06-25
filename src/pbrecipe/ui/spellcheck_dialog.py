@@ -124,6 +124,7 @@ def _resolve_markers(text: str, title_map: dict[str, str] | None) -> str:
 
 
 _lt_tool = None  # lazy singleton LanguageTool
+_lt_tool_url: str | None = None  # URL used to create _lt_tool (None = public API)
 _spellcheck_dialog: SpellCheckDialog | None = None  # non-modal singleton
 
 
@@ -177,6 +178,18 @@ def language_tool_info() -> tuple[bool, str]:
 # Point d'entrée public
 
 
+def any_checker_enabled(app_config) -> bool:  # type: ignore[no-untyped-def]
+    """Retourne True si au moins un correcteur est activé dans la configuration."""
+    return bool(app_config.grammalecte_enabled or app_config.languagetool_enabled)
+
+
+def reset_lt_tool() -> None:
+    """Réinitialise le singleton LanguageTool (à appeler après changement d'URL)."""
+    global _lt_tool, _lt_tool_url  # noqa: PLW0603
+    _lt_tool = None
+    _lt_tool_url = None
+
+
 def close_spellcheck() -> None:
     """Ferme la fenêtre de vérification orthographique si elle est ouverte."""
     global _spellcheck_dialog
@@ -198,15 +211,16 @@ def run_spellcheck(
     app_config = AppConfig.load()
 
     use_grammalecte = app_config.grammalecte_enabled
+    use_languagetool = app_config.languagetool_enabled
     gram_ok, _ = grammalecte_info() if use_grammalecte else (False, "")
-    lt_ok, _ = language_tool_info()
+    lt_ok, _ = language_tool_info() if use_languagetool else (False, "")
 
     if use_grammalecte and gram_ok:
         engine = "grammalecte"
-    elif lt_ok:
+    elif use_languagetool and lt_ok:
         engine = "languagetool"
     else:
-        _no_checker_warning(parent, use_grammalecte)
+        _no_checker_warning(parent, use_grammalecte, use_languagetool)
         return
 
     if _spellcheck_dialog is not None and _spellcheck_dialog.isVisible():
@@ -220,21 +234,36 @@ def run_spellcheck(
         _spellcheck_dialog.show()
 
 
-def _no_checker_warning(parent: QWidget | None, grammalecte_preferred: bool) -> None:
-    if grammalecte_preferred:
+def _no_checker_warning(
+    parent: QWidget | None,
+    grammalecte_preferred: bool,
+    languagetool_enabled: bool = False,
+) -> None:
+    if not grammalecte_preferred and not languagetool_enabled:
+        msg = (
+            "Aucun correcteur orthographique n'est activé.\n\n"
+            "Activez Grammalecte ou LanguageTool dans les Préférences."
+        )
+    elif grammalecte_preferred and languagetool_enabled:
         msg = (
             "Ni Grammalecte ni LanguageTool ne sont disponibles.\n\n"
-            "Pour installer Grammalecte :\n"
+            "• Grammalecte : pip install pygrammalecte\n"
+            "• LanguageTool : pip install language-tool-python\n"
+            "  (le module Python doit être installé ; le serveur peut être\n"
+            "   l'API publique ou un serveur auto-hébergé)"
+        )
+    elif grammalecte_preferred:
+        msg = (
+            "Grammalecte n'est pas installé.\n\n"
+            "Pour l'installer :\n"
             "    pip install pygrammalecte\n\n"
-            "Pour installer LanguageTool (requiert Java) :\n"
-            "    pip install language-tool-python"
+            "Vous pouvez aussi activer LanguageTool dans les Préférences."
         )
     else:
         msg = (
             "Le module « language-tool-python » n'est pas installé.\n\n"
             "Pour l'installer :\n"
             "    pip install language-tool-python\n\n"
-            "Note : Java (JRE 8+) est également requis.\n\n"
             "Vous pouvez aussi activer Grammalecte dans les Préférences."
         )
     QMessageBox.warning(parent, "Aucun correcteur disponible", msg)
@@ -345,7 +374,7 @@ class SpellCheckDialog(GeometryMixin, QDialog):
                     ", ".join(f"<i>{escape(s)}</i>" for s in suggestions[:5])
                     or "<i>(aucune suggestion)</i>"
                 )
-                parts.append(_format_match(message, ctx, sugg_html))
+                parts.append(_format_match(message, ctx, sugg_html, m.line))
 
         if not any_text:
             return "<p><i>Aucun texte à vérifier.</i></p>"
@@ -355,11 +384,23 @@ class SpellCheckDialog(GeometryMixin, QDialog):
     # LanguageTool
 
     def _build_report_languagetool(self) -> str:
-        global _lt_tool  # noqa: PLW0603
+        global _lt_tool, _lt_tool_url  # noqa: PLW0603
         import language_tool_python
 
-        if _lt_tool is None:
-            _lt_tool = language_tool_python.LanguageTool("fr")
+        from pbrecipe.config.app_config import AppConfig
+
+        url = (
+            AppConfig.load().languagetool_url.strip() or "https://api.languagetool.org"
+        )
+        if _lt_tool is None or _lt_tool_url != url:
+            try:
+                _lt_tool = language_tool_python.LanguageTool("fr", remote_server=url)
+                _lt_tool_url = url
+            except Exception as exc:  # noqa: BLE001
+                _lt_tool = None
+                _lt_tool_url = None
+                _log.warning("LanguageTool — connexion impossible (%s) : %s", url, exc)
+                return _lt_connection_error(url, exc)
 
         parts: list[str] = []
         any_text = False
@@ -369,18 +410,25 @@ class SpellCheckDialog(GeometryMixin, QDialog):
             if not clean:
                 continue
             any_text = True
-            matches = _lt_tool.check(clean)
+            try:
+                matches = _lt_tool.check(clean)
+            except Exception as exc:  # noqa: BLE001
+                _lt_tool = None
+                _lt_tool_url = None
+                _log.warning("LanguageTool — erreur lors de la vérification : %s", exc)
+                return _lt_connection_error(url, exc)
             parts.append(f"<h3>{escape(label)}</h3>")
             if not matches:
                 parts.append("<p><i>Aucun problème détecté.</i></p>")
                 continue
             for m in matches:
-                ctx = _build_context(clean, m.offset, m.errorLength)
+                lineno = clean[: m.offset].count("\n") + 1
+                ctx = _build_context(clean, m.offset, m.error_length)
                 sugg_html = (
                     ", ".join(f"<i>{escape(r)}</i>" for r in m.replacements[:5])
                     or "<i>(aucune suggestion)</i>"
                 )
-                parts.append(_format_match(m.message, ctx, sugg_html))
+                parts.append(_format_match(m.message, ctx, sugg_html, lineno))
 
         if not any_text:
             return "<p><i>Aucun texte à vérifier.</i></p>"
@@ -389,6 +437,29 @@ class SpellCheckDialog(GeometryMixin, QDialog):
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Helpers
+
+
+def _lt_connection_error(url: str, exc: Exception) -> str:
+    is_public = "languagetool.org" in url
+    if is_public:
+        hint = (
+            "Vérifiez votre connexion internet ou réessayez plus tard.<br/>"
+            "En cas de dépassement du quota, attendez quelques minutes."
+        )
+    else:
+        hint = (
+            f"Vérifiez que le serveur est démarré et accessible à l'adresse&nbsp;:"
+            f"<br/><tt>{escape(url)}</tt><br/>"
+            "Exemple pour un serveur local Docker&nbsp;:<br/>"
+            "<tt>docker run -p 8010:8010 erikvl87/languagetool</tt>"
+        )
+    return (
+        '<div style="padding:10px;background:#fff3cd;border-left:4px solid #e6a817;">'
+        "<b>Impossible de contacter le serveur LanguageTool.</b><br/><br/>"
+        f"{hint}<br/><br/>"
+        f'<span style="color:#888;font-size:0.85em">{escape(str(exc))}</span>'
+        "</div>"
+    )
 
 
 def _build_context(text: str, offset: int, length: int) -> str:
@@ -403,11 +474,16 @@ def _build_context(text: str, offset: int, length: int) -> str:
     )
 
 
-def _format_match(message: str, ctx: str, sugg_html: str) -> str:
+def _format_match(message: str, ctx: str, sugg_html: str, lineno: int = 0) -> str:
+    line_html = (
+        f'<span style="color:#888;font-size:0.85em">ligne&nbsp;{lineno}</span> — '
+        if lineno > 0
+        else ""
+    )
     return (
         '<div style="margin-bottom:10px;padding:8px;'
         'background:#fff8f8;border-left:3px solid #cc4444;">'
-        f"<b>{escape(message)}</b><br/>"
+        f"{line_html}<b>{escape(message)}</b><br/>"
         f'<code style="font-size:0.95em">{ctx}</code><br/>'
         f"Suggestion(s) : {sugg_html}"
         "</div>"

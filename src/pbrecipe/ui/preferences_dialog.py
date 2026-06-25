@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -61,10 +62,12 @@ class PreferencesDialog(QDialog):
         self._gram_status = QLabel()
         grp_layout.addWidget(self._gram_status)
 
-        self._gram_cb = QCheckBox("Utiliser Grammalecte en priorité")
+        self._gram_cb = QCheckBox("Utiliser Grammalecte")
         self._gram_cb.setToolTip(
-            "Si Grammalecte est installé, il sera utilisé à la place de LanguageTool."
+            "Si Grammalecte est installé, il sera utilisé en priorité.\n"
+            "Grammalecte ne traite que le texte en français."
         )
+        self._gram_cb.toggled.connect(self._on_gram_toggled)
         grp_layout.addWidget(self._gram_cb)
 
         btn_row = QHBoxLayout()
@@ -79,6 +82,45 @@ class PreferencesDialog(QDialog):
         grp_layout.addWidget(self._gram_install_log)
 
         root.addWidget(grp)
+        # ───────────────────────────────────────────────────────────────
+
+        # ── LanguageTool ───────────────────────────────────────────────
+        lt_grp = QGroupBox("LanguageTool")
+        lt_layout = QVBoxLayout(lt_grp)
+
+        self._lt_status = QLabel()
+        lt_layout.addWidget(self._lt_status)
+
+        self._lt_cb = QCheckBox("Utiliser LanguageTool")
+        self._lt_cb.setToolTip(
+            "Active la vérification via un serveur LanguageTool.\n"
+            "Grammalecte reste prioritaire s'il est activé et installé."
+        )
+        self._lt_cb.toggled.connect(self._on_lt_toggled)
+        lt_layout.addWidget(self._lt_cb)
+
+        lt_url_form = QFormLayout()
+        self._lt_url_edit = QLineEdit()
+        self._lt_url_edit.setPlaceholderText(
+            "https://api.languagetool.org (défaut, API publique)"
+        )
+        _lt_url_tooltip = (
+            "<b>URL du serveur LanguageTool</b><br/><br/>"
+            "Laissez vide pour utiliser l'<b>API publique</b> "
+            "(<tt>api.languagetool.org</tt>).<br/><br/>"
+            "<b>Limites de l'API publique :</b><br/>"
+            "&bull;&nbsp;20&nbsp;requêtes par minute<br/>"
+            "&bull;&nbsp;20&nbsp;000&nbsp;caractères par requête<br/>"
+            "&bull;&nbsp;Le texte transite sur les serveurs LanguageTool<br/><br/>"
+            "Pour héberger votre propre serveur (aucune limite, texte local) :<br/>"
+            "<tt>docker run -p 8010:8010 erikvl87/languagetool</tt><br/>"
+            "puis saisissez&nbsp;<tt>http://localhost:8010</tt> ici."
+        )
+        self._lt_url_edit.setToolTip(_lt_url_tooltip)
+        lt_url_form.addRow("URL du serveur :", self._lt_url_edit)
+        lt_layout.addLayout(lt_url_form)
+
+        root.addWidget(lt_grp)
         # ───────────────────────────────────────────────────────────────
 
         buttons = QDialogButtonBox(
@@ -96,6 +138,10 @@ class PreferencesDialog(QDialog):
         self._php_debug_cb.setChecked(self._app_config.php_debug)
         self._refresh_grammalecte_status()
         self._gram_cb.setChecked(self._app_config.grammalecte_enabled)
+        self._refresh_languagetool_status()
+        self._lt_cb.setChecked(self._app_config.languagetool_enabled)
+        self._lt_url_edit.setText(self._app_config.languagetool_url)
+        self._on_lt_toggled(self._app_config.languagetool_enabled)
 
     def _refresh_grammalecte_status(self) -> None:
         from pbrecipe.ui.spellcheck_dialog import grammalecte_info
@@ -108,6 +154,11 @@ class PreferencesDialog(QDialog):
             self._gram_status.setText("Grammalecte : <b>non installé</b>")
             self._gram_cb.setEnabled(False)
             self._gram_cb.setChecked(False)
+        # Sync install button with checkbox state after status refresh
+        self._gram_install_btn.setEnabled(self._gram_cb.isChecked())
+
+    def _on_gram_toggled(self, checked: bool) -> None:
+        self._gram_install_btn.setEnabled(checked)
 
     def _install_grammalecte(self) -> None:
         if self._install_proc is not None:
@@ -131,7 +182,6 @@ class PreferencesDialog(QDialog):
 
     def _on_install_finished(self, exit_code: int, _exit_status) -> None:
         self._install_proc = None
-        self._gram_install_btn.setEnabled(True)
 
         from pbrecipe.ui.spellcheck_dialog import grammalecte_info
 
@@ -149,13 +199,42 @@ class PreferencesDialog(QDialog):
             self._gram_status.setText("Grammalecte : <b>non installé</b>")
             self._app_config.grammalecte_enabled = False
             self._app_config.save()
+        self._gram_install_btn.setEnabled(self._gram_cb.isChecked())
+
+    def _refresh_languagetool_status(self) -> None:
+        from pbrecipe.ui.spellcheck_dialog import language_tool_info
+
+        ok, info = language_tool_info()
+        if ok:
+            self._lt_status.setText(
+                f"Module language-tool-python : <b>installé</b> (v{info})"
+            )
+            self._lt_cb.setEnabled(True)
+        else:
+            self._lt_status.setText("Module language-tool-python : <b>non installé</b>")
+            self._lt_cb.setEnabled(False)
+            self._lt_cb.setChecked(False)
+
+    def _on_lt_toggled(self, checked: bool) -> None:
+        self._lt_url_edit.setEnabled(checked)
 
     def _accept(self) -> None:
+        from pbrecipe.ui.spellcheck_dialog import reset_lt_tool
+
         name = self._level_combo.currentData()
         level_int = next(i for _l, n, i in _LEVELS if n == name)
         self._app_config.log_level = name
         self._app_config.php_debug = self._php_debug_cb.isChecked()
         self._app_config.grammalecte_enabled = self._gram_cb.isChecked()
+        new_lt_enabled = self._lt_cb.isChecked()
+        new_lt_url = self._lt_url_edit.text().strip()
+        if (
+            new_lt_enabled != self._app_config.languagetool_enabled
+            or new_lt_url != self._app_config.languagetool_url
+        ):
+            reset_lt_tool()
+        self._app_config.languagetool_enabled = new_lt_enabled
+        self._app_config.languagetool_url = new_lt_url
         self._app_config.save()
         apply_log_level(level_int)
         self.accept()

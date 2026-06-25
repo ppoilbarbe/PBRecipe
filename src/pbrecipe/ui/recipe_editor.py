@@ -231,7 +231,10 @@ class RecipeEditor(QWidget):
         self._reload_editor_references(recipe, db)
 
         self._loading = False
-        self._check_btn.setEnabled(True)
+        from pbrecipe.config.app_config import AppConfig
+        from pbrecipe.ui.spellcheck_dialog import any_checker_enabled
+
+        self._check_btn.setEnabled(any_checker_enabled(AppConfig.load()))
         self._mark_clean()
         _log.debug(
             "Recette chargée dans l'éditeur : %s — «%s»",

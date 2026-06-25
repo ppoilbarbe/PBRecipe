@@ -63,8 +63,19 @@ def test_no_checker_warning_languagetool(qtbot, monkeypatch):
     monkeypatch.setattr(
         QMessageBox, "warning", lambda *a, **k: captured.setdefault("msg", a[2])
     )
-    _no_checker_warning(None, grammalecte_preferred=False)
+    # LT enabled in config but module not installed → mentions language-tool-python
+    _no_checker_warning(None, grammalecte_preferred=False, languagetool_enabled=True)
     assert "language-tool-python" in captured["msg"]
+
+
+def test_no_checker_warning_none_enabled(qtbot, monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        QMessageBox, "warning", lambda *a, **k: captured.setdefault("msg", a[2])
+    )
+    # Neither checker enabled → generic "activate one" message
+    _no_checker_warning(None, grammalecte_preferred=False, languagetool_enabled=False)
+    assert "Préférences" in captured["msg"]
 
 
 # --- SpellCheckDialog avec moteur LanguageTool mocké ---
@@ -73,7 +84,7 @@ def test_no_checker_warning_languagetool(qtbot, monkeypatch):
 class _FakeMatch:
     def __init__(self, offset, error_length, message, replacements):
         self.offset = offset
-        self.errorLength = error_length  # noqa: N815 — API LanguageTool
+        self.error_length = error_length
         self.message = message
         self.replacements = replacements
 
@@ -94,6 +105,7 @@ def fake_lt(monkeypatch):
     fake_mod.LanguageTool = _FakeTool
     monkeypatch.setitem(sys.modules, "language_tool_python", fake_mod)
     monkeypatch.setattr(sc, "_lt_tool", None)
+    monkeypatch.setattr(sc, "_lt_tool_url", None)
     return fake_mod
 
 
@@ -147,6 +159,12 @@ def test_run_spellcheck_no_checker(qtbot, monkeypatch, tmp_path):
 
 def test_run_spellcheck_opens_dialog(qtbot, monkeypatch, tmp_path, fake_lt):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    # Write a config that enables LanguageTool so the dialog opens
+    cfg_path = tmp_path / "pbrecipe" / "app.yaml"
+    cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    cfg_path.write_text(
+        "%YAML 1.2\n---\nlanguagetool_enabled: true\n", encoding="utf-8"
+    )
     monkeypatch.setattr(sc, "grammalecte_info", lambda: (False, ""))
     monkeypatch.setattr(sc, "language_tool_info", lambda: (True, "1.0"))
     monkeypatch.setattr(sc, "_spellcheck_dialog", None)

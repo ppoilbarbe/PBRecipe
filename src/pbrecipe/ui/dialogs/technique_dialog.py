@@ -68,6 +68,10 @@ class TechniqueEditDialog(QDialog):
         self._check_btn.setShortcut(QKeySequence(Qt.Key.Key_F7))
         self._check_btn.setToolTip("Vérification orthographique et grammaticale [F7]")
         self._check_btn.clicked.connect(self._check_spelling)
+        from pbrecipe.config.app_config import AppConfig
+        from pbrecipe.ui.spellcheck_dialog import any_checker_enabled
+
+        self._check_btn.setEnabled(any_checker_enabled(AppConfig.load()))
         buttons.accepted.connect(self._accept)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)

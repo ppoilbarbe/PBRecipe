@@ -33,6 +33,8 @@ class AppConfig:
     splitter_sizes: list[int] = field(default_factory=list)
     toolbar_state: str = ""
     grammalecte_enabled: bool = True
+    languagetool_enabled: bool = False
+    languagetool_url: str = ""
 
     # ------------------------------------------------------------------
     # Persistence
@@ -69,6 +71,8 @@ class AppConfig:
         )
         toolbar_state = str(data.get("toolbar_state", ""))
         grammalecte_enabled = bool(data.get("grammalecte_enabled", True))
+        languagetool_enabled = bool(data.get("languagetool_enabled", False))
+        languagetool_url = str(data.get("languagetool_url", ""))
         cfg = cls(
             recent_files=list(data.get("recent_files", [])),
             log_level=log_level,
@@ -78,6 +82,8 @@ class AppConfig:
             splitter_sizes=splitter_sizes,
             toolbar_state=toolbar_state,
             grammalecte_enabled=grammalecte_enabled,
+            languagetool_enabled=languagetool_enabled,
+            languagetool_url=languagetool_url,
         )
         _log.debug("Configuration programme chargée : %s (log=%s)", path, cfg.log_level)
         return cfg
@@ -99,6 +105,8 @@ class AppConfig:
                     "splitter_sizes": self.splitter_sizes,
                     "toolbar_state": self.toolbar_state,
                     "grammalecte_enabled": self.grammalecte_enabled,
+                    "languagetool_enabled": self.languagetool_enabled,
+                    "languagetool_url": self.languagetool_url,
                 },
                 fh,
             )

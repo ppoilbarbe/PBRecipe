@@ -52,7 +52,9 @@ hiddenimports = [
     "sqlalchemy.dialects.postgresql",
     "pymysql",
     "psycopg2",
-    # Grammar checker (optional — if absent, spell checking is disabled)
+    # Grammar/spell checkers (optional — if absent, spell checking is disabled)
+    "language_tool_python",
+    "language_tool_python.utils",
     "pygrammalecte",
     "pygrammalecte.pygrammalecte",
     "grammalecte",

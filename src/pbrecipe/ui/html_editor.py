@@ -534,6 +534,12 @@ class HtmlEditor(QWidget):
     # ------------------------------------------------------------------
 
     def set_html(self, html: str) -> None:
+        # When html is empty, provide a bare <p> so that the CSS parser creates
+        # a block with the correct margin; new paragraphs typed by the user then
+        # inherit that block format.  get_html() already returns "" for
+        # content with no visible text, so this sentinel is never persisted.
+        if not html:
+            html = "<p></p>"
         html = _INTER_BLOCK_WS_RE.sub(r"\1", html)
         # Without this marker Qt creates a U+2028 line-separator block for
         # <p><br /></p>, which renders as two blank lines instead of one.
@@ -541,6 +547,7 @@ class HtmlEditor(QWidget):
             "<p><br /></p>",
             '<p style="-qt-paragraph-type:empty;"><br /></p>',
         )
+        self._edit.document().setDefaultStyleSheet(_EDITOR_CSS)
         self._edit.setHtml(html)
 
     def get_html(self) -> str:
