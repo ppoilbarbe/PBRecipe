@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Full recipe editor widget: metadata, ingredients, directions, comments and media."""
+
 from __future__ import annotations
 
 import logging
@@ -25,11 +29,11 @@ from PySide6.QtWidgets import (
 
 from pbrecipe.config import RecipeConfig
 from pbrecipe.constants import (
-    MAX_DIFFICULTY,
+    DEFAULT_MEDIA_MAX_H,
+    DEFAULT_MEDIA_MAX_W,
     MAX_RECIPE_CODE,
     MAX_RECIPE_SERVING,
     MAX_TIME_MINUTES,
-    MIN_DIFFICULTY,
     MIN_TIME_MINUTES,
 )
 from pbrecipe.database import Database
@@ -150,11 +154,9 @@ class RecipeEditor(QWidget):
         form.addRow("Quantité :", self._serving_edit)
 
         # Difficulty
-        self._difficulty_spin = QSpinBox()
-        self._difficulty_spin.setRange(MIN_DIFFICULTY, MAX_DIFFICULTY)
-        self._difficulty_spin.setSpecialValueText("Inconnue")
-        self._difficulty_spin.valueChanged.connect(self._mark_dirty)
-        form.addRow("Difficulté :", self._difficulty_spin)
+        self._difficulty_combo = QComboBox()
+        self._difficulty_combo.currentIndexChanged.connect(self._mark_dirty)
+        form.addRow("Difficulté :", self._difficulty_combo)
 
         # Temps (préparation + attente + cuisson sur une ligne)
         def _make_time_spin() -> QSpinBox:
@@ -217,7 +219,7 @@ class RecipeEditor(QWidget):
         self._name_edit.setText(recipe.name)
         self._code_edit.setText(recipe.code)
         self._serving_edit.setText(recipe.serving)
-        self._difficulty_spin.setValue(recipe.difficulty)
+        self._reload_difficulty_levels(db, recipe.difficulty)
         self._prep_spin.setValue(recipe.prep_time or 0)
         self._wait_spin.setValue(recipe.wait_time or 0)
         self._cook_spin.setValue(recipe.cook_time or 0)
@@ -227,6 +229,13 @@ class RecipeEditor(QWidget):
         self._reload_categories(recipe)
         self._reload_sources(recipe)
         self._ingredient_editor.load(recipe.ingredients, db)
+        globals_data = db.get_globals()
+        try:
+            media_max_w = int(globals_data.get("media_max_w", DEFAULT_MEDIA_MAX_W))
+            media_max_h = int(globals_data.get("media_max_h", DEFAULT_MEDIA_MAX_H))
+        except (ValueError, TypeError):
+            media_max_w, media_max_h = DEFAULT_MEDIA_MAX_W, DEFAULT_MEDIA_MAX_H
+        self._media_tab.set_max_size(media_max_w, media_max_h)
         self._media_tab.load(recipe.media)
         self._reload_editor_references(recipe, db)
 
@@ -254,7 +263,7 @@ class RecipeEditor(QWidget):
         self._name_edit.clear()
         self._code_edit.clear()
         self._serving_edit.clear()
-        self._difficulty_spin.setValue(0)
+        self._difficulty_combo.clear()
         self._prep_spin.setValue(0)
         self._wait_spin.setValue(0)
         self._cook_spin.setValue(0)
@@ -275,6 +284,7 @@ class RecipeEditor(QWidget):
         self._loading = True
         self._reload_categories(self._recipe)
         self._reload_sources(self._recipe)
+        self._reload_difficulty_levels(self._db, self._recipe.difficulty)
         self._ingredient_editor.reload(self._db)
         self._reload_editor_references(self._recipe, self._db)
         self._loading = False
@@ -331,7 +341,7 @@ class RecipeEditor(QWidget):
         self._recipe.name = self._name_edit.text().strip()
         self._recipe.code = self._code_edit.text().strip()
         self._recipe.serving = self._serving_edit.text().strip()
-        self._recipe.difficulty = self._difficulty_spin.value()
+        self._recipe.difficulty = self._difficulty_combo.currentData() or 0
         prep = self._prep_spin.value()
         wait = self._wait_spin.value()
         cook = self._cook_spin.value()
@@ -377,7 +387,7 @@ class RecipeEditor(QWidget):
 
     def _reload_editor_references(self, recipe: Recipe, db: Database) -> None:
         recipes = [(r.code, r.name) for r in db.list_recipes()]
-        all_images = db.list_all_media()  # (recipe_code, img_code, data)
+        all_images = [(m.recipe_code, m.code, m.data) for m in db.list_all_media()]
         techniques = [(t.code, t.title) for t in db.list_techniques()]
         for editor in (self._desc_editor, self._comment_editor):
             editor.set_current_recipe(recipe.code)
@@ -386,7 +396,9 @@ class RecipeEditor(QWidget):
     def _refresh_editor_images(self) -> None:
         if self._db is None or self._recipe is None:
             return
-        all_images = self._db.list_all_media()
+        all_images = [
+            (m.recipe_code, m.code, m.data) for m in self._db.list_all_media()
+        ]
         for editor in (self._desc_editor, self._comment_editor):
             editor.set_images(all_images)
 
@@ -405,6 +417,19 @@ class RecipeEditor(QWidget):
                 else Qt.CheckState.Unchecked
             )
             self._category_list.addItem(item)
+
+    def _reload_difficulty_levels(self, db: Database, current_level: int = 0) -> None:
+        self._difficulty_combo.clear()
+        for dl in db.list_difficulty_levels():
+            if dl.level == 0:
+                label = "Inconnue"
+            elif dl.label:
+                label = f"{dl.level} : {dl.label}"
+            else:
+                label = str(dl.level)
+            self._difficulty_combo.addItem(label, dl.level)
+        idx = self._difficulty_combo.findData(current_level)
+        self._difficulty_combo.setCurrentIndex(idx if idx >= 0 else 0)
 
     def _reload_sources(self, recipe: Recipe) -> None:
         self._source_combo.clear()

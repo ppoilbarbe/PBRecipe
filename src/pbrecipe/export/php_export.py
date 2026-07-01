@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Exports the recipe database as a deployable static PHP website."""
+
 from __future__ import annotations
 
 import logging

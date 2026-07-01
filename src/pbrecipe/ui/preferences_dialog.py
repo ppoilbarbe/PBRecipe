@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Preferences dialog: log level and spell-checking tool configuration."""
+
 from __future__ import annotations
 
 import logging

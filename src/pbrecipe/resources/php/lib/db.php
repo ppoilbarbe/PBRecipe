@@ -1,4 +1,6 @@
 <?php
+// SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Database connection — returns a PDO instance.
  * Reads constants defined in config.php.

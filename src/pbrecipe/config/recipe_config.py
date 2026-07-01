@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Recipe database configuration: connection, export dirs and default UI strings."""
+
 from __future__ import annotations
 
 import logging
@@ -84,9 +88,8 @@ _DEFAULT_STRINGS: dict[str, str] = {
     "site_title": "Mes Recettes",
     "site_description": "Ma collection de recettes",
     "search_placeholder": "Rechercher une recette...",
-    "all_categories": "Toutes catégories",
-    "all_difficulties": "Toutes difficultés",
-    "all_sources": "Toutes sources",
+    "all_categories": "Par catégorie",
+    "all_sources": "Par source",
     "search_by_ingredient": "Par ingrédient",
     "show_techniques": "Afficher une technique",
     "no_results": "Aucune recette trouvée.",

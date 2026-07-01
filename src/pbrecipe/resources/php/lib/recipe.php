@@ -1,5 +1,8 @@
 <?php
+// SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/display.php';
 
 /** Clé de tri insensible à la casse, aux diacritiques et aux ligatures (œ→oe, æ→ae). */
 function sort_key(string $s): string {
@@ -106,7 +109,7 @@ function get_recipe(string $code): ?array {
     $r['media'] = [];
     foreach ($media->fetchAll() as $_mrow) {
         $_c = strtoupper((string)$_mrow['code']);
-        $r['media'][] = ['code' => $_c, 'url' => 'media.php?code=' . urlencode($_c)];
+        $r['media'][] = ['code' => $_c, 'url' => media_url($code, $_c)];
     }
     unset($_mrow, $_c);
 
@@ -127,11 +130,11 @@ function search_recipes(
     string $name = '',
     array $category_ids = [],
     array $ingredient_ids = [],
-    int $difficulty = -1,
+    array $difficulty_ids = [],
     array $source_ids = [],
     string $cat_mode = 'or',
     string $ing_mode = 'or',
-    string $src_mode = 'or'
+    string $diff_mode = 'or'
 ): array {
     $pdo    = db_connect();
     $sql    = 'SELECT DISTINCT r.code, r.name, r.difficulty FROM recipes r';
@@ -164,21 +167,21 @@ function search_recipes(
         $where[]  = 'r.name LIKE ?';
         $params[] = "%$name%";
     }
-    if ($difficulty >= 0) {
-        $where[]  = 'r.difficulty = ?';
-        $params[] = $difficulty;
-    }
-    if (!empty($source_ids)) {
-        // source_id est une FK directe sur recipes (1 recette = 1 source).
-        // Le mode ET avec 2+ sources retourne logiquement 0 résultats.
-        $ids   = array_values(array_unique(array_map('intval', $source_ids)));
-        $ph    = implode(',', array_fill(0, count($ids), '?'));
-        if ($src_mode === 'and' && count($ids) > 1) {
-            $where[]  = '1=0';
+    if (!empty($difficulty_ids)) {
+        $ids = array_values(array_unique(array_map('intval', $difficulty_ids)));
+        $ph  = implode(',', array_fill(0, count($ids), '?'));
+        if ($diff_mode === 'and' && count($ids) > 1) {
+            $where[] = '1=0';
         } else {
-            $where[]  = "r.source_id IN ($ph)";
+            $where[]  = "r.difficulty IN ($ph)";
             $params   = array_merge($params, $ids);
         }
+    }
+    if (!empty($source_ids)) {
+        $ids    = array_values(array_unique(array_map('intval', $source_ids)));
+        $ph     = implode(',', array_fill(0, count($ids), '?'));
+        $where[]  = "r.source_id IN ($ph)";
+        $params   = array_merge($params, $ids);
     }
 
     if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);

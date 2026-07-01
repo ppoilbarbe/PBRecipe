@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Data models for a recipe, its associated ingredients and media."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

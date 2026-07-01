@@ -1,4 +1,6 @@
-"""Export and import the full database content as YAML."""
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Export and import of the full recipe database as YAML (portable backup)."""
 
 from __future__ import annotations
 

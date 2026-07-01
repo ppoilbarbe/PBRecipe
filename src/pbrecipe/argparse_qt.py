@@ -1,4 +1,6 @@
-"""argparse helpers for passing Qt command-line options."""
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Helpers for integrating Qt command-line options into a standard argparse parser."""
 
 import argparse
 

@@ -2,6 +2,10 @@
 
 `mixed-en` — Identifiers & inline comments in English, docs & prose in English, user-facing strings in French except debug messages.
 
+# CHANGELOG language
+
+CHANGELOG entries must be written in **English** (consistent with the `mixed-en` mode and the existing entries).
+
 # PHP consistency
 
 Any change to the database schema (`schema.py`) or configuration parameters

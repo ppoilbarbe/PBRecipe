@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Source unique du répertoire de configuration de l'application.
 
 Le répertoire peut être surchargé via ``set_config_dir()`` (option ``--config-dir``

@@ -1,4 +1,6 @@
 <?php
+// SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 require_once __DIR__ . '/db.php';
 
@@ -15,9 +17,9 @@ function has_visible_text(?string $html): bool {
     return trim($s, " \t\n\r\0\x0B\u{00A0}") !== '';
 }
 
-/** Return the URL to serve an image by its code (via media.php). */
-function media_url(string $code): string {
-    return 'media.php?code=' . urlencode($code);
+/** Return the URL to serve a recipe image via media.php. */
+function media_url(string $recipe_code, string $code): string {
+    return 'media.php?recipe=' . urlencode($recipe_code) . '&code=' . urlencode($code);
 }
 
 /**
@@ -102,8 +104,7 @@ function parse_markers(string $html, bool $tech_standalone = false): string {
         function ($m) {
             $recipe_code = strtoupper($m[1]);
             $img_code    = strtoupper($m[2]);
-            $src = 'media.php?recipe=' . urlencode($recipe_code)
-                 . '&code=' . urlencode($img_code);
+            $src = media_url($recipe_code, $img_code);
             return '<span class="recipe-img-ref">'
                  . '<img src="' . h($src) . '" alt="' . h($img_code) . '" class="recipe-thumb" loading="lazy">'
                  . '<span class="recipe-img-preview"><img src="' . h($src) . '" alt="' . h($img_code) . '"></span>'

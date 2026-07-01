@@ -1,4 +1,6 @@
-"""Persist the last directory used for each named file dialog."""
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Remembers the last directory used for each named file-selection dialog."""
 
 from __future__ import annotations
 

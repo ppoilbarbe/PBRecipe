@@ -1,7 +1,7 @@
 /* PBRecipe — minimal JS for interactive behaviours */
 
 // ── Tom Select — filtres de recherche multi-sélection ─────────────────────────
-['ts-cat', 'ts-ing', 'ts-src'].forEach(function(id) {
+['ts-cat', 'ts-ing', 'ts-diff', 'ts-src'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el && typeof TomSelect !== 'undefined') {
     new TomSelect(el, {

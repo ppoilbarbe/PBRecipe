@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Database: full access to the SQLite/MySQL recipe store (CRUD, migration, search)."""
+
 from __future__ import annotations
 
 import logging
@@ -521,6 +525,15 @@ class Database:
             for r in rows
         ]
 
+    def delete_difficulty_level(self, level: int) -> None:
+        if level <= 0:
+            raise ValueError("Le niveau 0 ne peut pas être supprimé")
+        with self._tx() as conn:
+            conn.execute(
+                delete(t_difficulty_levels).where(t_difficulty_levels.c.level == level)
+            )
+        _log.info("Niveau de difficulté supprimé : %d", level)
+
     def get_difficulty_level(self, level: int) -> DifficultyLevel | None:
         with self._tx() as conn:
             row = conn.execute(
@@ -600,17 +613,37 @@ class Database:
             key=lambda x: _sort_key(x.name),
         )
 
-    def list_all_media(self) -> list[tuple[str, str, bytes]]:
-        """Return (recipe_code, img_code, data) for every image in the database."""
+    def list_all_media(self) -> list[RecipeMedia]:
+        """Return every recipe_media row ordered by recipe_code, position."""
         with self._engine.connect() as conn:
             rows = conn.execute(
-                select(
-                    t_recipe_media.c.recipe_code,
-                    t_recipe_media.c.code,
-                    t_recipe_media.c.data,
-                ).order_by(t_recipe_media.c.recipe_code, t_recipe_media.c.position)
+                select(t_recipe_media).order_by(
+                    t_recipe_media.c.recipe_code, t_recipe_media.c.position
+                )
             ).fetchall()
-        return [(r.recipe_code, r.code, bytes(r.data) if r.data else b"") for r in rows]
+        return [
+            RecipeMedia(
+                id=r.id,
+                recipe_code=r.recipe_code,
+                position=r.position,
+                code=r.code,
+                mime_type=r.mime_type,
+                data=bytes(r.data) if r.data else b"",
+            )
+            for r in rows
+        ]
+
+    def save_recipe_media(self, media: RecipeMedia) -> None:
+        """Update mime_type and data of a single recipe_media row (by id)."""
+        with self._tx() as conn:
+            conn.execute(
+                update(t_recipe_media)
+                .where(t_recipe_media.c.id == media.id)
+                .values(mime_type=media.mime_type, data=media.data)
+            )
+        _log.debug(
+            "Média %s:%s mis à jour (id=%s)", media.recipe_code, media.code, media.id
+        )
 
     def get_recipe(self, code: str) -> Recipe | None:
         with self._tx() as conn:

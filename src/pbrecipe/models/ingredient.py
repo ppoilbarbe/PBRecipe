@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Data model for an ingredient with singular and plural forms."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

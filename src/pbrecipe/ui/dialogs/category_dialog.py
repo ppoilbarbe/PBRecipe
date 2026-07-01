@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Dialog for managing recipe categories."""
+
 from pbrecipe.models import Category
 from pbrecipe.ui.dialogs._base_list_dialog import BaseListDialog
 

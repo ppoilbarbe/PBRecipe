@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Recipe media tab: add, preview, export and resize images attached to a recipe."""
+
 from __future__ import annotations
 
 import mimetypes
@@ -5,8 +9,8 @@ import re
 import unicodedata
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import QEvent, QObject, QSize, Qt, Signal
+from PySide6.QtGui import QDragEnterEvent, QDragMoveEvent, QDropEvent, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -22,11 +26,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pbrecipe.constants import DEFAULT_MEDIA_MAX_H, DEFAULT_MEDIA_MAX_W
+from pbrecipe.image_utils import scale_to_fit
 from pbrecipe.models import RecipeMedia
 
 _THUMB_SIZE = 80
 _PREVIEW_W = 240
 _IMG_FILTER = "Images (*.jpg *.jpeg *.png *.gif *.webp *.bmp)"
+_IMG_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 
 _MIME_EXT: dict[str, str] = {
     "image/jpeg": ".jpg",
@@ -58,6 +65,10 @@ def _code_from_filename(filename: str) -> str:
 def _mime_from_path(path: str) -> str:
     mime, _ = mimetypes.guess_type(path)
     return mime or "image/jpeg"
+
+
+def _is_image_path(path: str) -> bool:
+    return Path(path).suffix.lower() in _IMG_EXTS
 
 
 def _pixmap_from_bytes(data: bytes) -> QPixmap:
@@ -133,6 +144,8 @@ class MediaTab(QWidget):
         super().__init__(parent)
         self._media: list[RecipeMedia] = []
         self._current_pixmap: QPixmap | None = None
+        self._max_w = DEFAULT_MEDIA_MAX_W
+        self._max_h = DEFAULT_MEDIA_MAX_H
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -151,6 +164,8 @@ class MediaTab(QWidget):
         self._list.setIconSize(QSize(_THUMB_SIZE, _THUMB_SIZE))
         self._list.setSpacing(2)
         self._list.currentRowChanged.connect(self._on_row_changed)
+        self._list.setAcceptDrops(True)
+        self._list.installEventFilter(self)
         ll.addWidget(self._list)
 
         btn_bar = QHBoxLayout()
@@ -178,21 +193,87 @@ class MediaTab(QWidget):
         ll.addLayout(btn_bar)
         splitter.addWidget(left)
 
-        # ── Right : full preview ───────────────────────────────────────
+        # ── Right : full preview + resolution ─────────────────────────
+        right = QWidget()
+        rl = QVBoxLayout(right)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(4)
+
         self._preview = QLabel("Sélectionnez une image")
         self._preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._preview.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         self._preview.setStyleSheet("background:#f0f0f0;")
-        splitter.addWidget(self._preview)
+        rl.addWidget(self._preview)
+
+        self._resolution_label = QLabel()
+        self._resolution_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._resolution_label.setStyleSheet("color: #888;")
+        rl.addWidget(self._resolution_label)
+
+        splitter.addWidget(right)
 
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 2)
 
+        self.setAcceptDrops(True)
+
+    # ------------------------------------------------------------------
+    # Drag & drop
+    # ------------------------------------------------------------------
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        if obj is self._list:
+            t = event.type()
+            if t == QEvent.Type.DragEnter:
+                self.dragEnterEvent(event)
+                return True
+            if t == QEvent.Type.DragMove:
+                self.dragMoveEvent(event)
+                return True
+            if t == QEvent.Type.Drop:
+                self.dropEvent(event)
+                return True
+            if t == QEvent.Type.DragLeave:
+                self.dragLeaveEvent(event)
+                return True
+        return super().eventFilter(obj, event)
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        if event.mimeData().hasUrls() and any(
+            url.isLocalFile() and _is_image_path(url.toLocalFile())
+            for url in event.mimeData().urls()
+        ):
+            self._list.setStyleSheet("QListWidget { border: 2px dashed #009A92; }")
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event: QDragMoveEvent) -> None:
+        event.acceptProposedAction()
+
+    def dragLeaveEvent(self, event) -> None:
+        self._list.setStyleSheet("")
+        super().dragLeaveEvent(event)
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        self._list.setStyleSheet("")
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return
+        event.acceptProposedAction()
+        for url in event.mimeData().urls():
+            if url.isLocalFile() and _is_image_path(url.toLocalFile()):
+                self._add_from_path(url.toLocalFile())
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def set_max_size(self, w: int, h: int) -> None:
+        self._max_w = w
+        self._max_h = h
 
     def load(self, media_list: list[RecipeMedia]) -> None:
         self._media = list(media_list)
@@ -250,10 +331,12 @@ class MediaTab(QWidget):
 
     def _on_row_changed(self, row: int) -> None:
         self._current_pixmap = None
+        self._resolution_label.setText("")
         if 0 <= row < len(self._media) and self._media[row].data:
             px = _pixmap_from_bytes(self._media[row].data)
             if not px.isNull():
                 self._current_pixmap = px
+                self._resolution_label.setText(f"{px.width()} × {px.height()} px")
                 self._refresh_preview()
                 return
         self._preview.setPixmap(QPixmap())
@@ -286,8 +369,9 @@ class MediaTab(QWidget):
         files = dlg.selectedFiles()
         if not files:
             return
-        path = files[0]
+        self._add_from_path(files[0])
 
+    def _add_from_path(self, path: str) -> None:
         default_code = self._unique_code(_code_from_filename(path))
         code, ok = QInputDialog.getText(
             self,
@@ -309,11 +393,13 @@ class MediaTab(QWidget):
             )
             return
 
+        mime = _mime_from_path(path)
+        data = scale_to_fit(Path(path).read_bytes(), self._max_w, self._max_h, mime)
         self._media.append(
             RecipeMedia(
                 code=code_upper,
-                mime_type=_mime_from_path(path),
-                data=Path(path).read_bytes(),
+                mime_type=mime,
+                data=data,
             )
         )
         self._rebuild_list(len(self._media) - 1)

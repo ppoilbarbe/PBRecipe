@@ -1,4 +1,6 @@
 <?php
+// SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Sert les images directement depuis la base de données.
  *

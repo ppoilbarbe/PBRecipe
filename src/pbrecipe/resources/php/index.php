@@ -1,4 +1,6 @@
 <?php
+// SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 declare(strict_types=1);
 
 require_once __DIR__ . '/lib/config.php';
@@ -29,9 +31,8 @@ $STRINGS  = array_merge([
     'source_label'         => 'Source',
     'techniques_label'     => 'Techniques',
     'search_placeholder'   => 'Rechercher une recette...',
-    'all_categories'       => 'Toutes catégories',
-    'all_difficulties'     => 'Toutes difficultés',
-    'all_sources'          => 'Toutes sources',
+    'all_categories'       => 'Par catégorie',
+    'all_sources'          => 'Par source',
     'search_by_ingredient' => 'Par ingrédient',
     'show_techniques'      => 'Afficher une technique',
     'no_results'           => 'Aucune recette trouvée.',
@@ -46,13 +47,13 @@ $tech_code   = isset($_GET['tech'])   ? trim($_GET['tech'])   : '';
 $q           = isset($_GET['q'])      ? trim($_GET['q'])      : '';
 $cat_ids  = isset($_GET['cat'])  ? array_values(array_filter(array_map('intval', (array)$_GET['cat']),  fn($v) => $v > 0)) : [];
 $ing_ids  = isset($_GET['ing'])  ? array_values(array_filter(array_map('intval', (array)$_GET['ing']),  fn($v) => $v > 0)) : [];
-$diff     = isset($_GET['diff']) ? (int)$_GET['diff'] : -1;
+$diff_ids = isset($_GET['diff']) ? array_values(array_filter(array_map('intval', (array)$_GET['diff']), fn($v) => $v > 0)) : [];
 $src_ids  = isset($_GET['src'])  ? array_values(array_filter(array_map('intval', (array)$_GET['src']),  fn($v) => $v > 0)) : [];
-$cat_mode = ($_GET['cat_mode'] ?? 'or') === 'and' ? 'and' : 'or';
-$ing_mode = ($_GET['ing_mode'] ?? 'or') === 'and' ? 'and' : 'or';
-$src_mode = ($_GET['src_mode'] ?? 'or') === 'and' ? 'and' : 'or';
+$cat_mode  = ($_GET['cat_mode']  ?? 'or') === 'and' ? 'and' : 'or';
+$ing_mode  = ($_GET['ing_mode']  ?? 'or') === 'and' ? 'and' : 'or';
+$diff_mode = ($_GET['diff_mode'] ?? 'or') === 'and' ? 'and' : 'or';
 
-$is_search = ($q !== '' || !empty($cat_ids) || !empty($ing_ids) || $diff >= 0 || !empty($src_ids));
+$is_search = ($q !== '' || !empty($cat_ids) || !empty($ing_ids) || !empty($diff_ids) || !empty($src_ids));
 
 // ── Page content ─────────────────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ if ($recipe_code !== '') {
     $sources     = get_all_sources();
 
     if ($SITE_PRESENTATION !== '') {
-        $body .= "<details class=\"site-presentation-block\" open>\n";
+        $body .= "<details class=\"site-presentation-block\">\n";
         $body .= "  <summary>" . h($STRINGS['presentation_label'] ?? $SITE_TITLE) . "</summary>\n";
         $body .= "  <div class=\"site-presentation\">" . parse_markers($SITE_PRESENTATION, true) . "</div>\n";
         $body .= "</details>\n";
@@ -97,13 +98,13 @@ if ($recipe_code !== '') {
 
     $body .= render_search_form(
         $categories, $ingredients, $techniques, $STRINGS, $sources,
-        ['q' => $q, 'cats' => $cat_ids, 'ings' => $ing_ids, 'diff' => $diff,
+        ['q' => $q, 'cats' => $cat_ids, 'ings' => $ing_ids, 'diffs' => $diff_ids,
          'srcs' => $src_ids, 'tech' => $tech_code,
-         'cat_mode' => $cat_mode, 'ing_mode' => $ing_mode, 'src_mode' => $src_mode]
+         'cat_mode' => $cat_mode, 'ing_mode' => $ing_mode, 'diff_mode' => $diff_mode]
     );
 
     if ($is_search) {
-        $results = search_recipes($q, $cat_ids, $ing_ids, $diff, $src_ids, $cat_mode, $ing_mode, $src_mode);
+        $results = search_recipes($q, $cat_ids, $ing_ids, $diff_ids, $src_ids, $cat_mode, $ing_mode, $diff_mode);
         $body .= render_search_results($results, $STRINGS['no_results'] ?? 'Aucune recette trouvée.');
     } else {
         $grouped = get_recipes_by_category();

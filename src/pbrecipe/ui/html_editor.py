@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Rich HTML editor with internal-reference support (recipes, images, techniques)."""
+
 from __future__ import annotations
 
 import re

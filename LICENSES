@@ -1,7 +1,27 @@
-PBRecipe — Third-party component licences
-==========================================
+PBRecipe — Licences
+===================
 
-This project is distributed under the GNU GPL v3 licence (see LICENSE).
+Licence summary for PBRecipe components
+----------------------------------------
+
+  Python application (src/pbrecipe/**/*.py)
+    Copyright (C) Philippe Poilbarbe <philippe@cardolan.net>
+    Licence: GNU General Public License v3 or later (GPL-3.0-or-later)
+    See: LICENSE
+
+  PHP web interface (src/pbrecipe/resources/php/**/*.php)
+    Copyright (C) Philippe Poilbarbe <philippe@cardolan.net>
+    Licence: GNU Affero General Public License v3 or later (AGPL-3.0-or-later)
+    See: LICENSE-AGPL
+
+  Icons (src/pbrecipe/resources/icons/*.svg)
+    Copyright (C) Philippe Poilbarbe <philippe@cardolan.net>
+    Licence: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC-BY-NC-SA-4.0)
+    See: LICENSE-CC-BY-NC-SA
+
+Third-party component licences
+-------------------------------
+
 The following libraries and tools are used at runtime or during the build.
 
 -------------------------------------------------------------------------------

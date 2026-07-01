@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Dialog for managing ingredients with singular and plural forms."""
+
 from __future__ import annotations
 
 from PySide6.QtWidgets import (

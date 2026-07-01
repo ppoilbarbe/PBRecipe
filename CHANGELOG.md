@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
+## [Unreleased]
+
+### Added
+
+- **Media manager**: new dialog (`Tools → Médias…`) listing all media in the database
+  with thumbnail, code, type (JPEG, PNG, MP4…), dimensions, size, resize and
+  JPEG-convert buttons (greyed out for non-image files).
+- **Drag & drop on the Media tab**: dropping an image file opens the code-entry dialog
+  directly, equivalent to clicking "Ajouter".
+- **Icon overhaul**: all SVG icons reviewed and renamed to kebab-case; `ref_`,
+  `recipe_` and `db_` prefixes removed. New icons: `new`, `open`, `save`, `medias`,
+  `help-about`, `preferences-system`. Icons added to: Nouvelle base, Ouvrir,
+  Enregistrer, Médias, Préférences du programme, À propos.
+- **Multi-tier licensing**: Python → GPL v3, PHP → AGPL v3, icons → CC BY-NC-SA 4.0.
+  SPDX headers added to all source files. `LICENSE-AGPL` and `LICENSE-CC-BY-NC-SA`
+  files added. About dialog updated to display the three-tier licence breakdown.
+
 ## [2026.7] — 2026-06-25
 
 ### Fixed
@@ -331,6 +348,3 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 - Quality chain: ruff (lint + format), pre-commit.
 - Makefile with targets `venv`, `install`, `run`, `test`, `test-php`, `coverage`, `lint`, `format`, `dist`, `clean`, `icons`.
 - Native icons per platform: `pbrecipe.ico` (Windows) and `pbrecipe.icns` (macOS) generated from the source PNG via `tools/make_icons.py` (Pillow).
-
-[2026.2]: https://github.com/ppoilbarbe/PBRecipe/releases/tag/2026.2
-[2026.1]: https://github.com/ppoilbarbe/PBRecipe/releases/tag/2026.1

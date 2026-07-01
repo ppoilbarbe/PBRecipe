@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Consistency-check dialog: detects broken references in the database."""
+
 from __future__ import annotations
 
 import re

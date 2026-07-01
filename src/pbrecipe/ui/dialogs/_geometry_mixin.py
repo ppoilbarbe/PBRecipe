@@ -1,4 +1,6 @@
-"""Mixin for persisting dialog geometry (position + size) via AppConfig."""
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""QDialog mixin for persisting and restoring window position and size via AppConfig."""
 
 from __future__ import annotations
 

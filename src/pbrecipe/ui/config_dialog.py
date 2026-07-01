@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Recipe database configuration dialog: path, DB type and connection parameters."""
+
 from __future__ import annotations
 
 from PySide6.QtWidgets import (

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Factory: builds a Database instance from a connection config (SQLite or MySQL)."""
+
 from __future__ import annotations
 
 import logging

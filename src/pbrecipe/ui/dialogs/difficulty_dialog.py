@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Dialog for managing difficulty levels: labels, icons and level count."""
+
 from __future__ import annotations
 
 import logging
@@ -19,13 +23,21 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QSizePolicy,
+    QSpinBox,
     QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
-from pbrecipe.constants import MAX_DIFFICULTY_LABEL
+from pbrecipe.constants import (
+    DEFAULT_DIFF_IMG_MAX_H,
+    DEFAULT_DIFF_IMG_MAX_W,
+    MAX_DIFFICULTY_COUNT,
+    MAX_DIFFICULTY_LABEL,
+    MIN_DIFFICULTY_COUNT,
+)
 from pbrecipe.database import Database
+from pbrecipe.image_utils import scale_to_fit
 from pbrecipe.models import DifficultyLevel
 from pbrecipe.ui.dialogs._geometry_mixin import GeometryMixin
 
@@ -67,6 +79,15 @@ class DifficultyDialog(GeometryMixin, QDialog):
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)
+
+        count_row = QHBoxLayout()
+        count_row.addWidget(QLabel("Nombre de niveaux :"))
+        self._count_spin = QSpinBox()
+        self._count_spin.setRange(MIN_DIFFICULTY_COUNT, MAX_DIFFICULTY_COUNT)
+        self._count_spin.valueChanged.connect(self._on_count_changed)
+        count_row.addWidget(self._count_spin)
+        count_row.addStretch()
+        root.addLayout(count_row)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         root.addWidget(splitter)
@@ -112,6 +133,11 @@ class DifficultyDialog(GeometryMixin, QDialog):
         self._preview.setMinimumHeight(120)
         rl.addWidget(self._preview)
 
+        self._resolution_label = QLabel()
+        self._resolution_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._resolution_label.setStyleSheet("color: #888;")
+        rl.addWidget(self._resolution_label)
+
         img_bar = QHBoxLayout()
         self._btn_load = QPushButton("Charger une image…")
         self._btn_load.clicked.connect(self._load_image)
@@ -137,6 +163,13 @@ class DifficultyDialog(GeometryMixin, QDialog):
 
     def _reload_levels(self) -> None:
         self._levels = self._db.list_difficulty_levels()
+        count = max(
+            (dl.level for dl in self._levels if dl.level > 0),
+            default=MIN_DIFFICULTY_COUNT,
+        )
+        self._count_spin.blockSignals(True)
+        self._count_spin.setValue(count)
+        self._count_spin.blockSignals(False)
         self._rebuild_list()
 
     def _rebuild_list(self) -> None:
@@ -178,6 +211,7 @@ class DifficultyDialog(GeometryMixin, QDialog):
         if dl.data:
             px = _pixmap_from_bytes(dl.data)
             if not px.isNull():
+                self._resolution_label.setText(f"{px.width()} × {px.height()} px")
                 w = max(self._preview.width() - 8, 40)
                 h = max(self._preview.height() - 8, 40)
                 self._preview.setPixmap(
@@ -190,6 +224,7 @@ class DifficultyDialog(GeometryMixin, QDialog):
                 )
                 self._preview.setText("")
                 return
+        self._resolution_label.setText("")
         self._preview.setPixmap(QPixmap())
         self._preview.setText("Aucune icône")
 
@@ -245,9 +280,17 @@ class DifficultyDialog(GeometryMixin, QDialog):
         if not files:
             return
         path = files[0]
+        mime = _mime_from_path(path)
         data = Path(path).read_bytes()
+        globals_data = self._db.get_globals()
+        try:
+            max_w = int(globals_data.get("diff_img_max_w", DEFAULT_DIFF_IMG_MAX_W))
+            max_h = int(globals_data.get("diff_img_max_h", DEFAULT_DIFF_IMG_MAX_H))
+        except (ValueError, TypeError):
+            max_w, max_h = DEFAULT_DIFF_IMG_MAX_W, DEFAULT_DIFF_IMG_MAX_H
+        data = scale_to_fit(data, max_w, max_h, mime)
         dl = self._levels[self._current_row]
-        dl.mime_type = _mime_from_path(path)
+        dl.mime_type = mime
         dl.data = data
         self._db.save_difficulty_level(dl)
         _log.info("Niveau %d — icône chargée depuis %s", dl.level, path)
@@ -265,6 +308,22 @@ class DifficultyDialog(GeometryMixin, QDialog):
         self._refresh_preview(dl)
         self._btn_clear.setEnabled(False)
         self._rebuild_list()
+
+    def _on_count_changed(self, new_count: int) -> None:
+        current_count = max(
+            (dl.level for dl in self._levels if dl.level > 0), default=0
+        )
+        if new_count > current_count:
+            for lvl in range(current_count + 1, new_count + 1):
+                self._db.save_difficulty_level(DifficultyLevel(level=lvl, label=""))
+                _log.info("Niveau %d ajouté", lvl)
+        elif new_count < current_count:
+            for lvl in range(current_count, new_count, -1):
+                self._db.delete_difficulty_level(lvl)
+                _log.info("Niveau %d supprimé", lvl)
+        self._reload_levels()
+        if self._list.count():
+            self._list.setCurrentRow(min(self._current_row, self._list.count() - 1))
 
     def _on_close(self) -> None:
         self._save_current()

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Field length limits (kept in sync with schema.py) and shared business rules."""
+
 # DB field length limits — kept in sync with schema.py String() sizes.
 # UI editors import these for setMaxLength() to guarantee consistency.
 
@@ -40,9 +44,17 @@ MAX_GLOBAL_KEY = 50
 
 # Business rules
 MIN_DIFFICULTY = 0
-MAX_DIFFICULTY = 3
+MAX_DIFFICULTY = 6  # max level value ever storable
+MIN_DIFFICULTY_COUNT = 3  # min number of useful levels (excluding level 0)
+MAX_DIFFICULTY_COUNT = 6  # max number of useful levels (excluding level 0)
 MIN_TIME_MINUTES = 0
 MAX_TIME_MINUTES = 9999
+
+# Default image size limits (stored in globals, configurable per-database)
+DEFAULT_DIFF_IMG_MAX_W = 512
+DEFAULT_DIFF_IMG_MAX_H = 512
+DEFAULT_MEDIA_MAX_W = 3072
+DEFAULT_MEDIA_MAX_H = 2048
 
 # Config fields (stored in YAML, not in DB)
 MAX_SITE_TYPE = 40

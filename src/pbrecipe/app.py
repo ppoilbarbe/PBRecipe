@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Main entry point: argument parsing, batch operations and GUI initialisation."""
+
 from __future__ import annotations
 
 import argparse

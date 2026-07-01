@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Main application window: recipe list, editor panel and reference-data management."""
+
 from __future__ import annotations
 
 import logging
@@ -108,17 +112,17 @@ class MainWindow(QMainWindow):
 
         # File
         file_menu = menu_bar.addMenu("&Fichier")
-        act_new = QAction("&Nouvelle base…", self)
-        act_new.setShortcut(QKeySequence.StandardKey.New)
-        act_new.setStatusTip("Créer une nouvelle base de recettes")
-        act_new.triggered.connect(self._new_config)
-        file_menu.addAction(act_new)
+        self._act_new_db = QAction("&Nouvelle base…", self)
+        self._act_new_db.setShortcut(QKeySequence.StandardKey.New)
+        self._act_new_db.setStatusTip("Créer une nouvelle base de recettes")
+        self._act_new_db.triggered.connect(self._new_config)
+        file_menu.addAction(self._act_new_db)
 
-        act_open = QAction("&Ouvrir…", self)
-        act_open.setShortcut(QKeySequence.StandardKey.Open)
-        act_open.setStatusTip("Ouvrir une base de recettes existante")
-        act_open.triggered.connect(self._open_config)
-        file_menu.addAction(act_open)
+        self._act_open = QAction("&Ouvrir…", self)
+        self._act_open.setShortcut(QKeySequence.StandardKey.Open)
+        self._act_open.setStatusTip("Ouvrir une base de recettes existante")
+        self._act_open.triggered.connect(self._open_config)
+        file_menu.addAction(self._act_open)
 
         self._recent_menu = QMenu("Fichiers &récents", self)
         self._recent_menu.menuAction().setStatusTip("Ouvrir un fichier récent")
@@ -236,26 +240,31 @@ class MainWindow(QMainWindow):
         self._act_settings.triggered.connect(self._edit_config)
         tools_menu.addAction(self._act_settings)
 
-        self._act_globals = QAction("Présentation et &libellés…", self)
+        self._act_globals = QAction("Contenu et &apparence…", self)
         self._act_globals.setStatusTip(
-            "Modifier la présentation et les libellés propres à cette base"
+            "Modifier la présentation, les libellés et l'apparence du site"
         )
         self._act_globals.triggered.connect(self._edit_globals)
         tools_menu.addAction(self._act_globals)
 
+        self._act_media = QAction("&Médias…", self)
+        self._act_media.setStatusTip("Afficher et optimiser les images de recettes")
+        self._act_media.triggered.connect(self._manage_media)
+        tools_menu.addAction(self._act_media)
+
         tools_menu.addSeparator()
 
-        act_prefs = QAction("P&références du programme…", self)
-        act_prefs.setStatusTip("Modifier les préférences du programme")
-        act_prefs.triggered.connect(self._edit_preferences)
-        tools_menu.addAction(act_prefs)
+        self._act_prefs = QAction("P&références du programme…", self)
+        self._act_prefs.setStatusTip("Modifier les préférences du programme")
+        self._act_prefs.triggered.connect(self._edit_preferences)
+        tools_menu.addAction(self._act_prefs)
 
         # Help
         help_menu = menu_bar.addMenu("&Aide")
-        act_about = QAction("&À propos…", self)
-        act_about.setStatusTip("Informations sur l'application")
-        act_about.triggered.connect(self._show_about)
-        help_menu.addAction(act_about)
+        self._act_about = QAction("&À propos…", self)
+        self._act_about.setStatusTip("Informations sur l'application")
+        self._act_about.triggered.connect(self._show_about)
+        help_menu.addAction(self._act_about)
 
     def _setup_toolbar(self) -> None:
         icons_dir = Path(__file__).parent.parent / "resources" / "icons"
@@ -263,24 +272,30 @@ class MainWindow(QMainWindow):
         def _icon(name: str) -> QIcon:
             return QIcon(str(icons_dir / f"{name}.svg"))
 
-        self._act_settings.setIcon(_icon("db_settings"))
-        self._act_globals.setIcon(_icon("db_globals"))
-        self._act_export_php.setIcon(_icon("export_php"))
-        self._act_export_php_as.setIcon(_icon("export_php_as"))
-        self._act_export_yaml.setIcon(_icon("export_yaml"))
-        self._act_export_yaml_as.setIcon(_icon("export_yaml_as"))
-        self._act_import_yaml.setIcon(_icon("import_yaml"))
+        self._act_new_db.setIcon(_icon("new"))
+        self._act_open.setIcon(_icon("open"))
+        self._recipe_editor.save_action.setIcon(_icon("save"))
+        self._act_settings.setIcon(_icon("db-settings"))
+        self._act_globals.setIcon(_icon("db-globals"))
+        self._act_media.setIcon(_icon("medias"))
+        self._act_export_php.setIcon(_icon("export-php"))
+        self._act_export_php_as.setIcon(_icon("export-php-as"))
+        self._act_export_yaml.setIcon(_icon("export-yaml"))
+        self._act_export_yaml_as.setIcon(_icon("export-yaml-as"))
+        self._act_import_yaml.setIcon(_icon("import-yaml"))
         self._act_consistency.setIcon(_icon("consistency"))
-        self._act_new_recipe.setIcon(_icon("recipe_new"))
-        self._act_copy_recipe.setIcon(_icon("recipe_copy"))
-        self._act_del_recipe.setIcon(_icon("recipe_delete"))
+        self._act_new_recipe.setIcon(_icon("new"))
+        self._act_copy_recipe.setIcon(_icon("duplicate"))
+        self._act_del_recipe.setIcon(_icon("delete"))
 
-        self._act_ref_categories.setIcon(_icon("ref_categories"))
-        self._act_ref_ingredients.setIcon(_icon("ref_ingredients"))
-        self._act_ref_units.setIcon(_icon("ref_units"))
-        self._act_ref_techniques.setIcon(_icon("ref_techniques"))
-        self._act_ref_sources.setIcon(_icon("ref_sources"))
-        self._act_ref_difficulty.setIcon(_icon("ref_difficulty"))
+        self._act_ref_categories.setIcon(_icon("recipe-categories"))
+        self._act_ref_ingredients.setIcon(_icon("ingredients"))
+        self._act_ref_units.setIcon(_icon("units"))
+        self._act_ref_techniques.setIcon(_icon("recipe-techniques"))
+        self._act_ref_sources.setIcon(_icon("recipe-sources"))
+        self._act_ref_difficulty.setIcon(_icon("difficulty"))
+        self._act_prefs.setIcon(_icon("preferences-system"))
+        self._act_about.setIcon(_icon("help-about"))
 
         self._act_ref_categories.setToolTip("Catégories")
         self._act_ref_ingredients.setToolTip("Ingrédients")
@@ -448,6 +463,13 @@ class MainWindow(QMainWindow):
         from pbrecipe.ui.globals_dialog import GlobalsDialog
 
         GlobalsDialog(self._db, self).exec()
+
+    def _manage_media(self) -> None:
+        if self._db is None:
+            return
+        from pbrecipe.ui.dialogs.media_dialog import MediaDialog
+
+        MediaDialog(self._db, self).exec()
 
     def _edit_preferences(self) -> None:
         from pbrecipe.ui.preferences_dialog import PreferencesDialog
@@ -760,6 +782,7 @@ class MainWindow(QMainWindow):
         from pbrecipe.ui.dialogs.difficulty_dialog import DifficultyDialog
 
         DifficultyDialog(self._db, parent=self).exec()
+        self._recipe_editor.reload_references()
 
     # ------------------------------------------------------------------
     # YAML export / import

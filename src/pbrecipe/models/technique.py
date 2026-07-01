@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Data model for a culinary technique with code, title and HTML description."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Dialog for managing culinary techniques: code, title and HTML description."""
+
 from __future__ import annotations
 
 import logging
@@ -55,7 +59,9 @@ class TechniqueEditDialog(QDialog):
         self._desc_editor.set_html(self._technique.description)
         if self._db is not None:
             recipes = [(r.code, r.name) for r in self._db.list_recipes()]
-            images = self._db.list_all_media()
+            images = [
+                (m.recipe_code, m.code, m.data) for m in self._db.list_all_media()
+            ]
             techniques = [(t.code, t.title) for t in self._db.list_techniques()]
             self._desc_editor.set_references(recipes, images, techniques)
         root.addWidget(self._desc_editor)

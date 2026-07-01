@@ -1,4 +1,6 @@
 <?php
+// SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 require_once __DIR__ . '/display.php';
 
 /** Render the search form. */
@@ -21,7 +23,7 @@ function render_search_form(
     if (!empty($categories)) {
         $current_cats = array_map('intval', (array)($current['cats'] ?? []));
         $cat_mode     = ($current['cat_mode'] ?? 'or') === 'and' ? 'and' : 'or';
-        $placeholder  = h($strings['all_categories'] ?? 'Toutes catégories');
+        $placeholder  = h($strings['all_categories'] ?? 'Par catégorie');
         $lbl_or       = h($strings['mode_or']  ?? 'OU');
         $lbl_and      = h($strings['mode_and'] ?? 'ET');
         $html .= "  <div class=\"search-filter-group\">\n";
@@ -59,28 +61,33 @@ function render_search_form(
         $html .= "  </div>\n";
     }
 
-    // Difficulty — single select (inchangé)
-    $diff_options = '';
-    foreach (get_difficulty_levels() as $d => $info) {
-        if ($d <= 0) continue;
-        $sel          = ($current['diff'] ?? -1) == $d ? ' selected' : '';
-        $label        = $info['label'] !== '' ? $info['label'] : "Niveau $d";
-        $diff_options .= "    <option value=\"" . (int)$d . "\"" . $sel . ">" . h($label) . "</option>\n";
-    }
-    if ($diff_options !== '') {
-        $html .= "  <select name=\"diff\">\n";
-        $html .= "    <option value=\"-1\">" . h($strings['all_difficulties'] ?? 'Toutes difficultés') . "</option>\n";
-        $html .= $diff_options;
-        $html .= "  </select>\n";
+    // Difficulty — multi-select with Tom Select + OR/ET toggle
+    $diff_levels = array_filter(get_difficulty_levels(), fn($d) => $d > 0, ARRAY_FILTER_USE_KEY);
+    if (!empty($diff_levels)) {
+        $current_diffs = array_map('intval', (array)($current['diffs'] ?? []));
+        $diff_mode     = ($current['diff_mode'] ?? 'or') === 'and' ? 'and' : 'or';
+        $placeholder   = 'Par ' . h($strings['difficulty_label'] ?? 'Difficulté');
+        $lbl_or        = h($strings['mode_or']  ?? 'OU');
+        $lbl_and       = h($strings['mode_and'] ?? 'ET');
+        $html .= "  <div class=\"search-filter-group\">\n";
+        $html .= "    <select name=\"diff[]\" id=\"ts-diff\" multiple data-placeholder=\"" . $placeholder . "\">\n";
+        foreach ($diff_levels as $d => $info) {
+            $label = $info['label'] !== '' ? $info['label'] : "Niveau $d";
+            $sel   = in_array((int)$d, $current_diffs, true) ? ' selected' : '';
+            $html .= "      <option value=\"" . (int)$d . "\"" . $sel . ">" . h($label) . "</option>\n";
+        }
+        $html .= "    </select>\n";
+        $html .= "    <div class=\"search-mode-toggle\">\n";
+        $html .= "      <label><input type=\"radio\" name=\"diff_mode\" value=\"or\"" . ($diff_mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
+        $html .= "      <label><input type=\"radio\" name=\"diff_mode\" value=\"and\"" . ($diff_mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
+        $html .= "    </div>\n";
+        $html .= "  </div>\n";
     }
 
-    // Sources — multi-select with Tom Select
+    // Sources — multi-select with Tom Select (always OR)
     if (!empty($sources)) {
         $current_srcs = array_map('intval', (array)($current['srcs'] ?? []));
-        $src_mode     = ($current['src_mode'] ?? 'or') === 'and' ? 'and' : 'or';
-        $placeholder  = h($strings['all_sources'] ?? 'Toutes sources');
-        $lbl_or       = h($strings['mode_or']  ?? 'OU');
-        $lbl_and      = h($strings['mode_and'] ?? 'ET');
+        $placeholder  = h($strings['all_sources'] ?? 'Par source');
         $html .= "  <div class=\"search-filter-group\">\n";
         $html .= "    <select name=\"src[]\" id=\"ts-src\" multiple data-placeholder=\"" . $placeholder . "\">\n";
         foreach ($sources as $s) {
@@ -88,10 +95,6 @@ function render_search_form(
             $html .= "      <option value=\"" . (int)$s['id'] . "\"" . $sel . ">" . h(strip_tags($s['name'])) . "</option>\n";
         }
         $html .= "    </select>\n";
-        $html .= "    <div class=\"search-mode-toggle\">\n";
-        $html .= "      <label><input type=\"radio\" name=\"src_mode\" value=\"or\"" . ($src_mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
-        $html .= "      <label><input type=\"radio\" name=\"src_mode\" value=\"and\"" . ($src_mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
-        $html .= "    </div>\n";
         $html .= "  </div>\n";
     }
 

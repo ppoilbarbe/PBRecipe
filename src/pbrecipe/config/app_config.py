@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Application configuration: log level, window geometry and recent files."""
+
 from __future__ import annotations
 
 import logging

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""SQLAlchemy schema: table and column definitions for the recipe database."""
+
 from sqlalchemy import (
     Boolean,
     Column,

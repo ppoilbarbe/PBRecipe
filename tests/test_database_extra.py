@@ -106,7 +106,7 @@ def test_difficulty_level_get_and_save(db):
 
 def test_difficulty_level_invalid(db):
     with pytest.raises(ValueError):
-        db.save_difficulty_level(DifficultyLevel(level=5, label="x"))
+        db.save_difficulty_level(DifficultyLevel(level=7, label="x"))
 
 
 def test_recipe_rename(db):

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""About dialog: displays the application version and credits."""
+
 from __future__ import annotations
 
 import sys
@@ -69,7 +73,10 @@ class AboutDialog(QDialog):
         info = QLabel(
             "<p>Gestionnaire de recettes avec export web PHP.</p>"
             f"<p><b>Auteur :</b> {_APP_AUTHOR}<br>"
-            "<b>Licence :</b> GNU GPL v3</p>"
+            "<b>Licences :</b><br>"
+            "&nbsp;· Application Python : GNU GPL v3<br>"
+            "&nbsp;· Interface web PHP : GNU AGPL v3<br>"
+            "&nbsp;· Icônes : CC BY-NC-SA 4.0</p>"
             "<p><a href='https://github.com/ppoilbarbe/PBRecipe'>"
             "github.com/ppoilbarbe/PBRecipe</a></p>"
         )

@@ -1,4 +1,6 @@
-"""Generic dialog for managing a flat list of named items (categories, units, …)."""
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Generic dialog for managing flat lists of named entities (add, rename, delete)."""
 
 from __future__ import annotations
 

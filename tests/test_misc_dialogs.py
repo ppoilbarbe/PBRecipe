@@ -57,7 +57,14 @@ def test_globals_dialog_empty(qtbot, db):
     dlg = GlobalsDialog(db)
     qtbot.addWidget(dlg)
     dlg._accept()
-    assert db.get_globals() == {}
+    result = db.get_globals()
+    # Media size keys are always saved even when no other field is set
+    assert "diff_img_max_w" in result
+    assert "diff_img_max_h" in result
+    assert "media_max_w" in result
+    assert "media_max_h" in result
+    # No user-entered content
+    assert "presentation" not in result
 
 
 # --- PreferencesDialog ---

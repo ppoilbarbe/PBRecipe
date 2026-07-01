@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Recipe ingredient list editor with drag-and-drop reordering."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, Qt, Signal
