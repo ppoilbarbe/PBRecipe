@@ -26,6 +26,12 @@ _datas = [
 
 import site
 
+from PyInstaller.utils.hooks import collect_data_files
+
+# LanguageTool data files (integrity.toml, logging.toml — read via
+# importlib.resources at import time, not picked up by hiddenimports alone)
+_datas += collect_data_files("language_tool_python")
+
 # Grammalecte dictionaries (graphspell data for spell checking)
 _grammalecte_dicts = []
 for _sp in site.getsitepackages():
@@ -35,6 +41,21 @@ for _sp in site.getsitepackages():
         break
 
 _datas += _grammalecte_dicts
+
+# On Linux, PySide6's Qt hook bundles the *system* libssl.so.3/libcrypto.so.3
+# for QtNetwork's TLS backend. Since both files share their basename with the
+# conda-provided OpenSSL that the interpreter's _ssl module is linked against,
+# only one copy survives in the frozen bundle — and the system one (typically
+# older, e.g. Ubuntu's OpenSSL 3.0.x) wins, missing symbols conda's _ssl needs
+# (e.g. OPENSSL_3.3.0), which breaks every HTTPS connection (requests/urllib3)
+# with "SSL module is not available". Force the conda copy explicitly so it
+# takes precedence; a newer OpenSSL 3.x remains ABI-compatible for QtNetwork.
+_binaries = []
+if sys.platform == "linux":
+    for _lib in ("libssl.so.3", "libcrypto.so.3"):
+        _p = Path(sys.prefix) / "lib" / _lib
+        if _p.is_file():
+            _binaries.append((str(_p), "."))
 
 # Conda fonts: bundled to guarantee identical rendering across machines.
 # On Linux, fontconfig resolves fonts via absolute paths written into fonts.conf
@@ -71,7 +92,7 @@ hiddenimports = [
 a = Analysis(
     ["src/pbrecipe/__main__.py"],
     pathex=["src"],
-    binaries=[],
+    binaries=_binaries,
     datas=_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
