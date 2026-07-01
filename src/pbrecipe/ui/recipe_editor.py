@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from pbrecipe.config import RecipeConfig
 from pbrecipe.constants import (
+    DEFAULT_MEDIA_JPEG_QUALITY,
     DEFAULT_MEDIA_MAX_H,
     DEFAULT_MEDIA_MAX_W,
     MAX_RECIPE_CODE,
@@ -234,9 +235,14 @@ class RecipeEditor(QWidget):
         try:
             media_max_w = int(globals_data.get("media_max_w", DEFAULT_MEDIA_MAX_W))
             media_max_h = int(globals_data.get("media_max_h", DEFAULT_MEDIA_MAX_H))
+            jpeg_quality = int(
+                globals_data.get("media_jpeg_quality", DEFAULT_MEDIA_JPEG_QUALITY)
+            )
         except (ValueError, TypeError):
             media_max_w, media_max_h = DEFAULT_MEDIA_MAX_W, DEFAULT_MEDIA_MAX_H
+            jpeg_quality = DEFAULT_MEDIA_JPEG_QUALITY
         self._media_tab.set_max_size(media_max_w, media_max_h)
+        self._media_tab.set_jpeg_quality(jpeg_quality)
         self._media_tab.load(recipe.media)
         if self._refs_db is not db:
             self._reload_editor_references(recipe, db)

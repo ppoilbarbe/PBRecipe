@@ -26,7 +26,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from pbrecipe.constants import DEFAULT_MEDIA_MAX_H, DEFAULT_MEDIA_MAX_W
+from pbrecipe.constants import (
+    DEFAULT_MEDIA_JPEG_QUALITY,
+    DEFAULT_MEDIA_MAX_H,
+    DEFAULT_MEDIA_MAX_W,
+)
 from pbrecipe.image_utils import scale_to_fit
 from pbrecipe.models import RecipeMedia
 
@@ -146,6 +150,7 @@ class MediaTab(QWidget):
         self._current_pixmap: QPixmap | None = None
         self._max_w = DEFAULT_MEDIA_MAX_W
         self._max_h = DEFAULT_MEDIA_MAX_H
+        self._jpeg_quality = DEFAULT_MEDIA_JPEG_QUALITY
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -275,6 +280,9 @@ class MediaTab(QWidget):
         self._max_w = w
         self._max_h = h
 
+    def set_jpeg_quality(self, quality: int) -> None:
+        self._jpeg_quality = quality
+
     def load(self, media_list: list[RecipeMedia]) -> None:
         self._media = list(media_list)
         self._rebuild_list()
@@ -394,7 +402,9 @@ class MediaTab(QWidget):
             return
 
         mime = _mime_from_path(path)
-        data = scale_to_fit(Path(path).read_bytes(), self._max_w, self._max_h, mime)
+        data = scale_to_fit(
+            Path(path).read_bytes(), self._max_w, self._max_h, mime, self._jpeg_quality
+        )
         self._media.append(
             RecipeMedia(
                 code=code_upper,

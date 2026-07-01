@@ -19,7 +19,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from pbrecipe.constants import DEFAULT_MEDIA_MAX_H, DEFAULT_MEDIA_MAX_W
+from pbrecipe.constants import (
+    DEFAULT_MEDIA_JPEG_QUALITY,
+    DEFAULT_MEDIA_MAX_H,
+    DEFAULT_MEDIA_MAX_W,
+)
 from pbrecipe.database import Database
 from pbrecipe.image_utils import scale_to_fit
 from pbrecipe.models import RecipeMedia
@@ -62,7 +66,7 @@ def _image_dims(data: bytes) -> tuple[int, int]:
     return (px.width(), px.height()) if not px.isNull() else (0, 0)
 
 
-def _to_jpeg(data: bytes) -> bytes:
+def _to_jpeg(data: bytes, quality: int = -1) -> bytes:
     img = QImage()
     img.loadFromData(QByteArray(data))
     if img.isNull():
@@ -71,7 +75,7 @@ def _to_jpeg(data: bytes) -> bytes:
         img = img.convertToFormat(QImage.Format.Format_RGB32)
     buf = QBuffer()
     buf.open(QIODevice.OpenMode.WriteOnly)
-    img.save(buf, "JPEG")
+    img.save(buf, "JPEG", quality)
     buf.close()
     result = bytes(buf.data())
     return result if result else data
@@ -86,8 +90,12 @@ class MediaDialog(GeometryMixin, QDialog):
         try:
             self._max_w = int(g.get("media_max_w", DEFAULT_MEDIA_MAX_W))
             self._max_h = int(g.get("media_max_h", DEFAULT_MEDIA_MAX_H))
+            self._jpeg_quality = int(
+                g.get("media_jpeg_quality", DEFAULT_MEDIA_JPEG_QUALITY)
+            )
         except (ValueError, TypeError):
             self._max_w, self._max_h = DEFAULT_MEDIA_MAX_W, DEFAULT_MEDIA_MAX_H
+            self._jpeg_quality = DEFAULT_MEDIA_JPEG_QUALITY
         self.setWindowTitle("Gestion des médias")
         self.setMinimumSize(820, 450)
         self._setup_ui()
@@ -217,7 +225,9 @@ class MediaDialog(GeometryMixin, QDialog):
 
     def _do_resize(self, row: int) -> None:
         m = self._media[row]
-        new_data = scale_to_fit(m.data, self._max_w, self._max_h, m.mime_type)
+        new_data = scale_to_fit(
+            m.data, self._max_w, self._max_h, m.mime_type, self._jpeg_quality
+        )
         if new_data is m.data:
             return
         m.data = new_data
@@ -227,7 +237,7 @@ class MediaDialog(GeometryMixin, QDialog):
 
     def _do_to_jpeg(self, row: int) -> None:
         m = self._media[row]
-        new_data = _to_jpeg(m.data)
+        new_data = _to_jpeg(m.data, self._jpeg_quality)
         if not new_data or new_data is m.data:
             return
         m.data = new_data

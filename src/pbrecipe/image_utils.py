@@ -17,12 +17,17 @@ _MIME_TO_QT: dict[str, str] = {
 
 
 def scale_to_fit(
-    data: bytes, max_w: int, max_h: int, mime_type: str = "image/jpeg"
+    data: bytes,
+    max_w: int,
+    max_h: int,
+    mime_type: str = "image/jpeg",
+    quality: int = -1,
 ) -> bytes:
     """Return bytes of the image scaled to fit within max_w × max_h.
 
     Returns original bytes unchanged if already within bounds or if encoding fails.
     Aspect ratio and alpha channel are preserved.
+    quality: passed to QImage.save(); -1 = Qt default (75 for JPEG).
     """
     img = QImage()
     img.loadFromData(QByteArray(data))
@@ -47,7 +52,7 @@ def scale_to_fit(
     qt_fmt = _MIME_TO_QT.get(mime_type, "PNG")
     buf = QBuffer()
     buf.open(QIODevice.OpenMode.WriteOnly)
-    scaled.save(buf, qt_fmt)
+    scaled.save(buf, qt_fmt, quality)
     buf.close()
     result = bytes(buf.data())
     return result if result else data

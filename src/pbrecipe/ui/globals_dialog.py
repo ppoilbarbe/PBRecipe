@@ -21,6 +21,7 @@ from pbrecipe.config.recipe_config import _DEFAULT_STRINGS
 from pbrecipe.constants import (
     DEFAULT_DIFF_IMG_MAX_H,
     DEFAULT_DIFF_IMG_MAX_W,
+    DEFAULT_MEDIA_JPEG_QUALITY,
     DEFAULT_MEDIA_MAX_H,
     DEFAULT_MEDIA_MAX_W,
 )
@@ -124,6 +125,12 @@ class GlobalsDialog(QDialog):
         self._media_max_h_spin = self._make_size_spin(256, 8192, DEFAULT_MEDIA_MAX_H)
         recipe_form.addRow("Largeur maximale :", self._media_max_w_spin)
         recipe_form.addRow("Hauteur maximale :", self._media_max_h_spin)
+        self._jpeg_quality_spin = QSpinBox()
+        self._jpeg_quality_spin.setRange(1, 100)
+        self._jpeg_quality_spin.setValue(DEFAULT_MEDIA_JPEG_QUALITY)
+        self._jpeg_quality_spin.setSuffix(" %")
+        self._jpeg_quality_spin.setSingleStep(5)
+        recipe_form.addRow("Qualité JPEG :", self._jpeg_quality_spin)
         media_layout.addWidget(recipe_group)
 
         media_layout.addStretch()
@@ -172,6 +179,9 @@ class GlobalsDialog(QDialog):
         self._media_max_h_spin.setValue(
             _parse_int(data.get("media_max_h"), DEFAULT_MEDIA_MAX_H)
         )
+        self._jpeg_quality_spin.setValue(
+            _parse_int(data.get("media_jpeg_quality"), DEFAULT_MEDIA_JPEG_QUALITY)
+        )
 
     def _accept(self) -> None:
         data: dict[str, str] = {}
@@ -186,6 +196,7 @@ class GlobalsDialog(QDialog):
         data["diff_img_max_h"] = str(self._diff_max_h_spin.value())
         data["media_max_w"] = str(self._media_max_w_spin.value())
         data["media_max_h"] = str(self._media_max_h_spin.value())
+        data["media_jpeg_quality"] = str(self._jpeg_quality_spin.value())
         self._db.set_globals(data)
         self.accept()
 
