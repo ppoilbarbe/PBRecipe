@@ -63,6 +63,7 @@ class RecipeEditor(QWidget):
         self._dirty = False
         self._loading = False
         self._original_code: str = ""
+        self._refs_db: Database | None = None  # DB for which editor refs were loaded
         self._setup_ui()
 
     # ------------------------------------------------------------------
@@ -237,7 +238,12 @@ class RecipeEditor(QWidget):
             media_max_w, media_max_h = DEFAULT_MEDIA_MAX_W, DEFAULT_MEDIA_MAX_H
         self._media_tab.set_max_size(media_max_w, media_max_h)
         self._media_tab.load(recipe.media)
-        self._reload_editor_references(recipe, db)
+        if self._refs_db is not db:
+            self._reload_editor_references(recipe, db)
+            self._refs_db = db
+        else:
+            for editor in (self._desc_editor, self._comment_editor):
+                editor.set_current_recipe(recipe.code)
 
         self._loading = False
         from pbrecipe.config.app_config import AppConfig
@@ -286,7 +292,9 @@ class RecipeEditor(QWidget):
         self._reload_sources(self._recipe)
         self._reload_difficulty_levels(self._db, self._recipe.difficulty)
         self._ingredient_editor.reload(self._db)
+        self._refs_db = None  # force full reload of editor references
         self._reload_editor_references(self._recipe, self._db)
+        self._refs_db = self._db
         self._loading = False
 
     # ------------------------------------------------------------------
