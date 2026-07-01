@@ -145,7 +145,17 @@ def test_list_all_media(db):
         )
     )
     media = db.list_all_media()
-    assert media == [("R", "A", b"x")]
+    assert len(media) == 1
+    assert media[0].recipe_code == "R"
+    assert media[0].code == "A"
+    assert media[0].data == b"x"
+
+    keys = db.list_all_media_keys()
+    assert keys == [("R", "A")]
+
+    data = db.get_media_data("R", "A")
+    assert data == b"x"
+    assert db.get_media_data("R", "MISSING") == b""
 
 
 def test_delete_recipe(db):

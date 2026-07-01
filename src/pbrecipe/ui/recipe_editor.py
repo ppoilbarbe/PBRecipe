@@ -395,20 +395,19 @@ class RecipeEditor(QWidget):
 
     def _reload_editor_references(self, recipe: Recipe, db: Database) -> None:
         recipes = [(r.code, r.name) for r in db.list_recipes()]
-        all_images = [(m.recipe_code, m.code, m.data) for m in db.list_all_media()]
+        image_keys = db.list_all_media_keys()
         techniques = [(t.code, t.title) for t in db.list_techniques()]
         for editor in (self._desc_editor, self._comment_editor):
             editor.set_current_recipe(recipe.code)
-            editor.set_references(recipes, all_images, techniques)
+            editor.set_references(recipes, image_keys, techniques)
+            editor.set_image_fetcher(db.get_media_data)
 
     def _refresh_editor_images(self) -> None:
         if self._db is None or self._recipe is None:
             return
-        all_images = [
-            (m.recipe_code, m.code, m.data) for m in self._db.list_all_media()
-        ]
+        image_keys = self._db.list_all_media_keys()
         for editor in (self._desc_editor, self._comment_editor):
-            editor.set_images(all_images)
+            editor.set_images(image_keys)
 
     def _reload_categories(self, recipe: Recipe) -> None:
         self._category_list.clear()

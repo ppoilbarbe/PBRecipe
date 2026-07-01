@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 import xml.dom.minidom
+from collections.abc import Callable
 from html import escape
 
 from PySide6.QtCore import Qt, Signal
@@ -324,7 +325,8 @@ class _ImgPickerDialog(QDialog):
 
     def __init__(
         self,
-        items: list[tuple[str, str, bytes]],
+        items: list[tuple[str, str]],
+        fetch_data: Callable[[str, str], bytes] | None = None,
         current_recipe: str = "",
         show_filter: bool = False,
         parent: QWidget | None = None,
@@ -333,6 +335,7 @@ class _ImgPickerDialog(QDialog):
         self.setWindowTitle("Sélectionner une image")
         self.setMinimumSize(580, 360)
         self._all_items = items
+        self._fetch_data = fetch_data
         self._current_recipe = current_recipe.upper()
         self._show_filter = show_filter
         self._selected_recipe_code: str | None = None
@@ -380,17 +383,17 @@ class _ImgPickerDialog(QDialog):
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
 
-    def _visible_items(self) -> list[tuple[str, str, bytes]]:
+    def _visible_items(self) -> list[tuple[str, str]]:
         """Return items visible selon le filtre recette courante (si activé)."""
         items = self._all_items
         if self._show_filter and self._filter_cb.isChecked():
             items = [i for i in items if i[0].upper() == self._current_recipe]
         return items
 
-    def _populate(self, items: list[tuple[str, str, bytes]]) -> None:
+    def _populate(self, items: list[tuple[str, str]]) -> None:
         self._list.clear()
         current_only = self._show_filter and self._filter_cb.isChecked()
-        for recipe_code, img_code, _data in items:
+        for recipe_code, img_code in items:
             label = img_code if current_only else f"{recipe_code} / {img_code}"
             item = QListWidgetItem(label)
             item.setData(0x0100, (recipe_code, img_code))
@@ -412,14 +415,7 @@ class _ImgPickerDialog(QDialog):
             self._preview.clear()
             return
         recipe_code, img_code = current.data(0x0100)
-        data = next(
-            (
-                d
-                for rc, ic, d in self._all_items
-                if rc.upper() == recipe_code.upper() and ic.upper() == img_code.upper()
-            ),
-            b"",
-        )
+        data = self._fetch_data(recipe_code, img_code) if self._fetch_data else b""
         if data:
             pix = QPixmap()
             pix.loadFromData(data)
@@ -477,8 +473,9 @@ class HtmlEditor(QWidget):
         self._current_recipe_mode = current_recipe_mode
         self._current_recipe_code: str = ""
         self._recipes: list[tuple[str, str]] = []
-        self._images: list[tuple[str, str, bytes]] = []
+        self._images: list[tuple[str, str]] = []
         self._techniques: list[tuple[str, str]] = []
+        self._image_fetcher: Callable[[str, str], bytes] | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -574,7 +571,7 @@ class HtmlEditor(QWidget):
     def set_references(
         self,
         recipes: list[tuple[str, str]],
-        images: list[tuple[str, str, bytes]],
+        images: list[tuple[str, str]],
         techniques: list[tuple[str, str]],
     ) -> None:
         """Fournit les listes de références disponibles pour les pickers."""
@@ -582,8 +579,11 @@ class HtmlEditor(QWidget):
         self._images = images
         self._techniques = techniques
 
-    def set_images(self, images: list[tuple[str, str, bytes]]) -> None:
+    def set_images(self, images: list[tuple[str, str]]) -> None:
         self._images = images
+
+    def set_image_fetcher(self, fetch: Callable[[str, str], bytes]) -> None:
+        self._image_fetcher = fetch
 
     # ------------------------------------------------------------------
     # Formatting
@@ -684,6 +684,7 @@ class HtmlEditor(QWidget):
     def _insert_img_marker(self) -> None:
         dlg = _ImgPickerDialog(
             self._images,
+            fetch_data=self._image_fetcher,
             current_recipe=self._current_recipe_code,
             show_filter=self._current_recipe_mode,
             parent=self,

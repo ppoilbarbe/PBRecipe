@@ -96,7 +96,7 @@ def test_ref_picker_double_click(qtbot):
 
 
 def test_img_picker_select(qtbot):
-    items = [("REC", "IMG1", _PNG), ("AUTRE", "IMG2", b"")]
+    items = [("REC", "IMG1"), ("AUTRE", "IMG2")]
     dlg = _ImgPickerDialog(items, current_recipe="REC", show_filter=False)
     qtbot.addWidget(dlg)
     assert dlg._list.count() == 2
@@ -107,7 +107,7 @@ def test_img_picker_select(qtbot):
 
 
 def test_img_picker_current_recipe_filter(qtbot):
-    items = [("REC", "IMG1", _PNG), ("AUTRE", "IMG2", _PNG)]
+    items = [("REC", "IMG1"), ("AUTRE", "IMG2")]
     dlg = _ImgPickerDialog(items, current_recipe="REC", show_filter=True)
     qtbot.addWidget(dlg)
     assert dlg._list.count() == 1  # filtré sur recette courante
@@ -118,11 +118,25 @@ def test_img_picker_current_recipe_filter(qtbot):
 
 
 def test_img_picker_double_click(qtbot):
-    items = [("REC", "IMG1", _PNG)]
+    items = [("REC", "IMG1")]
     dlg = _ImgPickerDialog(items)
     qtbot.addWidget(dlg)
     dlg._accept_item(dlg._list.item(0))
     assert dlg.selected_img_code == "IMG1"
+
+
+def test_img_picker_fetch_data(qtbot):
+    items = [("REC", "IMG1")]
+    fetched: list[tuple[str, str]] = []
+
+    def _fetch(rc: str, code: str) -> bytes:
+        fetched.append((rc, code))
+        return _PNG
+
+    dlg = _ImgPickerDialog(items, fetch_data=_fetch)
+    qtbot.addWidget(dlg)
+    dlg._list.setCurrentRow(0)
+    assert fetched == [("REC", "IMG1")]
 
 
 # --- HtmlEditor ---
@@ -155,10 +169,10 @@ def test_html_editor_references_setters(qtbot):
     ed = HtmlEditor()
     qtbot.addWidget(ed)
     ed.set_current_recipe("REC")
-    ed.set_references([("R", "Recette")], [("R", "I", _PNG)], [("T", "Tech")])
-    ed.set_images([("R2", "I2", _PNG)])
+    ed.set_references([("R", "Recette")], [("R", "I")], [("T", "Tech")])
+    ed.set_images([("R2", "I2")])
     assert ed._current_recipe_code == "REC"
-    assert ed._images == [("R2", "I2", _PNG)]
+    assert ed._images == [("R2", "I2")]
 
 
 def test_html_editor_formatting(qtbot):
@@ -180,9 +194,7 @@ def test_html_editor_formatting(qtbot):
 def test_html_editor_insert_markers(qtbot, monkeypatch):
     ed = HtmlEditor(current_recipe_mode=True)
     qtbot.addWidget(ed)
-    ed.set_references(
-        [("REC", "Recette")], [("REC", "IMG1", _PNG)], [("TECH", "Technique")]
-    )
+    ed.set_references([("REC", "Recette")], [("REC", "IMG1")], [("TECH", "Technique")])
     ed.set_current_recipe("REC")
 
     monkeypatch.setattr(he._RefPickerDialog, "exec", lambda self: 1)
@@ -198,7 +210,7 @@ def test_html_editor_insert_markers(qtbot, monkeypatch):
 def test_html_editor_insert_img_marker(qtbot, monkeypatch):
     ed = HtmlEditor()
     qtbot.addWidget(ed)
-    ed.set_references([], [("REC", "IMG1", _PNG)], [])
+    ed.set_references([], [("REC", "IMG1")], [])
     monkeypatch.setattr(he._ImgPickerDialog, "exec", lambda self: 1)
     monkeypatch.setattr(
         he._ImgPickerDialog,

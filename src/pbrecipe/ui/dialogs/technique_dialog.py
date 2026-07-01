@@ -59,11 +59,10 @@ class TechniqueEditDialog(QDialog):
         self._desc_editor.set_html(self._technique.description)
         if self._db is not None:
             recipes = [(r.code, r.name) for r in self._db.list_recipes()]
-            images = [
-                (m.recipe_code, m.code, m.data) for m in self._db.list_all_media()
-            ]
+            image_keys = self._db.list_all_media_keys()
             techniques = [(t.code, t.title) for t in self._db.list_techniques()]
-            self._desc_editor.set_references(recipes, images, techniques)
+            self._desc_editor.set_references(recipes, image_keys, techniques)
+            self._desc_editor.set_image_fetcher(self._db.get_media_data)
         root.addWidget(self._desc_editor)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel

@@ -633,6 +633,26 @@ class Database:
             for r in rows
         ]
 
+    def list_all_media_keys(self) -> list[tuple[str, str]]:
+        """Return (recipe_code, code) pairs for all media, without loading BLOBs."""
+        t = t_recipe_media
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(t.c.recipe_code, t.c.code).order_by(
+                    t.c.recipe_code, t.c.position
+                )
+            ).fetchall()
+        return [(r.recipe_code, r.code) for r in rows]
+
+    def get_media_data(self, recipe_code: str, code: str) -> bytes:
+        """Return the BLOB for a single media entry (empty bytes if not found)."""
+        t = t_recipe_media
+        with self._engine.connect() as conn:
+            row = conn.execute(
+                select(t.c.data).where(t.c.recipe_code == recipe_code, t.c.code == code)
+            ).fetchone()
+        return bytes(row.data) if row and row.data else b""
+
     def save_recipe_media(self, media: RecipeMedia) -> None:
         """Update mime_type and data of a single recipe_media row (by id)."""
         with self._tx() as conn:
