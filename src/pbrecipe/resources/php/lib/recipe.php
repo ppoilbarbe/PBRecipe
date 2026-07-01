@@ -48,6 +48,18 @@ function get_recipes_by_category(): array {
     return $grouped;
 }
 
+/** Return recipes as a flat, alphabetically sorted list (no category grouping). */
+function get_recipes_flat(): array {
+    $pdo  = db_connect();
+    $rows = $pdo->query('
+        SELECT DISTINCT r.code, r.name, r.difficulty
+        FROM recipes r
+        JOIN recipe_categories rc ON rc.recipe_code = r.code
+    ')->fetchAll();
+    usort($rows, fn($a, $b) => strcmp(sort_key($a['name']), sort_key($b['name'])));
+    return $rows;
+}
+
 /** Return all units as an id → name map. */
 function get_units_map(): array {
     $pdo = db_connect();

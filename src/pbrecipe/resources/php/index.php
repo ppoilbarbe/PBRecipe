@@ -36,6 +36,7 @@ $STRINGS  = array_merge([
     'search_by_ingredient' => 'Par ingrédient',
     'show_techniques'      => 'Afficher une technique',
     'no_results'           => 'Aucune recette trouvée.',
+    'no_group_label'       => 'Ne pas grouper',
 ], array_filter($_globals, fn($v) => $v !== ''));
 $SITE_TITLE        = $STRINGS['site_title'];
 $SITE_PRESENTATION = $_globals['presentation'] ?? '';
@@ -52,6 +53,7 @@ $src_ids  = isset($_GET['src'])  ? array_values(array_filter(array_map('intval',
 $cat_mode  = ($_GET['cat_mode']  ?? 'or') === 'and' ? 'and' : 'or';
 $ing_mode  = ($_GET['ing_mode']  ?? 'or') === 'and' ? 'and' : 'or';
 $diff_mode = ($_GET['diff_mode'] ?? 'or') === 'and' ? 'and' : 'or';
+$no_group  = !empty($_GET['no_group']);
 
 $is_search = ($q !== '' || !empty($cat_ids) || !empty($ing_ids) || !empty($diff_ids) || !empty($src_ids));
 
@@ -99,13 +101,16 @@ if ($recipe_code !== '') {
     $body .= render_search_form(
         $categories, $ingredients, $techniques, $STRINGS, $sources,
         ['q' => $q, 'cats' => $cat_ids, 'ings' => $ing_ids, 'diffs' => $diff_ids,
-         'srcs' => $src_ids, 'tech' => $tech_code,
+         'srcs' => $src_ids, 'tech' => $tech_code, 'no_group' => $no_group,
          'cat_mode' => $cat_mode, 'ing_mode' => $ing_mode, 'diff_mode' => $diff_mode]
     );
 
     if ($is_search) {
         $results = search_recipes($q, $cat_ids, $ing_ids, $diff_ids, $src_ids, $cat_mode, $ing_mode, $diff_mode);
         $body .= render_search_results($results, $STRINGS['no_results'] ?? 'Aucune recette trouvée.');
+    } elseif ($no_group) {
+        $recipes = get_recipes_flat();
+        $body   .= render_search_results($recipes, 'Aucune recette disponible.');
     } else {
         $grouped = get_recipes_by_category();
         $body   .= render_category_listing($grouped);

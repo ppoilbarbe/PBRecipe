@@ -93,6 +93,7 @@ _DEFAULT_STRINGS: dict[str, str] = {
     "search_by_ingredient": "Par ingrédient",
     "show_techniques": "Afficher une technique",
     "no_results": "Aucune recette trouvée.",
+    "no_group_label": "Ne pas grouper",
 }
 
 

@@ -56,6 +56,7 @@ _STRING_LABELS: dict[str, str] = {
     "search_by_ingredient": "Option de recherche par ingrédient",
     "show_techniques": "Option d'affichage d'une technique",
     "no_results": "Message si aucune recette trouvée",
+    "no_group_label": "Libellé de la case « Ne pas grouper »",
 }
 
 _DIALOG_TITLE = "Contenu et apparence"

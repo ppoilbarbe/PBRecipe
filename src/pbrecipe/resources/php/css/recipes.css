@@ -49,7 +49,10 @@
    ══════════════════════════════════════════════════════════════════════════════
    Structure HTML (render_search_form() dans search.php) :
    <form class="search-form">
-     <input type="text" name="q" …>
+     <div class="search-filter-group search-text-group">
+       <input type="text" name="q" …>
+       <div class="search-mode-toggle"><label><input type="checkbox" name="no_group"> Ne pas grouper</label></div>
+     </div>
      <div class="search-filter-group">
        <select name="cat[]" id="ts-cat" multiple …>…</select>
        <div class="search-mode-toggle">…</div>
@@ -90,8 +93,6 @@
   background: var(--clr-bg);
 }
 
-.search-form input[type=text] { flex: 1 1 200px; }
-
 .search-form button {
   padding: .4rem 1rem;
   background: var(--clr-primary);
@@ -111,6 +112,8 @@
   gap: .2rem;
   flex: 0 0 auto;
 }
+
+.search-text-group { flex: 1 1 200px; }
 
 .search-filter-group .ts-wrapper {
   min-width: 150px;

@@ -14,10 +14,17 @@ function render_search_form(
 ): string {
     $html  = "<form class=\"search-form\" method=\"get\" action=\"\">\n";
 
-    // Text search
-    $qval  = h($current['q'] ?? '');
-    $html .= "  <input type=\"text\" name=\"q\" value=\"" . $qval . "\"\n";
-    $html .= "         placeholder=\"" . h($strings['search_placeholder'] ?? 'Rechercher…') . "\">\n";
+    // Text search + no-group toggle (flat alphabetical listing instead of category groups)
+    $qval     = h($current['q'] ?? '');
+    $no_group = !empty($current['no_group']);
+    $html .= "  <div class=\"search-filter-group search-text-group\">\n";
+    $html .= "    <input type=\"text\" name=\"q\" value=\"" . $qval . "\"\n";
+    $html .= "           placeholder=\"" . h($strings['search_placeholder'] ?? 'Rechercher…') . "\">\n";
+    $html .= "    <div class=\"search-mode-toggle\">\n";
+    $html .= "      <label><input type=\"checkbox\" name=\"no_group\" value=\"1\""
+           . ($no_group ? ' checked' : '') . "> " . h($strings['no_group_label'] ?? 'Ne pas grouper') . "</label>\n";
+    $html .= "    </div>\n";
+    $html .= "  </div>\n";
 
     // Categories — multi-select with Tom Select
     if (!empty($categories)) {
