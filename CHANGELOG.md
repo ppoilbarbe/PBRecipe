@@ -21,6 +21,20 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 - **Multi-tier licensing**: Python → GPL v3, PHP → AGPL v3, icons → CC BY-NC-SA 4.0.
   SPDX headers added to all source files. `LICENSE-AGPL` and `LICENSE-CC-BY-NC-SA`
   files added. About dialog updated to display the three-tier licence breakdown.
+- **Configurable JPEG quality**: new "Qualité JPEG" spinner (1–100 %, default 85 %)
+  in `Content and appearance → Médias → Médias des recettes`, stored in the DB
+  globals table. Applied to every JPEG write: image import, resize and → JPEG
+  conversion in the media manager.
+
+### Changed
+
+- **Performance — recipe navigation**: image references for the HTML editors are
+  now loaded once per database session instead of on every recipe click, eliminating
+  multi-second delays when the database contains many large media files.
+- **Performance — image BLOBs**: the image picker (`[IMG]` button in the HTML editor)
+  now loads BLOBs on demand (one entry at a time, when the user selects an image for
+  preview) instead of fetching all BLOBs upfront. `list_all_media_keys()` and
+  `get_media_data()` added to `Database`.
 
 ## [2026.7] — 2026-06-25
 
