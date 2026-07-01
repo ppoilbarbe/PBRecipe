@@ -24,7 +24,7 @@ PY_SOURCES := $(shell find $(SRC)/pbrecipe -name "*.py" ! -path "*/__pycache__/*
 .PHONY: all help icons venv venv-update install run test test-php coverage lint format \
         dist srcdist clean hooks update-vendors _php-vendor \
         bump-release bump-year bump-set \
-        docs docs-live
+        docs docs-live live-test
 
 all: icons ## Génère tous les artefacts (icônes)
 
@@ -44,6 +44,8 @@ help: ## This help (default target)
 	@printf "\n$(Y)Variables:$(R)\n"
 	@printf "  $(G)NOCONDA$(R)        Bypass conda wrapping; tools must be on PATH\n"
 	@printf "                 e.g. $(C)make test NOCONDA=1$(R)  or  $(C)export NOCONDA=1$(R)\n"
+	@printf "  $(G)PREFIX$(R)         Path to a PHP export directory (used by live-test)\n"
+	@printf "  $(G)PORT$(R)           Port for the PHP built-in server (default: 8080)\n"
 
 venv: ## Create conda env 'pbrecipe' from environment.yml
 	@printf "$(C)Creating conda environment '$(CONDA_ENV)'...$(R)\n"
@@ -59,7 +61,10 @@ install: ## Install package in editable mode and register git hooks
 	$(CONDA_RUN) pip install -e ".[dev]"
 	$(CONDA_RUN) pre-commit install
 
-ARGS ?=
+ARGS   ?=
+PREFIX ?=
+PORT   ?= 8080
+
 run: ## Launch PBRecipe from the conda env  (pass extra args with ARGS="--debug …")
 	$(CONDA_RUN) python -m pbrecipe $(ARGS)
 
@@ -155,6 +160,12 @@ docs: ## Build HTML documentation
 
 docs-live: ## Build docs and watch for changes (hot reload)
 	$(CONDA_RUN) sphinx-autobuild $(DOCS) $(DOCS)/_build/html
+
+live-test: ## Serve a local PHP export (make live-test PREFIX=/path/to/export [PORT=8080])
+	@test -n "$(PREFIX)" || { \
+	    printf "$(Y)Usage:$(R) make live-test PREFIX=<chemin/vers/export> [PORT=8080]\n"; exit 1; }
+	@printf "$(C)Serving $(PREFIX) → http://localhost:$(PORT)/$(R)\n"
+	$(CONDA_RUN) php -S localhost:$(PORT) -t $(PREFIX)
 
 clean: ## Remove all build/cache artifacts
 	rm -rf build dist *.egg-info .pytest_cache .coverage htmlcov vendor composer.phar \

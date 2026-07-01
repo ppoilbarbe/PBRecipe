@@ -260,6 +260,7 @@ Makefile targets
     make format        Auto-format source code
     make docs          Build HTML documentation
     make docs-live     Build docs with live reload
+    make live-test     Serve a local PHP export (PREFIX=/path PORT=8080)
     make dist          Build a standalone executable (PyInstaller)
     make srcdist       Build a source distribution
     make bump-release  Bump the release counter (2026.5 → 2026.6)

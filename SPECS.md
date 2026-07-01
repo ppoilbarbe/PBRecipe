@@ -541,7 +541,7 @@ target/
 - Search: `index.php?q=…&cat[]=ID&cat[]=ID&cat_mode=or&ing[]=ID&ing_mode=and&diff=N&src[]=ID&src_mode=or`
 
 ## Makefile (default target: `help`)
-`help venv venv-update install run test test-php coverage lint format hooks dist srcdist update-vendors clean`
+`help venv venv-update install run test test-php coverage lint format hooks dist srcdist update-vendors docs docs-live live-test clean`
 
 ## Project files
 ```
