@@ -5,6 +5,29 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
+## [2026.9] — 2026-07-07
+
+### Added
+
+- **Documentation icon**: the Sphinx docs now display the app's own icon as
+  logo and favicon, copied at build time from
+  `src/pbrecipe/resources/icons/pbrecipe-512x512.png` so the artwork has a
+  single source of truth.
+- **`live-test` Makefile target**: serves a local PHP export for manual
+  testing.
+- **"No group" search toggle**: a checkbox next to the search field switches
+  the home page from a category-grouped listing to a flat, alphabetically
+  sorted list, taking less vertical space.
+
+### Fixed
+
+- **PyInstaller build**: bundled `language_tool_python`'s missing
+  `integrity.toml`/`logging.toml` data files (read via `importlib.resources`
+  at import time, which broke the module entirely in the frozen build), and
+  pinned the conda-provided OpenSSL libraries so they take precedence over
+  the system copies bundled by PySide6's Qt hook, fixing HTTPS connections
+  (including the LanguageTool remote check).
+
 ## [2026.8] — 2026-07-01
 
 ### Added
