@@ -90,31 +90,25 @@ def _md_inline(text: str) -> str:
 
 # Match versioned headings: ## [YYYY.x] — YYYY-MM-DD  (em dash or plain hyphen)
 _H2_CHANGELOG = re.compile(r"^## \[([^\]]+)\]\s+[—–-]\s+(\d{4}-\d{2}-\d{2})\s*$")
+_H2_UNRELEASED = re.compile(r"^## \[Unreleased\]\s*$")
 _H3_CHANGELOG = re.compile(r"^### (.+)$")
 _NESTED_BULLET = re.compile(r"^ {2,}- ")
 
 
-def _convert_changelog(md_path: Path) -> str:
-    lines = md_path.read_text(encoding="utf-8").splitlines()
+def _convert_section(title: str, body_lines: list[str]) -> list[str] | None:
+    """Render one ``## [...]`` section (h3 subsections + content) to RST lines.
+
+    Returns ``None`` if the section has no actual content under any of its
+    subsections (e.g. an "Unreleased" section with only empty Added/Changed
+    headings), so callers can drop it instead of emitting orphan titles.
+    """
     out: list[str] = []
-    in_intro = True
+    has_content = False
 
-    for line in lines:
-        if _LINK.match(line):
-            continue
-
-        m2 = _H2_CHANGELOG.match(line)
-        if m2:
-            in_intro = False
-            _heading(out, f"{m2.group(1)} ({m2.group(2)})", 2)
-            continue
-
+    for line in body_lines:
         m3 = _H3_CHANGELOG.match(line)
         if m3:
             _heading(out, m3.group(1), 3)
-            continue
-
-        if in_intro:
             continue
 
         converted = _md_inline(line)
@@ -126,7 +120,48 @@ def _convert_changelog(md_path: Path) -> str:
 
         if converted == "" and out and out[-1] == "":
             continue
+        if converted.strip():
+            has_content = True
         out.append(converted)
+
+    if not has_content:
+        return None
+
+    heading: list[str] = []
+    _heading(heading, title, 2)
+    return heading + out
+
+
+def _convert_changelog(md_path: Path) -> str:
+    lines = md_path.read_text(encoding="utf-8").splitlines()
+    sections: list[tuple[str, list[str]]] = []
+    current_title: str | None = None
+    current_body: list[str] = []
+
+    for line in lines:
+        if _LINK.match(line):
+            continue
+
+        m2 = _H2_CHANGELOG.match(line)
+        m2_unreleased = _H2_UNRELEASED.match(line)
+        if m2 or m2_unreleased:
+            if current_title is not None:
+                sections.append((current_title, current_body))
+            current_title = f"{m2.group(1)} ({m2.group(2)})" if m2 else "Unreleased"
+            current_body = []
+            continue
+
+        if current_title is not None:
+            current_body.append(line)
+
+    if current_title is not None:
+        sections.append((current_title, current_body))
+
+    out: list[str] = []
+    for title, body in sections:
+        rendered = _convert_section(title, body)
+        if rendered is not None:
+            out.extend(rendered)
 
     header = ["Changelog", "=" * len("Changelog")]
     preamble = [

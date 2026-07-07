@@ -11,6 +11,15 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 - **README**: link to the published documentation on Read the Docs.
 
+### Fixed
+
+- `docs/conf.py`: the `## [Unreleased]` section of `CHANGELOG.md` was
+  dropped by the RST changelog generator except for its orphaned
+  `### Added`/`### Changed`/... subheadings, which were emitted without
+  content and at an incorrect nesting level. `[Unreleased]` is now
+  recognised like a dated release and included only when it has actual
+  content.
+
 ## [2026.9] — 2026-07-07
 
 ### Added
