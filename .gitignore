@@ -54,3 +54,4 @@ report/
 # Sphinx
 docs/_build/
 docs/changelog.rst
+docs/_static/pbrecipe.png

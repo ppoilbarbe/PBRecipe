@@ -1,6 +1,7 @@
 """Sphinx configuration for PBRecipe."""
 
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -33,6 +34,8 @@ html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css", "mermaid_zoom.css"]
 html_js_files = ["mermaid_zoom.js"]
+html_logo = "_static/pbrecipe.png"
+html_favicon = "_static/pbrecipe.png"
 html_theme_options = {
     "navigation_depth": 4,
     "titles_only": False,
@@ -144,3 +147,15 @@ _ROOT = _DOCS_DIR.parent
 
 _CHANGELOG_RST = _DOCS_DIR / "changelog.rst"
 _CHANGELOG_RST.write_text(_convert_changelog(_ROOT / "CHANGELOG.md"), encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Logo / favicon — copied from the app's own icon at build time, so the
+# artwork has a single source of truth
+# (src/pbrecipe/resources/icons/pbrecipe-512x512.png).
+# ---------------------------------------------------------------------------
+
+_APP_ICON = _ROOT / "src" / "pbrecipe" / "resources" / "icons" / "pbrecipe-512x512.png"
+_STATIC_ICON = _DOCS_DIR / "_static" / "pbrecipe.png"
+
+shutil.copyfile(_APP_ICON, _STATIC_ICON)
