@@ -7,6 +7,8 @@ Recipes are stored in a local database (SQLite) or a shared one
 (MariaDB, PostgreSQL). The application generates a complete PHP website ready to
 deploy on a standard web hosting service.
 
+Full documentation: [pbrecipe.readthedocs.io](https://pbrecipe.readthedocs.io)
+
 ## Features
 
 - Recipe editing with rich HTML descriptions (headings, lists, links, images).

@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
+## [Unreleased]
+
+### Added
+
+- **README**: link to the published documentation on Read the Docs.
+
 ## [2026.9] — 2026-07-07
 
 ### Added
