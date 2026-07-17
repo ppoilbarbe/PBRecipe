@@ -99,7 +99,10 @@ function render_search_form(
         $html .= "    <select name=\"src[]\" id=\"ts-src\" multiple data-placeholder=\"" . $placeholder . "\">\n";
         foreach ($sources as $s) {
             $sel   = in_array((int)$s['id'], $current_srcs, true) ? ' selected' : '';
-            $html .= "      <option value=\"" . (int)$s['id'] . "\"" . $sel . ">" . h(strip_tags($s['name'])) . "</option>\n";
+            $label = trim((string)($s['shortcut'] ?? '')) !== ''
+                ? $s['shortcut']
+                : strip_tags($s['name']);
+            $html .= "      <option value=\"" . (int)$s['id'] . "\"" . $sel . ">" . h($label) . "</option>\n";
         }
         $html .= "    </select>\n";
         $html .= "  </div>\n";

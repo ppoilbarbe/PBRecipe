@@ -11,6 +11,7 @@ from pathlib import Path
 from ruamel.yaml import YAML
 
 from pbrecipe.config.dialog_dirs import DialogDirs
+from pbrecipe.constants import MAX_TOOLBAR_ICON_SIZE, MIN_TOOLBAR_ICON_SIZE
 
 _log = logging.getLogger(__name__)
 
@@ -26,6 +27,13 @@ def _config_path() -> Path:
 _VALID_LEVELS = {"DEBUG", "INFO", "WARNING"}
 
 
+def _clamp_toolbar_icon_size(value: int) -> int:
+    """0 = taille par défaut ; sinon ramène dans [MIN_TOOLBAR_ICON_SIZE, MAX]."""
+    if value <= 0:
+        return 0
+    return max(MIN_TOOLBAR_ICON_SIZE, min(value, MAX_TOOLBAR_ICON_SIZE))
+
+
 @dataclass
 class AppConfig:
     recent_files: list[str] = field(default_factory=list)
@@ -39,6 +47,7 @@ class AppConfig:
     grammalecte_enabled: bool = True
     languagetool_enabled: bool = False
     languagetool_url: str = ""
+    toolbar_icon_size: int = 0  # 0 = taille par défaut, sinon 16-64 px
 
     # ------------------------------------------------------------------
     # Persistence
@@ -77,6 +86,12 @@ class AppConfig:
         grammalecte_enabled = bool(data.get("grammalecte_enabled", True))
         languagetool_enabled = bool(data.get("languagetool_enabled", False))
         languagetool_url = str(data.get("languagetool_url", ""))
+        try:
+            toolbar_icon_size = _clamp_toolbar_icon_size(
+                int(data.get("toolbar_icon_size", 0))
+            )
+        except (TypeError, ValueError):
+            toolbar_icon_size = 0
         cfg = cls(
             recent_files=list(data.get("recent_files", [])),
             log_level=log_level,
@@ -88,6 +103,7 @@ class AppConfig:
             grammalecte_enabled=grammalecte_enabled,
             languagetool_enabled=languagetool_enabled,
             languagetool_url=languagetool_url,
+            toolbar_icon_size=toolbar_icon_size,
         )
         _log.debug("Configuration programme chargée : %s (log=%s)", path, cfg.log_level)
         return cfg
@@ -111,6 +127,7 @@ class AppConfig:
                     "grammalecte_enabled": self.grammalecte_enabled,
                     "languagetool_enabled": self.languagetool_enabled,
                     "languagetool_url": self.languagetool_url,
+                    "toolbar_icon_size": self.toolbar_icon_size,
                 },
                 fh,
             )

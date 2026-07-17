@@ -18,6 +18,9 @@ MAX_INGREDIENT_NAME = 50
 MAX_TECHNIQUE_CODE = 10
 MAX_TECHNIQUE_TITLE = 200
 
+# sources
+MAX_SOURCE_SHORTCUT = 50
+
 # recipes
 MAX_RECIPE_CODE = 50
 MAX_RECIPE_NAME = 200
@@ -59,3 +62,7 @@ DEFAULT_MEDIA_JPEG_QUALITY = 85
 
 # Config fields (stored in YAML, not in DB)
 MAX_SITE_TYPE = 40
+
+# Toolbar icon size preference (0 = Qt default)
+MIN_TOOLBAR_ICON_SIZE = 16
+MAX_TOOLBAR_ICON_SIZE = 64

@@ -236,7 +236,7 @@ function get_globals_map(): array {
 /** Return sources used by at least one recipe, ordered by name. */
 function get_all_sources(): array {
     $rows = db_connect()->query(
-        'SELECT DISTINCT s.id, s.name FROM sources s
+        'SELECT DISTINCT s.id, s.name, s.shortcut FROM sources s
          JOIN recipes r ON r.source_id = s.id'
     )->fetchAll();
     usort($rows, fn($a, $b) => strcmp(sort_key($a['name']), sort_key($b['name'])));

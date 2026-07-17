@@ -7,9 +7,22 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ## [Unreleased]
 
+## [2026.10] — 2026-07-17
+
 ### Added
 
 - **README**: link to the published documentation on Read the Docs.
+- **Media dialog**: double-clicking a thumbnail in the "Gestion des médias"
+  window now opens a resizable preview showing the image at full size,
+  scaled to fit the window.
+- **Source shortcut**: sources can now have an optional short display text.
+  When set, it is shown instead of the full source text in the recipe
+  editor's source combobox and in the PHP search page's source filter; the
+  full recipe page keeps showing the complete original source text either
+  way.
+- **Toolbar icon size preference**: a new setting (0 = Qt default, or 16 to
+  64 px) controls the icon size of the main window's toolbar buttons,
+  applied immediately when saved.
 
 ### Fixed
 

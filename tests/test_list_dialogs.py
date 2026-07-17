@@ -100,9 +100,26 @@ def test_source_dialog(qtbot, db, monkeypatch):
     dlg = SourceDialog(db)
     qtbot.addWidget(dlg)
     assert dlg._list.count() == 1
-    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Web", True))
+    monkeypatch.setattr(
+        "pbrecipe.ui.dialogs.source_dialog._source_dialog",
+        lambda *a, **k: ("Web", "", True),
+    )
     dlg._add()
     assert any(s.name == "Web" for s in db.list_sources())
+
+
+def test_source_dialog_edit_with_shortcut(qtbot, db, monkeypatch):
+    db.save_source(Source(name="Livre"))
+    dlg = SourceDialog(db)
+    qtbot.addWidget(dlg)
+    dlg._list.setCurrentRow(0)
+    monkeypatch.setattr(
+        "pbrecipe.ui.dialogs.source_dialog._source_dialog",
+        lambda *a, **k: ("Livre", "Raccourci", True),
+    )
+    dlg._edit()
+    updated = next(s for s in db.list_sources() if s.name == "Livre")
+    assert updated.shortcut == "Raccourci"
 
 
 def test_unit_dialog_add_edit(qtbot, db, monkeypatch):

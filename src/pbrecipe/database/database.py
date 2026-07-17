@@ -24,7 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Connection, Engine
 
-from pbrecipe.constants import MAX_DIFFICULTY, MIN_DIFFICULTY
+from pbrecipe.constants import MAX_DIFFICULTY, MAX_SOURCE_SHORTCUT, MIN_DIFFICULTY
 from pbrecipe.database.schema import (
     metadata,
     t_categories,
@@ -125,6 +125,7 @@ class Database:
             self._ensure_bool_columns(
                 conn
             )  # doit précéder _migrate (INSERT inclut hide_label)
+            self._ensure_text_columns(conn)
             self._migrate(conn)
             self._ensure_all_varchar_sizes(conn)
             self._ensure_mediumblob(conn)
@@ -289,6 +290,24 @@ class Database:
                 )
                 _log.info("Migration : colonne %s.%s ajoutée", table, col)
 
+    # (table, column, SQL type + constraint)
+    _TEXT_COLUMNS: list[tuple[str, str, str]] = [
+        ("sources", "shortcut", f"VARCHAR({MAX_SOURCE_SHORTCUT}) NOT NULL DEFAULT ''"),
+    ]
+
+    def _ensure_text_columns(self, conn: Connection) -> None:
+        """Ajoute les colonnes texte manquantes dans les schemas existants."""
+        q = "`" if conn.dialect.name == "mysql" else '"'
+        for table, col, definition in self._TEXT_COLUMNS:
+            cols = {c["name"] for c in inspect(conn).get_columns(table)}
+            if col not in cols:
+                conn.execute(
+                    text(
+                        f"ALTER TABLE {q}{table}{q} ADD COLUMN {q}{col}{q} {definition}"
+                    )
+                )
+                _log.info("Migration : colonne %s.%s ajoutée", table, col)
+
     @staticmethod
     def _enable_sqlite_fk(dbapi_conn, _record) -> None:
         dbapi_conn.execute("PRAGMA foreign_keys=ON")
@@ -424,21 +443,23 @@ class Database:
             rows = conn.execute(select(t_sources)).fetchall()
         _log.debug("Sources : %d trouvées", len(rows))
         return sorted(
-            [Source(id=r.id, name=r.name) for r in rows],
+            [Source(id=r.id, name=r.name, shortcut=r.shortcut) for r in rows],
             key=lambda x: _sort_key(re.sub(r"<[^>]+>", "", x.name)),
         )
 
     def save_source(self, source: Source) -> Source:
         with self._tx() as conn:
             if source.id is None:
-                result = conn.execute(insert(t_sources).values(name=source.name))
+                result = conn.execute(
+                    insert(t_sources).values(name=source.name, shortcut=source.shortcut)
+                )
                 source.id = result.inserted_primary_key[0]
                 _log.info("Source créée : «%s» (id=%s)", source.name, source.id)
             else:
                 conn.execute(
                     update(t_sources)
                     .where(t_sources.c.id == source.id)
-                    .values(name=source.name)
+                    .values(name=source.name, shortcut=source.shortcut)
                 )
                 _log.info("Source mise à jour : «%s» (id=%s)", source.name, source.id)
         return source

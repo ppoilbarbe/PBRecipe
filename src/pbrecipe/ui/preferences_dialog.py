@@ -19,12 +19,14 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from pbrecipe.app import apply_log_level
 from pbrecipe.config.app_config import AppConfig
+from pbrecipe.constants import MAX_TOOLBAR_ICON_SIZE, MIN_TOOLBAR_ICON_SIZE
 
 _LEVELS = [
     ("Débogage (DEBUG)", "DEBUG", logging.DEBUG),
@@ -57,6 +59,17 @@ class PreferencesDialog(QDialog):
             "Permet l'affichage des erreurs PHP sur le serveur."
         )
         form.addRow("Export PHP :", self._php_debug_cb)
+
+        self._toolbar_icon_spin = QSpinBox()
+        self._toolbar_icon_spin.setRange(0, MAX_TOOLBAR_ICON_SIZE)
+        self._toolbar_icon_spin.setSpecialValueText("Taille par défaut")
+        self._toolbar_icon_spin.setSuffix(" px")
+        self._toolbar_icon_spin.setSingleStep(8)
+        self._toolbar_icon_spin.setToolTip(
+            f"0 = taille par défaut, sinon {MIN_TOOLBAR_ICON_SIZE} à"
+            f" {MAX_TOOLBAR_ICON_SIZE} px."
+        )
+        form.addRow("Taille des icônes de la barre d'outils :", self._toolbar_icon_spin)
         root.addLayout(form)
 
         # ── Grammalecte ────────────────────────────────────────────────
@@ -140,6 +153,7 @@ class PreferencesDialog(QDialog):
                 self._level_combo.setCurrentIndex(i)
                 break
         self._php_debug_cb.setChecked(self._app_config.php_debug)
+        self._toolbar_icon_spin.setValue(self._app_config.toolbar_icon_size)
         self._refresh_grammalecte_status()
         self._gram_cb.setChecked(self._app_config.grammalecte_enabled)
         self._refresh_languagetool_status()
@@ -229,6 +243,10 @@ class PreferencesDialog(QDialog):
         level_int = next(i for _l, n, i in _LEVELS if n == name)
         self._app_config.log_level = name
         self._app_config.php_debug = self._php_debug_cb.isChecked()
+        icon_size = self._toolbar_icon_spin.value()
+        if 0 < icon_size < MIN_TOOLBAR_ICON_SIZE:
+            icon_size = MIN_TOOLBAR_ICON_SIZE
+        self._app_config.toolbar_icon_size = icon_size
         self._app_config.grammalecte_enabled = self._gram_cb.isChecked()
         new_lt_enabled = self._lt_cb.isChecked()
         new_lt_url = self._lt_url_edit.text().strip()

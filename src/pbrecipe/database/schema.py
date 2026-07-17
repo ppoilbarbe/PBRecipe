@@ -30,6 +30,7 @@ from pbrecipe.constants import (
     MAX_RECIPE_CODE,
     MAX_RECIPE_NAME,
     MAX_RECIPE_SERVING,
+    MAX_SOURCE_SHORTCUT,
     MAX_TECHNIQUE_CODE,
     MAX_TECHNIQUE_TITLE,
     MAX_UNIT_NAME,
@@ -65,6 +66,7 @@ t_sources = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", Text, nullable=False),
+    Column("shortcut", String(MAX_SOURCE_SHORTCUT), nullable=False, default=""),
 )
 
 t_techniques = Table(

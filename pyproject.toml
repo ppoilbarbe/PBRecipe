@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pbrecipe"
-version = "2026.9"
+version = "2026.10"
 description = "Recipe management application with web export"
 readme = "README.md"
 license = { file = "LICENSE" }

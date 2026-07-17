@@ -9,7 +9,7 @@ import unicodedata
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, Qt, QTimer
+from PySide6.QtCore import QByteArray, QSize, Qt, QTimer
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -304,9 +304,12 @@ class MainWindow(QMainWindow):
         self._act_ref_sources.setToolTip("Sources")
         self._act_ref_difficulty.setToolTip("Niveaux de difficulté")
 
+        self._default_toolbar_icon_size = QToolBar().iconSize()
+
         def _tb(name: str, object_name: str) -> QToolBar:
             tb = QToolBar(name, self)
             tb.setObjectName(object_name)
+            tb.setIconSize(self._toolbar_icon_size())
             self.addToolBar(tb)
             return tb
 
@@ -471,10 +474,17 @@ class MainWindow(QMainWindow):
 
         MediaDialog(self._db, self).exec()
 
+    def _toolbar_icon_size(self) -> QSize:
+        size = self._app_config.toolbar_icon_size
+        return QSize(size, size) if size else self._default_toolbar_icon_size
+
     def _edit_preferences(self) -> None:
         from pbrecipe.ui.preferences_dialog import PreferencesDialog
 
-        PreferencesDialog(self._app_config, self).exec()
+        if PreferencesDialog(self._app_config, self).exec():
+            icon_size = self._toolbar_icon_size()
+            for tb in self.findChildren(QToolBar):
+                tb.setIconSize(icon_size)
 
     def _load_config(self, config: RecipeConfig) -> None:
         if not self._confirm_discard():

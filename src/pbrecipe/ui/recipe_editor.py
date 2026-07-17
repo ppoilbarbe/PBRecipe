@@ -450,7 +450,7 @@ class RecipeEditor(QWidget):
         if self._db is None:
             return
         for src in self._db.list_sources():
-            label = re.sub(r"<[^>]+>", "", src.name)
+            label = src.shortcut.strip() or re.sub(r"<[^>]+>", "", src.name)
             self._source_combo.addItem(label, src.id)
             if src.id == recipe.source_id:
                 self._source_combo.setCurrentIndex(self._source_combo.count() - 1)

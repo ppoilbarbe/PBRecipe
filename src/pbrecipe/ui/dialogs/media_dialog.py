@@ -28,6 +28,7 @@ from pbrecipe.database import Database
 from pbrecipe.image_utils import scale_to_fit
 from pbrecipe.models import RecipeMedia
 from pbrecipe.ui.dialogs._geometry_mixin import GeometryMixin
+from pbrecipe.ui.dialogs.image_preview_dialog import ImagePreviewDialog
 
 _log = logging.getLogger(__name__)
 
@@ -129,6 +130,7 @@ class MediaDialog(GeometryMixin, QDialog):
         self._table.verticalHeader().setVisible(False)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         root.addWidget(self._table)
 
         close_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
@@ -222,6 +224,16 @@ class MediaDialog(GeometryMixin, QDialog):
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
+
+    def _on_cell_double_clicked(self, row: int, _column: int) -> None:
+        m = self._media[row]
+        if not m.data or not (m.mime_type and m.mime_type.startswith("image/")):
+            return
+        px = QPixmap()
+        px.loadFromData(m.data)
+        if px.isNull():
+            return
+        ImagePreviewDialog(px, f"{m.recipe_code}:{m.code}", self).exec()
 
     def _do_resize(self, row: int) -> None:
         m = self._media[row]
