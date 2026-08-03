@@ -9,6 +9,21 @@ function h(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/**
+ * HTML-escape a string, re-enabling only plain <b>, <i>, <u> tags (and their
+ * closing counterparts). No attributes are ever allowed: escaping first and
+ * then unescaping exact "&lt;b&gt;"-style patterns means anything like
+ * "<b onmouseover=...>" stays inert as literal text.
+ */
+function h_tags(string $s): string {
+    $escaped = h($s);
+    return preg_replace_callback(
+        '/&lt;(\/?)(b|i|u)&gt;/i',
+        fn(array $m): string => '<' . $m[1] . strtolower($m[2]) . '>',
+        $escaped
+    );
+}
+
 /** Return true if $html contains visible text (handles Qt rich-text boilerplate). */
 function has_visible_text(?string $html): bool {
     if ($html === null || $html === '') return false;
@@ -267,7 +282,7 @@ function render_recipe(array $recipe, array $strings): string {
 
             // Colonne "reste" : séparateur + nom en gras + suffixe
             $rest_parts = [];
-            if ($sep !== '') $rest_parts[] = h($sep);
+            if ($sep !== '') $rest_parts[] = h_tags($sep);
             $rest = implode(' ', $rest_parts);
 
             if ($ing_name !== '') {
@@ -279,12 +294,12 @@ function render_recipe(array $recipe, array $strings): string {
                 $rest .= ($rest !== '' ? $glue : '') . '<strong>' . h($ing_name) . '</strong>';
             }
             if (!empty($ing['suffix'])) {
-                $rest .= ' ' . h($ing['suffix']);
+                $rest .= ' ' . h_tags($ing['suffix']);
             }
 
             $html .= $ing_indent . "      <tr>\n";
             if ($has_prefix) {
-                $html .= $ing_indent . "        <td class=\"ing-prefix\">" . h((string)($ing['prefix'] ?? '')) . "</td>\n";
+                $html .= $ing_indent . "        <td class=\"ing-prefix\">" . h_tags((string)($ing['prefix'] ?? '')) . "</td>\n";
             }
             $qty_cell = trim(h((string)($ing['quantity'] ?? '')) . ' ' . h($unit_name));
             $html .= $ing_indent . "        <td class=\"ing-qty\">" . $qty_cell . "</td>\n";

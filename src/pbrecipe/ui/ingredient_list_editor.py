@@ -19,11 +19,9 @@ from PySide6.QtWidgets import (
 )
 
 from pbrecipe.constants import (
+    MAX_INGREDIENT_AFFIX,
     MAX_INGREDIENT_NAME,
-    MAX_INGREDIENT_PREFIX,
     MAX_INGREDIENT_QUANTITY,
-    MAX_INGREDIENT_SEPARATOR,
-    MAX_INGREDIENT_SUFFIX,
     MAX_UNIT_NAME,
 )
 from pbrecipe.database import Database
@@ -102,9 +100,9 @@ class IngredientRow(QWidget):
         layout.addWidget(handle)
 
         self._prefix = QLineEdit(row.prefix)
-        self._prefix.setMaxLength(MAX_INGREDIENT_PREFIX)
+        self._prefix.setMaxLength(MAX_INGREDIENT_AFFIX)
         self._prefix.setPlaceholderText("Préfixe")
-        layout.addWidget(self._prefix, MAX_INGREDIENT_PREFIX)
+        layout.addWidget(self._prefix, MAX_INGREDIENT_AFFIX)
 
         self._qty = QLineEdit(row.quantity)
         self._qty.setMaxLength(MAX_INGREDIENT_QUANTITY)
@@ -112,6 +110,14 @@ class IngredientRow(QWidget):
         layout.addWidget(self._qty, MAX_INGREDIENT_QUANTITY)
 
         self._unit = QComboBox()
+        # Évite AdjustToContentsOnFirstShow (défaut) : sur une base à des
+        # centaines/milliers d'unités, mesurer chaque item au premier affichage
+        # de chaque ligne rendait le changement de recette perceptiblement lent.
+        # La largeur réelle est de toute façon pilotée par le stretch du layout.
+        self._unit.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self._unit.setMinimumContentsLength(8)
         self._unit.addItem("", None)
         for u in units:
             self._unit.addItem(u.name, u.id)
@@ -128,11 +134,15 @@ class IngredientRow(QWidget):
         layout.addWidget(self._unit_plural)
 
         self._sep = QLineEdit(row.separator)
-        self._sep.setMaxLength(MAX_INGREDIENT_SEPARATOR)
+        self._sep.setMaxLength(MAX_INGREDIENT_AFFIX)
         self._sep.setPlaceholderText("Sépar.")
-        layout.addWidget(self._sep, MAX_INGREDIENT_SEPARATOR)
+        layout.addWidget(self._sep, MAX_INGREDIENT_AFFIX)
 
         self._ingredient = QComboBox()
+        self._ingredient.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self._ingredient.setMinimumContentsLength(12)
         self._ingredient.addItem("— aucun —", None)
         for ing in ingredients:
             self._ingredient.addItem(ing.name, ing.id)
@@ -149,9 +159,9 @@ class IngredientRow(QWidget):
         layout.addWidget(self._ingredient_plural)
 
         self._suffix = QLineEdit(row.suffix)
-        self._suffix.setMaxLength(MAX_INGREDIENT_SUFFIX)
+        self._suffix.setMaxLength(MAX_INGREDIENT_AFFIX)
         self._suffix.setPlaceholderText("Suffixe")
-        layout.addWidget(self._suffix, MAX_INGREDIENT_SUFFIX)
+        layout.addWidget(self._suffix, MAX_INGREDIENT_AFFIX)
 
         _action_btn_style = (
             "QPushButton { font-weight: bold; }"
@@ -247,14 +257,14 @@ class IngredientListEditor(QWidget):
         header = QHBoxLayout()
         for label, fixed_w, stretch in [
             ("", 20, None),
-            ("Préfixe", None, MAX_INGREDIENT_PREFIX),
+            ("Préfixe", None, MAX_INGREDIENT_AFFIX),
             ("Qté", None, MAX_INGREDIENT_QUANTITY),
             ("Unité", None, MAX_UNIT_NAME),
             ("Pl.", 24, None),
-            ("Sépar.", None, MAX_INGREDIENT_SEPARATOR),
+            ("Sépar.", None, MAX_INGREDIENT_AFFIX),
             ("Ingrédient", None, MAX_INGREDIENT_NAME),
             ("Pl.", 24, None),
-            ("Suffixe", None, MAX_INGREDIENT_SUFFIX),
+            ("Suffixe", None, MAX_INGREDIENT_AFFIX),
         ]:
             lbl = QLabel(label)
             if fixed_w is not None:
@@ -293,7 +303,7 @@ class IngredientListEditor(QWidget):
         self._units = db.list_units()
         self._ingredients = db.list_ingredients()
         for row in self._rows:
-            row.setParent(None)
+            self._discard_row(row)
         self._rows.clear()
         for ing in ingredients:
             self._insert_at(len(self._rows), ing)
@@ -303,10 +313,15 @@ class IngredientListEditor(QWidget):
     def clear(self) -> None:
         self._loading = True
         for row in self._rows:
-            row.setParent(None)
+            self._discard_row(row)
         self._rows.clear()
         self._loading = False
         self._update_empty_state()
+
+    def _discard_row(self, row: IngredientRow) -> None:
+        self._rows_layout.removeWidget(row)
+        row.hide()
+        row.deleteLater()
 
     def reload(self, db: Database) -> None:
         self._units = db.list_units()
@@ -337,7 +352,7 @@ class IngredientListEditor(QWidget):
 
     def _remove_row(self, row: IngredientRow) -> None:
         self._rows.remove(row)
-        row.setParent(None)
+        self._discard_row(row)
         self._update_empty_state()
         self.changed.emit()
 

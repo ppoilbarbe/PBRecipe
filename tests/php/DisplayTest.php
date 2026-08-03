@@ -50,6 +50,41 @@ class DisplayTest extends TestCase
         $this->assertSame('Gâteau', h('Gâteau'));
     }
 
+    // ── h_tags() ─────────────────────────────────────────────────────────────
+
+    public function test_h_tags_allows_bold(): void
+    {
+        $this->assertSame('<b>gras</b>', h_tags('<b>gras</b>'));
+    }
+
+    public function test_h_tags_allows_italic_and_underline(): void
+    {
+        $this->assertSame('<i>a</i> <u>b</u>', h_tags('<i>a</i> <u>b</u>'));
+    }
+
+    public function test_h_tags_is_case_insensitive(): void
+    {
+        $this->assertSame('<b>gras</b>', h_tags('<B>gras</B>'));
+    }
+
+    public function test_h_tags_escapes_other_tags(): void
+    {
+        $this->assertSame('&lt;script&gt;', h_tags('<script>'));
+    }
+
+    public function test_h_tags_strips_attributes_from_allowed_tags(): void
+    {
+        $this->assertSame(
+            '&lt;b onmouseover=alert(1)&gt;x</b>',
+            h_tags('<b onmouseover=alert(1)>x</b>')
+        );
+    }
+
+    public function test_h_tags_escapes_ampersand_and_quotes(): void
+    {
+        $this->assertSame('&amp; &quot; &#039;', h_tags('& " \''));
+    }
+
     // ── has_visible_text() ────────────────────────────────────────────────────
 
     public function test_has_visible_text_null_returns_false(): void

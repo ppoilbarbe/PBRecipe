@@ -7,6 +7,35 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ## [Unreleased]
 
+### Added
+
+- **PHP recipe page**: the ingredient prefix, separator and suffix fields
+  now allow `<b>`, `<i>` and `<u>` formatting tags (and their closing
+  counterparts only); any other markup is escaped as plain text.
+
+### Changed
+
+- **Ingredient prefix/separator/suffix**: max length raised from 20/30/30 to
+  60 characters, unified under a single `MAX_INGREDIENT_AFFIX` constant.
+  Existing databases have their `recipe_ingredients` columns widened
+  automatically on the next open.
+
+### Fixed
+
+- **Ingredient list editor**: quickly navigating the recipe list with the
+  "Ingredients" tab selected no longer spawns a cascade of stray top-level
+  windows, one per discarded ingredient row. `IngredientListEditor` used to
+  drop rows via `setParent(None)`, which turns a still-visible `QWidget`
+  into an independent top-level window instead of hiding it; rows are now
+  detached from the layout and hidden before being scheduled for deletion.
+- **Ingredient list editor**: switching between recipes could take up to
+  ~1s, scaling with both the recipe's ingredient count and the total number
+  of ingredients/units in the database. Each ingredient/unit `QComboBox`
+  used Qt's default `AdjustToContentsOnFirstShow` size policy, which
+  measures every item's text width on first display; replaced with
+  `AdjustToMinimumContentsLengthWithIcon`, since the actual width is
+  already governed by the row layout's stretch factors.
+
 ## [2026.10] — 2026-07-17
 
 ### Added
