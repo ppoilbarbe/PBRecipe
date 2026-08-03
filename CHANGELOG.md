@@ -7,6 +7,8 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ## [Unreleased]
 
+## [2026.11] — 2026-08-03
+
 ### Added
 
 - **PHP recipe page**: the ingredient prefix, separator and suffix fields
