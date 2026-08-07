@@ -7,6 +7,25 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ## [Unreleased]
 
+### Changed
+
+- **Icons**: `make icons` (which generated `pbrecipe.ico`/`pbrecipe.icns`
+  from the source PNG via `tools/make_icons.py` and Pillow) is replaced by
+  `make update-icons`, which syncs both the app icon (`pbrecipe.ico`,
+  `pbrecipe.icns`, `pbrecipe-128x128.png`, `pbrecipe-512x512.png`) and the
+  toolbar/action SVG icons byte-for-byte from the PBIcons reference project
+  (local checkout or GitHub), via the new `tools/update_icons.py`. Pillow is
+  no longer a build dependency.
+- **Toolbar icons**: `delete.svg`, `duplicate.svg`, `help-about.svg`,
+  `open.svg` and `preferences-system.svg` refreshed from PBIcons, dropping a
+  stale `style="width:100%;height:100%"` override no longer present upstream.
+
+### Removed
+
+- `tools/make_icons.py` and the unused source image
+  `resources/icons/pbrecipe-1024x1024-orig.jpg` (superseded by the icon
+  files now synced directly from PBIcons).
+
 ## [2026.11] — 2026-08-03
 
 ### Added

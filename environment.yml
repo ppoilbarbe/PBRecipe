@@ -30,7 +30,6 @@ dependencies:
   # Packaging
   - pyinstaller
   - python-build    # sdist via `python -m build`
-  - pillow          # .ico/.icns icon generation + PyInstaller conversion
   # Documentation
   - sphinx>=7
   - sphinx-rtd-theme>=2
