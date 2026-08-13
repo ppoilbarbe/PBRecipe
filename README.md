@@ -50,12 +50,12 @@ On first launch, allow the application in
 
 ### From source (developers)
 
-Prerequisites: [Conda](https://docs.conda.io/) (Miniforge recommended).
+Prerequisites: [pixi](https://pixi.sh).
 
 ```bash
 git clone https://github.com/ppoilbarbe/PBRecipe.git
 cd PBRecipe
-make venv      # creates the conda environment 'pbrecipe'
+make venv      # installs pixi (if absent) and syncs the project environment
 make install   # installs the package in editable mode + git hooks
 make run       # launches the application
 ```
@@ -163,16 +163,16 @@ classDiagram
 
 ### System prerequisites
 
-In addition to Conda, the following tools must be installed at the system level:
+In addition to pixi, the following tools must be installed at the system level:
 
 ```bash
 # PHP coverage (Xdebug for the system PHP)
 sudo apt install php-xdebug php-xml php-sqlite3   # Ubuntu/Debian
 ```
 
-> **Why at the system level?** The PHP bundled in the conda environment
+> **Why at the system level?** The PHP bundled in the pixi environment
 > (`conda-forge`, currently 8.5) is not yet supported by Xdebug or PCOV.
-> `make coverage` automatically falls back to the system PHP (8.3) when the conda
+> `make coverage` automatically falls back to the system PHP (8.3) when the pixi
 > PHP has no coverage driver. Without these packages, PHP coverage is skipped
 > (tests still run; this is the normal CI behaviour).
 >
@@ -190,11 +190,11 @@ The target automatically detects the available PHP coverage driver:
 
 | Situation | Behaviour |
 |---|---|
-| conda PHP + Xdebug/PCOV | Coverage via conda (optimal) |
+| pixi PHP + Xdebug/PCOV | Coverage via pixi (optimal) |
 | system PHP + Xdebug | Coverage via system PHP (current fallback) |
 | No driver | PHP tests run without coverage + warning |
 
-### Future migration — Xdebug/PCOV in conda
+### Future migration — Xdebug/PCOV in pixi
 
 When Xdebug or PCOV support PHP 8.5 and become available in conda-forge,
 install the package in the environment and simplify the `coverage` Makefile target:

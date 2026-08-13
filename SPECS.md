@@ -4,7 +4,7 @@
 - Python 3.12, PySide6, ruamel.yaml (YAML 1.2), SQLAlchemy ≥ 2.0, PyMySQL, psycopg2
 - DB: SQLite | MariaDB | PostgreSQL (configurable)
 - Web: PHP + PDO (MySQL/PgSQL/SQLite)
-- Build: conda (`pbrecipe`), hatchling, `make`
+- Build: pixi, hatchling, `make`
 
 ## Program configuration files
 
@@ -571,7 +571,7 @@ same reason.
 PHP coverage requires Xdebug or PCOV. The `coverage` target automatically detects
 the available driver in the following order:
 
-1. conda PHP (ideal, fully isolated) — unavailable until Xdebug/PCOV support PHP 8.5.
+1. pixi PHP (ideal, fully isolated) — unavailable until Xdebug/PCOV support PHP 8.5.
 2. System PHP with Xdebug (current fallback — see README § Development).
    System prerequisites: `php-xdebug php-xml php-sqlite3`.
    `XDEBUG_MODE=coverage` is passed explicitly because Xdebug 3 defaults to
@@ -582,4 +582,4 @@ the available driver in the following order:
    CI uses this mode (no native driver installed).
 
 When Xdebug or PCOV support PHP 8.5 (`conda-forge`), remove the `elif`/`else`
-branches from the `coverage` target and keep only the conda invocation.
+branches from the `coverage` target and keep only the pixi invocation.

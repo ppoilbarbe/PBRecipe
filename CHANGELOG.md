@@ -9,6 +9,17 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ### Changed
 
+- **Build system**: migrated from Conda (`environment.yml`) to
+  [pixi](https://pixi.sh) — `pyproject.toml` now carries the full
+  `[tool.pixi.*]` manifest (conda-forge dependencies + the editable PyPI
+  install of the project itself) and `pixi.lock` pins every dependency
+  per-platform. `make venv` installs pixi itself if absent and syncs the
+  environment; all other Makefile targets are unchanged (`CONDA_RUN` now
+  wraps commands with `pixi run` instead of `conda run -n pbrecipe`). CI
+  (`.github/workflows/ci.yml`) swaps `conda-incubator/setup-miniconda` for
+  `prefix-dev/setup-pixi` across all four jobs. The local `php-syntax`
+  pre-commit hook switches from `language: conda` to `language: system`,
+  relying on the PHP provided by the pixi environment.
 - **Icons**: `make icons` (which generated `pbrecipe.ico`/`pbrecipe.icns`
   from the source PNG via `tools/make_icons.py` and Pillow) is replaced by
   `make update-icons`, which syncs both the app icon (`pbrecipe.ico`,

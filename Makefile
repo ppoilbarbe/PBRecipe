@@ -1,9 +1,9 @@
-CONDA_ENV  := pbrecipe
+PIXI       := $(HOME)/.pixi/bin/pixi
 PHP_TEST_DB := /tmp/pbrecipe_php_test.db
 ifdef NOCONDA
 CONDA_RUN  :=
 else
-CONDA_RUN  := conda run -n $(CONDA_ENV) --no-capture-output
+CONDA_RUN  := $(PIXI) run
 endif
 SRC        := src
 DOCS       := docs
@@ -32,30 +32,38 @@ help: ## This help (default target)
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS=":.*?## "}; {printf "  $(G)%-14s$(R) %s\n", $$1, $$2}'
 	@printf "\n$(Y)Variables:$(R)\n"
-	@printf "  $(G)NOCONDA$(R)        Bypass conda wrapping; tools must be on PATH\n"
+	@printf "  $(G)NOCONDA$(R)        Bypass pixi wrapping; tools must be on PATH\n"
 	@printf "                 e.g. $(C)make test NOCONDA=1$(R)  or  $(C)export NOCONDA=1$(R)\n"
 	@printf "  $(G)PREFIX$(R)         Path to a PHP export directory (used by live-test)\n"
 	@printf "  $(G)PORT$(R)           Port for the PHP built-in server (default: 8080)\n"
 
-venv: ## Create conda env 'pbrecipe' from environment.yml
-	@printf "$(C)Creating conda environment '$(CONDA_ENV)'...$(R)\n"
-	conda env create -f environment.yml
-	@printf "$(G)Done! Activate with:$(R) conda activate $(CONDA_ENV)\n"
+$(PIXI):
+	@printf "$(C)pixi not found, installing...$(R)\n"
+	curl -fsSL https://pixi.sh/install.sh | sh
 
-venv-update: ## Update existing conda env from environment.yml
-	@printf "$(C)Updating conda environment '$(CONDA_ENV)'...$(R)\n"
-	conda env update -f environment.yml --prune
+venv: $(PIXI) ## Install pixi (if absent) and sync the project environment
+	@printf "$(C)Syncing pixi environment...$(R)\n"
+	$(PIXI) install
+	@printf "$(G)Done! Run commands with:$(R) pixi run <cmd>  $(Y)or$(R)  pixi shell\n"
+
+venv-update: $(PIXI) ## Relock and update the pixi environment
+	@printf "$(C)Updating pixi environment...$(R)\n"
+	$(PIXI) update
 	@printf "$(G)Done.$(R)\n"
 
-install: ## Install package in editable mode and register git hooks
-	$(CONDA_RUN) pip install -e ".[dev]"
+install: ## Sync the environment (editable install) and register git hooks
+ifdef NOCONDA
+	pip install -e ".[dev]"
+else
+	$(PIXI) install
+endif
 	$(CONDA_RUN) pre-commit install
 
 ARGS   ?=
 PREFIX ?=
 PORT   ?= 8080
 
-run: ## Launch PBRecipe from the conda env  (pass extra args with ARGS="--debug …")
+run: ## Launch PBRecipe from the pixi env  (pass extra args with ARGS="--debug …")
 	$(CONDA_RUN) python -m pbrecipe $(ARGS)
 
 test: ## Run Python test suite
@@ -79,7 +87,7 @@ coverage: _php-vendor ## Run test suite and open HTML coverage report
 	# PHP 8.5 (conda-forge) n'est pas encore supporté par Xdebug/PCOV ; on bascule
 	# sur le PHP système (ex. 8.3 + php-xdebug via apt) si disponible.
 	# Quand Xdebug/PCOV supporteront PHP 8.5, remplacer les deux branches elif/else
-	# par une seule invocation conda : $(CONDA_RUN) ./vendor/bin/phpunit --coverage-html htmlcov/php
+	# par une seule invocation pixi : $(CONDA_RUN) ./vendor/bin/phpunit --coverage-html htmlcov/php
 	@if $(CONDA_RUN) php -r 'exit(extension_loaded("xdebug") || extension_loaded("pcov") ? 0 : 1);' 2>/dev/null; then \
 		PBRECIPE_TEST_DB=$(PHP_TEST_DB) $(CONDA_RUN) ./vendor/bin/phpunit --coverage-html htmlcov/php; \
 		printf "$(G)Report PHP:$(R)    $(Y)htmlcov/php/index.html$(R)\n"; \

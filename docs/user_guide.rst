@@ -27,17 +27,16 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 - Python 3.12 or later
-- A conda environment (recommended) — see ``environment.yml``
+- `pixi <https://pixi.sh>`_ (recommended) — see ``pyproject.toml``
 - One of the supported database backends:
 
   - **SQLite** — no server required; suitable for single-user use
   - **MariaDB / MySQL** — recommended for shared or networked use
   - **PostgreSQL** — alternative relational backend
 
-Create and activate the conda environment::
+Create the pixi environment::
 
-    conda env create -f environment.yml
-    conda activate pbrecipe
+    pixi install
 
 Install the package in editable mode::
 

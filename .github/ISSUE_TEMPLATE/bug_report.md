@@ -42,7 +42,7 @@ If applicable, add screenshots to help explain your problem.
   - [ ] At system level
   - [ ] At user level without environment
   - [ ] from source in python virtualenv
-  - [ ] from source in conda environment
+  - [ ] from source in pixi environment
 
 **Additional context**
 Add any other context about the problem here.

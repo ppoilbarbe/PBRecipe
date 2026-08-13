@@ -16,8 +16,11 @@ build/
 venv/
 env/
 
-# Conda
-.conda/
+# pixi (defensive: environments should live in ~/PIXI/ via the global
+# `pixi config set --global detached-environments`, but this covers
+# machines/accounts where that global config isn't set, so .pixi/
+# still needs to be ignored)
+.pixi/
 
 # Tests & coverage
 .coverage

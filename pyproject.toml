@@ -64,6 +64,48 @@ packages = ["src/pbrecipe"]
 [tool.hatch.build.targets.wheel.sources]
 "src/pbrecipe/resources" = "pbrecipe/resources"
 
+[tool.pixi.workspace]
+channels  = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+
+[tool.pixi.dependencies]
+python = "3.12.*"
+# GUI
+pyside6 = "*"
+# Fonts (bundled in the PyInstaller bundle via pbrecipe.spec)
+fonts-conda-ecosystem = "*"   # meta-package: Ubuntu, DejaVu, Inconsolata, SourceCodePro
+# YAML
+"ruamel.yaml" = "*"
+"ruamel.yaml.clib" = "*"
+# Databases
+sqlalchemy = "*"       # DB abstraction (SQLite/MariaDB/PostgreSQL)
+pymysql    = "*"       # MariaDB / MySQL driver
+psycopg2   = "*"       # PostgreSQL driver
+# Tests
+pytest        = "*"
+pytest-qt     = "*"
+pytest-cov    = "*"
+# Lint / hooks
+ruff        = "*"
+pre-commit  = "*"
+# PHP (for PHP tests)
+php = "*"
+# GitHub CLI
+gh = "*"
+# Packaging
+pyinstaller  = "*"
+python-build = "*"     # sdist via `python -m build`
+# Documentation
+sphinx               = ">=7"
+sphinx-rtd-theme     = ">=2"
+sphinx-autobuild     = ">=2024"
+sphinxcontrib-mermaid = ">=0.9"
+
+[tool.pixi.pypi-dependencies]
+# Dev install (editable) — pulls in [project.dependencies] and the "dev" extra
+# (which itself covers the spellcheck/grammalecte extras, both PyPI-only).
+pbrecipe = { path = ".", editable = true, extras = ["dev"] }
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts   = ["--cov=pbrecipe", "--cov-report=term-missing"]
