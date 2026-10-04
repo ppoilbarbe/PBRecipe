@@ -7,6 +7,8 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ## [Unreleased]
 
+## [2026.12] — 2026-10-04
+
 ### Added
 
 - **Equipment reference list**: new `equipment` table holding the known
