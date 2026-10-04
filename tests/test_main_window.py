@@ -136,6 +136,27 @@ def test_copy_recipe(window):
     assert "Copie de" in window._recipe_editor._name_edit.text()
 
 
+def test_copy_recipe_keeps_equipment(window):
+    from pbrecipe.models import Equipment, RecipeEquipment, RecipeIngredient
+
+    _add_recipe(window)
+    eq = window._db.save_equipment(Equipment(name="Fouet", name_plural="Fouets"))
+    recipe = window._db.get_recipe("GATEAU")
+    recipe.equipment = [
+        RecipeEquipment(prefix="2", equipment_id=eq.id, equipment_plural=True)
+    ]
+    recipe.ingredients = [RecipeIngredient(quantity="3", ingredient_plural=True)]
+    window._db.save_recipe(recipe)
+    window._recipe_list.setCurrentRow(0)
+    window._copy_recipe()
+    editor = window._recipe_editor
+    (copied,) = editor._equipment_editor.get_equipment("")
+    assert (copied.id, copied.prefix, copied.equipment_id) == (None, "2", eq.id)
+    assert copied.equipment_plural is True
+    # Les cases « pluriel » des ingrédients sont aussi conservées à la copie
+    assert editor._ingredient_editor.get_ingredients("")[0].ingredient_plural
+
+
 def test_delete_recipe(window, monkeypatch):
     _add_recipe(window)
     window._recipe_list.setCurrentRow(0)
@@ -187,6 +208,7 @@ def test_reference_editors_open(window, monkeypatch):
         ("category_dialog", "CategoryDialog"),
         ("ingredient_dialog", "IngredientDialog"),
         ("unit_dialog", "UnitDialog"),
+        ("equipment_dialog", "EquipmentDialog"),
         ("technique_dialog", "TechniqueDialog"),
         ("source_dialog", "SourceDialog"),
         ("difficulty_dialog", "DifficultyDialog"),
@@ -195,6 +217,7 @@ def test_reference_editors_open(window, monkeypatch):
     window._edit_categories()
     window._edit_ingredients()
     window._edit_units()
+    window._edit_equipment()
     window._edit_techniques()
     window._edit_sources()
     window._edit_difficulty_levels()
@@ -395,3 +418,81 @@ def test_update_db_label_network(qtbot):
     win._config = cfg
     win._update_db_label()
     assert win._db_label.text() == "mariadb:mabase"
+
+
+def test_load_incompatible_schema_refused(window, first_version_db, monkeypatch):
+    from PySide6.QtCore import QTimer
+
+    _add_recipe(window)
+    shown = []
+    monkeypatch.setattr(
+        QMessageBox, "critical", lambda *a, **k: shown.append(a) or None
+    )
+    scheduled = []
+    monkeypatch.setattr(QTimer, "singleShot", lambda ms, fn: scheduled.append(fn))
+    exits = []
+    monkeypatch.setattr("PySide6.QtWidgets.QApplication.exit", exits.append)
+    _db_path, yaml_path = first_version_db
+    window._load_config(RecipeConfig.from_file(yaml_path))
+    assert len(shown) == 1
+    assert shown[0][1] == "Base incompatible"
+    assert "equipment.name_plural" in shown[0][2]
+    # Aucune base ouverte, plus aucune recette de l'ancienne base affichée
+    assert window._db is None and window._config is None
+    assert window._recipe_list.count() == 0
+    assert window._stack.currentWidget() is window._empty_widget
+    # Le programme se ferme
+    assert window.fatal_error is True
+    assert len(scheduled) == 1
+    scheduled[0]()
+    assert exits == [1]
+
+
+def test_startup_on_incompatible_schema_quits(qtbot, first_version_db, monkeypatch):
+    from PySide6.QtCore import QTimer
+
+    monkeypatch.setattr(QMessageBox, "critical", lambda *a, **k: None)
+    monkeypatch.setattr(QTimer, "singleShot", lambda ms, fn: None)
+    _db_path, yaml_path = first_version_db
+    win = MainWindow(initial_path=str(yaml_path), app_config=AppConfig())
+    qtbot.addWidget(win)
+    assert win.fatal_error is True
+    assert win._db is None
+
+
+def test_main_exits_without_showing_window_on_fatal_error(
+    first_version_db, monkeypatch, tmp_path
+):
+    import sys
+
+    from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QApplication
+
+    from pbrecipe import app as app_mod
+
+    # main() crée la QApplication : réutiliser celle de pytest-qt
+    existing = QApplication.instance()
+
+    class _Delegate(type):
+        def __getattr__(cls, name):  # QApplication.instance(), exit()…
+            return getattr(QApplication, name)
+
+    class _ExistingApp(metaclass=_Delegate):
+        def __new__(cls, *args):
+            return existing
+
+    monkeypatch.setattr("PySide6.QtWidgets.QApplication", _ExistingApp)
+    monkeypatch.setattr(sys, "excepthook", sys.excepthook)  # restauré après
+    monkeypatch.setattr(QMessageBox, "critical", lambda *a, **k: None)
+    monkeypatch.setattr(QTimer, "singleShot", lambda ms, fn: None)
+    monkeypatch.setattr(
+        MainWindow, "show", lambda self: pytest.fail("fenêtre affichée")
+    )
+    _db_path, yaml_path = first_version_db
+    # Pas de --config-dir : set_config_dir() est global au processus et
+    # fausserait la configuration des tests suivants.
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    monkeypatch.setattr("sys.argv", ["pbrecipe", str(yaml_path)])
+    with pytest.raises(SystemExit) as info:
+        app_mod.main()
+    assert info.value.code == 1

@@ -18,6 +18,8 @@ from sqlalchemy import (
 from pbrecipe.constants import (
     MAX_CATEGORY_NAME,
     MAX_DIFFICULTY_LABEL,
+    MAX_EQUIPMENT_AFFIX,
+    MAX_EQUIPMENT_NAME,
     MAX_GLOBAL_KEY,
     MAX_INGREDIENT_AFFIX,
     MAX_INGREDIENT_NAME,
@@ -57,6 +59,14 @@ t_ingredients = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", String(MAX_INGREDIENT_NAME), nullable=False),
     Column("name_plural", String(MAX_INGREDIENT_NAME), nullable=False, default=""),
+)
+
+t_equipment = Table(
+    "equipment",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", String(MAX_EQUIPMENT_NAME), nullable=False),
+    Column("name_plural", String(MAX_EQUIPMENT_NAME), nullable=False, default=""),
 )
 
 t_sources = Table(
@@ -126,6 +136,23 @@ t_recipe_ingredients = Table(
     Column("suffix", String(MAX_INGREDIENT_AFFIX), nullable=False, default=""),
     Column("unit_plural", Boolean, nullable=False, default=False),
     Column("ingredient_plural", Boolean, nullable=False, default=False),
+)
+
+t_recipe_equipment = Table(
+    "recipe_equipment",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column(
+        "recipe_code",
+        String(MAX_RECIPE_CODE),
+        ForeignKey("recipes.code", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("position", Integer, nullable=False, default=0),
+    Column("prefix", String(MAX_EQUIPMENT_AFFIX), nullable=False, default=""),
+    Column("equipment_id", Integer, ForeignKey("equipment.id", ondelete="SET NULL")),
+    Column("suffix", String(MAX_EQUIPMENT_AFFIX), nullable=False, default=""),
+    Column("equipment_plural", Boolean, nullable=False, default=False),
 )
 
 t_recipe_media = Table(

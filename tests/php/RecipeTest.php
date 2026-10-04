@@ -129,6 +129,28 @@ class RecipeTest extends TestCase
         $this->assertSame([], $r['media']);
     }
 
+    public function test_get_recipe_equipment_rows_in_order(): void
+    {
+        $eq = get_recipe('GATEAU')['equipment'];
+        $this->assertCount(2, $eq);
+        $this->assertSame('2',               $eq[0]['prefix']);
+        $this->assertSame('Moule à manqué',  $eq[0]['equipment_name']);
+        $this->assertSame('Moules à manqué', $eq[0]['equipment_name_plural']);
+        $this->assertSame(1,                 (int)$eq[0]['equipment_plural']);
+        $this->assertSame('de 24 cm',        $eq[0]['suffix']);
+        $this->assertSame('Fouet',           $eq[1]['equipment_name']);
+    }
+
+    // ── get_all_equipment() ───────────────────────────────────────────────────
+
+    public function test_get_all_equipment_only_used_sorted_by_name(): void
+    {
+        $eqs = get_all_equipment();
+        // 'Mandoline' n'est utilisée par aucune recette
+        $this->assertSame(['Fouet', 'Moule à manqué'], array_column($eqs, 'name'));
+        $this->assertArrayHasKey('id', $eqs[0]);
+    }
+
     // ── get_all_ingredients() ─────────────────────────────────────────────────
 
     public function test_get_all_ingredients_sorted_by_name(): void
@@ -188,6 +210,32 @@ class RecipeTest extends TestCase
         $results = search_recipes(ingredient_ids: [1]); // Farine
         $this->assertCount(1, $results);
         $this->assertSame('GATEAU', $results[0]['code']);
+    }
+
+    public function test_search_recipes_by_equipment_or(): void
+    {
+        $results = search_recipes(equipment_ids: [1, 3]); // Moule OU Mandoline
+        $this->assertSame(['GATEAU'], array_column($results, 'code'));
+        $this->assertCount(2, search_recipes(equipment_ids: [2])); // Fouet
+    }
+
+    public function test_search_recipes_by_equipment_and(): void
+    {
+        $results = search_recipes(equipment_ids: [1, 2], eq_mode: 'and');
+        $this->assertSame(['GATEAU'], array_column($results, 'code'));
+        $this->assertCount(0, search_recipes(equipment_ids: [1, 3], eq_mode: 'and'));
+    }
+
+    public function test_search_recipes_by_ingredient_and(): void
+    {
+        $results = search_recipes(ingredient_ids: [1, 2], ing_mode: 'and');
+        $this->assertSame(['GATEAU'], array_column($results, 'code'));
+    }
+
+    public function test_search_recipes_by_category_and(): void
+    {
+        $this->assertSame(['GATEAU'], array_column(search_recipes(category_ids: [1], cat_mode: 'and'), 'code'));
+        $this->assertCount(0, search_recipes(category_ids: [1, 2], cat_mode: 'and'));
     }
 
     public function test_search_recipes_combined_criteria_narrows_results(): void

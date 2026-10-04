@@ -151,6 +151,8 @@ All routes go through ``index.php``:
      - Category filter (multi-select, OR or AND)
    * - ``index.php?ing[]=ID&ing_mode=or|and``
      - Ingredient filter (multi-select, OR or AND)
+   * - ``index.php?eq[]=ID&eq_mode=or|and``
+     - Equipment filter (multi-select, OR or AND)
    * - ``index.php?src[]=ID&src_mode=or|and``
      - Source filter (multi-select, OR or AND)
    * - ``index.php?diff=N``
@@ -170,7 +172,7 @@ Search and filtering
 --------------------
 
 The search form is rendered by ``lib/search.php``.  Multi-select dropdowns
-for categories, ingredients and sources use Tom Select (initialised by
+for categories, ingredients, equipment and sources use Tom Select (initialised by
 ``js/recipe.js``).  Each dropdown has an OR/AND toggle rendered as radio
 buttons.
 
@@ -275,16 +277,23 @@ All recipe-related queries.  Key functions:
 
 ``get_recipe(string $code)``
     Loads a single recipe with all its relationships: categories, ingredient
-    rows (with unit and ingredient names + plurals), media codes, and source.
+    rows (with unit and ingredient names + plurals), equipment rows (with
+    equipment names + plurals), media codes, and source.
 
 ``search_recipes(array $filters)``
     Multi-dimensional filter query.  ``$filters`` keys:
     ``q``, ``cat`` + ``cat_mode``, ``ing`` + ``ing_mode``,
+    ``eq`` + ``eq_mode``,
     ``src`` + ``src_mode``, ``diff``.
 
-``get_available_ingredients()`` / ``get_available_categories()`` / ``get_available_sources()``
+``get_available_ingredients()`` / ``get_available_categories()`` / ``get_available_sources()`` / ``get_all_equipment()``
     Return only the reference items that are actually used by at least one
-    recipe (used to populate the search form selects).
+    recipe (used to populate the search form selects).  Categories,
+    ingredients and equipment share ``get_used_references()``.
+
+``link_filter()``
+    Builds the OR/AND sub-query shared by the category, ingredient and
+    equipment filters of ``search_recipes()``.
 
 ``get_globals_map()``
     Returns all rows from the ``globals`` table as ``[key => value]``.
@@ -295,7 +304,8 @@ All recipe-related queries.  Key functions:
 Stateless rendering functions that write directly to output:
 
 ``render_recipe(array $recipe)``
-    Full recipe card: meta row, ingredients block or section, description,
+    Full recipe card: meta row, ingredients row (hero image / ingredients /
+    equipment, 0 to 3 columns), description,
     comments, techniques, gallery, source.
 
 ``render_difficulty(int $level)``
@@ -312,6 +322,13 @@ Stateless rendering functions that write directly to output:
     rich-text HTML.  Recipe and technique name caches are populated once per
     request.  Unknown image codes produce a ``<span class="img-missing">``
     placeholder.
+
+``render_db_error(Throwable $e) : string``
+    Readable error block shown by ``index.php`` (HTTP 500) when a database
+    error occurs: a probable version mismatch between the exported site and
+    the database, or a connection failure (``DbConnectionError`` thrown by
+    ``db_connect()``).  The technical message is written to the server log
+    and displayed only when ``SITE_DEBUG`` is true.
 
 ``lib/technique.php`` — techniques
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -333,7 +350,7 @@ Stateless rendering functions that write directly to output:
 
 ``render_search_form(array $available, array $current_filters)``
     Builds the ``<form class="search-form">`` HTML with Tom Select
-    multi-selects for categories, ingredients and sources, a text input,
+    multi-selects for categories, ingredients, equipment and sources, a text input,
     a difficulty select and a technique select.  Active filter values are
     pre-selected.
 
@@ -364,6 +381,11 @@ The tables queried by the PHP application:
      - ``id`` (PK), ``name``, ``name_plural``
    * - ``units``
      - ``id`` (PK), ``name``, ``name_plural``
+   * - ``equipment``
+     - ``id`` (PK), ``name``, ``name_plural``
+   * - ``recipe_equipment``
+     - ``id``, ``recipe_code`` (FK), ``position``, ``prefix``,
+       ``equipment_id`` (FK), ``equipment_plural``, ``suffix``
    * - ``sources``
      - ``id`` (PK), ``name``
    * - ``techniques``
@@ -392,7 +414,7 @@ Export (``--export-yaml``)
 Import
     Deserialises and *merges* into the target database:
 
-    - Reference items (categories, units, ingredients, sources) are
+    - Reference items (categories, units, ingredients, equipment, sources) are
       auto-created if missing.
     - Techniques and difficulty levels are upserted.
     - Recipes are created or updated.
@@ -446,7 +468,7 @@ CSS reference
    * - ``.diff-label``
      - Text label inside the badge
    * - ``.recipe-ingredients-block``
-     - Ingredients + hero image side-by-side layout
+     - Row of 1 to 3 columns: hero image, ingredients, equipment
    * - ``.hero-item`` / ``.recipe-hero-img``
      - Hero image ``<figure>`` and ``<img>``
    * - ``.hero-preview``
@@ -457,6 +479,10 @@ CSS reference
      - ``<table>`` of ingredient rows
    * - ``.ing-prefix`` / ``.ing-qty`` / ``.ing-rest``
      - Table cells: optional prefix, quantity + unit, name + suffix
+   * - ``.recipe-equipment``
+     - ``<section>`` for the equipment list
+   * - ``.equipment-list``
+     - ``<ul>`` of equipment rows: prefix, **name** (singular/plural), suffix
    * - ``.recipe-description`` / ``.recipe-comments``
      - Rich-text sections
    * - ``.recipe-body``

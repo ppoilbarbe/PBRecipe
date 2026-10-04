@@ -204,3 +204,152 @@ def test_export_yaml_bad_config(monkeypatch, tmp_path):
     bad.write_text("db: [unterminated\n", encoding="utf-8")
     with pytest.raises(SystemExit):
         _run_main(monkeypatch, [str(bad), "--export-yaml", str(tmp_path / "o.yaml")])
+
+
+# --------------------------------------------------------------------------
+# Mise à jour du schéma avant export headless
+# --------------------------------------------------------------------------
+
+
+def _drop_equipment_tables(config_file: Path) -> Database:
+    db = Database(f"sqlite:///{RecipeConfig.from_file(config_file).db.path}")
+    db.connect()
+    with db._tx() as conn:
+        conn.exec_driver_sql("DROP TABLE recipe_equipment")
+        conn.exec_driver_sql("DROP TABLE equipment")
+    db.disconnect()
+    return db
+
+
+def _table_names(db: Database) -> set[str]:
+    from sqlalchemy import inspect
+
+    db.connect()
+    try:
+        return set(inspect(db._engine).get_table_names())
+    finally:
+        db.disconnect()
+
+
+def test_export_yaml_upgrades_old_schema(monkeypatch, config_file, tmp_path):
+    db = _drop_equipment_tables(config_file)
+    target = tmp_path / "dump.yaml"
+    _run_main(monkeypatch, [str(config_file), "--export-yaml", str(target)])
+    assert target.exists()
+    assert {"equipment", "recipe_equipment"} <= _table_names(db)
+
+
+def test_export_php_upgrades_old_schema(monkeypatch, config_file, tmp_path):
+    db = _drop_equipment_tables(config_file)
+    target = tmp_path / "out_php"
+    _run_main(monkeypatch, [str(config_file), "--export-php", str(target)])
+    assert (target / "index.php").exists()
+    assert {"equipment", "recipe_equipment"} <= _table_names(db)
+
+
+@pytest.mark.parametrize("option", ["--export-yaml", "--export-php"])
+def test_export_refuses_empty_database(monkeypatch, tmp_path, option):
+    db_path = tmp_path / "empty.db"
+    cfg = RecipeConfig(db=DbConfig(type="sqlite", path=str(db_path)))
+    yaml_path = tmp_path / "c.yaml"
+    cfg.save(yaml_path)
+    with pytest.raises(SystemExit):
+        _run_main(monkeypatch, [str(yaml_path), option, str(tmp_path / "out")])
+    db = Database(f"sqlite:///{db_path}")
+    assert _table_names(db) == set()  # aucune table créée silencieusement
+
+
+@pytest.mark.parametrize("option", ["--export-yaml", "--export-php"])
+def test_export_refuses_foreign_database(monkeypatch, tmp_path, option):
+    db_path = tmp_path / "foreign.db"
+    db = Database(f"sqlite:///{db_path}")
+    db.connect()
+    with db._tx() as conn:
+        conn.exec_driver_sql("CREATE TABLE autre (id INTEGER)")
+    db.disconnect()
+    cfg = RecipeConfig(db=DbConfig(type="sqlite", path=str(db_path)))
+    yaml_path = tmp_path / "c.yaml"
+    cfg.save(yaml_path)
+    with pytest.raises(SystemExit):
+        _run_main(monkeypatch, [str(yaml_path), option, str(tmp_path / "out")])
+    assert _table_names(db) == {"autre"}
+
+
+# --------------------------------------------------------------------------
+# Erreurs de base de données non interceptées (interface graphique)
+# --------------------------------------------------------------------------
+
+
+def _db_error():
+    from sqlalchemy.exc import OperationalError
+
+    return OperationalError(
+        "SELECT equipment.name_plural FROM equipment",
+        {},
+        Exception("no such column: equipment.name_plural"),
+    )
+
+
+def test_db_error_hook_shows_message_then_quits(qtbot, monkeypatch):
+    from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QMessageBox
+
+    shown = []
+    monkeypatch.setattr(QMessageBox, "exec", lambda self: shown.append(self) or 0)
+    scheduled = []
+    monkeypatch.setattr(QTimer, "singleShot", lambda ms, fn: scheduled.append(fn))
+    exits = []
+    monkeypatch.setattr("PySide6.QtWidgets.QApplication.exit", exits.append)
+    previous = []
+    hook = app._DbErrorHook(lambda *a: previous.append(a))
+
+    exc = _db_error()
+    hook(type(exc), exc, None)
+    assert len(shown) == 1
+    assert "no such column: equipment.name_plural" in shown[0].text()
+    assert "SELECT equipment.name_plural" in shown[0].detailedText()
+    assert len(scheduled) == 1
+    scheduled[0]()
+    assert exits == [1]
+
+    # Erreurs suivantes : journalisées seulement, pas de second message
+    hook(type(exc), exc, None)
+    assert len(shown) == 1 and len(scheduled) == 1
+    assert previous == []
+
+
+def test_db_error_hook_forwards_other_exceptions(monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    monkeypatch.setattr(
+        QMessageBox, "exec", lambda self: pytest.fail("aucun message attendu")
+    )
+    previous = []
+    hook = app._DbErrorHook(lambda *a: previous.append(a))
+    exc = ValueError("x")
+    hook(ValueError, exc, None)
+    assert previous == [(ValueError, exc, None)]
+
+
+@pytest.mark.parametrize("option", ["--export-yaml", "--export-php"])
+def test_export_refuses_incompatible_schema(
+    monkeypatch, first_version_db, tmp_path, option, caplog
+):
+    _db_path, yaml_path = first_version_db
+    target = tmp_path / "out"
+    with pytest.raises(SystemExit) as info:
+        _run_main(monkeypatch, [str(yaml_path), option, str(target)])
+    assert info.value.code == 1
+    assert "equipment.name_plural" in caplog.text
+    assert not target.exists() and not (tmp_path / "out.yaml").exists()
+
+
+def test_check_connect_reports_incompatible_schema(
+    monkeypatch, first_version_db, capsys
+):
+    _db_path, yaml_path = first_version_db
+    with pytest.raises(SystemExit):
+        _run_main(monkeypatch, [str(yaml_path), "--check-connect"])
+    out = capsys.readouterr().out
+    assert "[ERREUR] Schéma incompatible" in out
+    assert "equipment.name_plural" in out

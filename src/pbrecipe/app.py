@@ -38,6 +38,52 @@ def apply_log_level(level: int) -> None:
         logging.basicConfig(level=level, format=fmt)
 
 
+class _DbErrorHook:
+    """``sys.excepthook`` replacement for the GUI: unhandled database errors.
+
+    Exceptions raised in Qt slots are not propagated, they only reach
+    ``sys.excepthook``: without this hook the program keeps running on a
+    database it cannot use (e.g. a schema incompatible with this version),
+    with empty views and inactive actions. A SQLAlchemy error is logged,
+    shown in an error dialog, then the application quits. Other exceptions
+    go to the previous hook unchanged.
+    """
+
+    def __init__(self, previous) -> None:
+        self._previous = previous
+        self._handled = False
+
+    def __call__(self, exc_type, exc, tb) -> None:
+        from sqlalchemy.exc import SQLAlchemyError
+
+        if not issubclass(exc_type, SQLAlchemyError):
+            self._previous(exc_type, exc, tb)
+            return
+        _log.critical(
+            "Erreur de base de données non interceptée", exc_info=(exc_type, exc, tb)
+        )
+        if self._handled:  # already reported, the application is quitting
+            return
+        self._handled = True
+
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QApplication, QMessageBox
+
+        detail = str(getattr(exc, "orig", None) or exc).splitlines()[0]
+        box = QMessageBox(QMessageBox.Icon.Critical, "Erreur de base de données", "")
+        box.setText(
+            "Une erreur de base de données est survenue. La base est peut-être"
+            " dans un format incompatible avec cette version du programme."
+            f"\n\nErreur : {detail}\n\nLe programme va se fermer."
+        )
+        box.setDetailedText(str(exc))
+        box.exec()
+        # Différé : l'erreur peut survenir avant le démarrage de la boucle
+        # d'événements (chargement initial), où exit() serait sans effet.
+        # exit() ne passe pas par closeEvent : pas de confirmation d'abandon.
+        QTimer.singleShot(0, lambda: QApplication.exit(1))
+
+
 def _load_bundled_fonts(app: object) -> None:
     """Register bundled fonts into Qt's font database (frozen builds only).
 
@@ -204,7 +250,10 @@ def main() -> None:
     _icon = Path(__file__).parent / "resources" / "icons" / "pbrecipe-128x128.png"
     app.setWindowIcon(QIcon(str(_icon)))
 
+    sys.excepthook = _DbErrorHook(sys.excepthook)
     window = MainWindow(initial_path=args.config, app_config=app_config)
+    if window.fatal_error:  # base incompatible au chargement initial
+        sys.exit(1)
     window.show()
     sys.exit(app.exec())
 
@@ -281,11 +330,15 @@ def _check_connect(config_path: str | None) -> None:
     # --- Étape 6 : état du schéma ---
     try:
         status = db.check_schema()
+        missing = db.missing_columns() if status == "ok" else []
     except Exception as exc:  # noqa: BLE001
         print(f"{ko} Vérification du schéma échouée : {exc}")
         sys.exit(1)
     finally:
         db.disconnect()
+    if missing:
+        print(f"{ko} Schéma incompatible, colonnes absentes : {', '.join(missing)}")
+        sys.exit(1)
 
     schema_labels = {
         "empty": "base vide (aucune table)",
@@ -294,6 +347,21 @@ def _check_connect(config_path: str | None) -> None:
     }
     print(f"{ok} Schéma : {schema_labels.get(status, status)}")
     print(f"{ok} Connexion opérationnelle.")
+
+
+def _prepare_schema_for_export(db) -> None:
+    """Bring an existing database up to date before a headless export.
+
+    Same as opening the database in the GUI: missing tables and columns added
+    by later versions are created. An empty or foreign database is refused
+    (no tables are silently created there).
+    """
+    status = db.check_schema()
+    if status == "empty":
+        raise RuntimeError("la base de données est vide (aucune table)")
+    if status == "foreign":
+        raise RuntimeError("la base de données contient des tables inconnues")
+    db.create_schema()
 
 
 def _headless_export_yaml(config_path: str | None, export_file: str) -> None:
@@ -345,6 +413,7 @@ def _headless_export_yaml(config_path: str | None, export_file: str) -> None:
     db = create_database(config)
     try:
         db.connect()
+        _prepare_schema_for_export(db)
         _log.info("Export YAML vers %s…", target)
         YamlExport(db).run(str(target))
         _log.info("Export YAML terminé → %s", target)
@@ -404,6 +473,7 @@ def _headless_export(config_path: str | None, export_dir: str) -> None:
     db = create_database(config)
     try:
         db.connect()
+        _prepare_schema_for_export(db)
         _log.info("Export PHP vers %s…", target)
         exporter = PhpExport(config, db, target, php_debug=app_config.php_debug)
         exporter.run()

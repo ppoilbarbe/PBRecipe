@@ -30,8 +30,8 @@ from PySide6.QtWidgets import (
 )
 
 from pbrecipe.config import AppConfig, RecipeConfig
-from pbrecipe.database import Database, create_database
-from pbrecipe.models import Recipe, RecipeIngredient, RecipeMedia
+from pbrecipe.database import Database, SchemaMismatchError, create_database
+from pbrecipe.models import Recipe, RecipeMedia
 from pbrecipe.ui.about_dialog import AboutDialog
 from pbrecipe.ui.config_dialog import ConfigDialog
 from pbrecipe.ui.recipe_editor import RecipeEditor
@@ -50,6 +50,9 @@ class MainWindow(QMainWindow):
         self._db: Database | None = None
         self._app_config = app_config if app_config is not None else AppConfig.load()
         self._consistency_dialog = None
+        # True once a fatal error (incompatible database) has been reported:
+        # the application is quitting, main() must not show the window.
+        self.fatal_error = False
         self._setup_ui()
         self._setup_menus()
         self._setup_toolbar()
@@ -210,6 +213,11 @@ class MainWindow(QMainWindow):
         self._act_ref_units.triggered.connect(self._edit_units)
         ref_menu.addAction(self._act_ref_units)
 
+        self._act_ref_equipment = QAction("Matériel…", self)
+        self._act_ref_equipment.setStatusTip("Gérer la liste du matériel de cuisine")
+        self._act_ref_equipment.triggered.connect(self._edit_equipment)
+        ref_menu.addAction(self._act_ref_equipment)
+
         self._act_ref_techniques = QAction("Techniques…", self)
         self._act_ref_techniques.setStatusTip("Gérer les techniques d'élaboration")
         self._act_ref_techniques.triggered.connect(self._edit_techniques)
@@ -290,6 +298,7 @@ class MainWindow(QMainWindow):
 
         self._act_ref_categories.setIcon(_icon("recipe-categories"))
         self._act_ref_ingredients.setIcon(_icon("ingredients"))
+        self._act_ref_equipment.setIcon(_icon("kitchen-utensils"))
         self._act_ref_units.setIcon(_icon("units"))
         self._act_ref_techniques.setIcon(_icon("recipe-techniques"))
         self._act_ref_sources.setIcon(_icon("recipe-sources"))
@@ -299,6 +308,7 @@ class MainWindow(QMainWindow):
 
         self._act_ref_categories.setToolTip("Catégories")
         self._act_ref_ingredients.setToolTip("Ingrédients")
+        self._act_ref_equipment.setToolTip("Matériel")
         self._act_ref_units.setToolTip("Unités")
         self._act_ref_techniques.setToolTip("Techniques")
         self._act_ref_sources.setToolTip("Sources")
@@ -335,6 +345,7 @@ class MainWindow(QMainWindow):
         tb_ref.addAction(self._act_ref_categories)
         tb_ref.addAction(self._act_ref_ingredients)
         tb_ref.addAction(self._act_ref_units)
+        tb_ref.addAction(self._act_ref_equipment)
         tb_ref.addAction(self._act_ref_techniques)
         tb_ref.addAction(self._act_ref_sources)
         tb_ref.addAction(self._act_ref_difficulty)
@@ -491,6 +502,20 @@ class MainWindow(QMainWindow):
             return
         try:
             self._switch_database(config)
+        except SchemaMismatchError as exc:
+            # Modifier les paramètres de connexion n'y changerait rien.
+            QMessageBox.critical(
+                self,
+                "Base incompatible",
+                f"Impossible d'utiliser cette base.\n\n{exc}"
+                "\n\nLe programme va se fermer.",
+            )
+            self.fatal_error = True
+            # Différé : au chargement initial, la boucle d'événements n'est pas
+            # encore démarrée et exit() serait sans effet. exit() ne passe pas
+            # par closeEvent : pas de confirmation d'abandon.
+            QTimer.singleShot(0, lambda: QApplication.exit(1))
+            return
         except Exception as exc:  # noqa: BLE001
             _log.error("Connexion échouée : %s", exc)
             reply = QMessageBox.critical(
@@ -544,7 +569,18 @@ class MainWindow(QMainWindow):
                     "Impossible d'utiliser cette base."
                 )
 
-        db.create_schema()
+        try:
+            db.create_schema()
+        except SchemaMismatchError:
+            db.disconnect()
+            # L'ancienne base est déjà fermée : ne pas laisser l'interface
+            # afficher ses recettes sans base ouverte.
+            self._config = None
+            self._update_title()
+            self._refresh_recipe_list()
+            self._recipe_editor.clear()
+            self._stack.setCurrentWidget(self._empty_widget)
+            raise
         self._db = db
         self._config = config
         if config.path:
@@ -686,19 +722,9 @@ class MainWindow(QMainWindow):
             source_id=original.source_id,
             categories=list(original.categories),
             ingredients=[
-                RecipeIngredient(
-                    id=None,
-                    recipe_code="",
-                    position=i.position,
-                    prefix=i.prefix,
-                    quantity=i.quantity,
-                    unit_id=i.unit_id,
-                    separator=i.separator,
-                    ingredient_id=i.ingredient_id,
-                    suffix=i.suffix,
-                )
-                for i in original.ingredients
+                replace(i, id=None, recipe_code="") for i in original.ingredients
             ],
+            equipment=[replace(e, id=None, recipe_code="") for e in original.equipment],
             media=[
                 RecipeMedia(
                     id=None,
@@ -760,6 +786,14 @@ class MainWindow(QMainWindow):
         from pbrecipe.ui.dialogs.ingredient_dialog import IngredientDialog
 
         IngredientDialog(self._db, parent=self).exec()
+        self._recipe_editor.reload_references()
+
+    def _edit_equipment(self) -> None:
+        if self._db is None:
+            return
+        from pbrecipe.ui.dialogs.equipment_dialog import EquipmentDialog
+
+        EquipmentDialog(self._db, parent=self).exec()
         self._recipe_editor.reload_references()
 
     def _edit_units(self) -> None:
@@ -936,6 +970,7 @@ class MainWindow(QMainWindow):
                 f"  Catégories créées : {stats['categories']}\n"
                 f"  Unités créées : {stats['units']}\n"
                 f"  Ingrédients créés : {stats['ingredients']}\n"
+                f"  Matériels créés : {stats['equipment']}\n"
                 f"  Sources créées : {stats['sources']}\n"
                 f"  Techniques importées : {stats['techniques']}\n"
                 f"  Recettes créées : {stats['recipes_created']}\n"

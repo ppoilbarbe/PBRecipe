@@ -1,4 +1,4 @@
-"""Tests des helpers _plural_dialog (unité / ingrédient) sans monkeypatch."""
+"""Tests du helper plural_name_dialog (unité / ingrédient / matériel)."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from PySide6.QtWidgets import QDialog, QMessageBox
 
+from pbrecipe.constants import MAX_INGREDIENT_NAME, MAX_UNIT_NAME
 from pbrecipe.database.database import Database
 from pbrecipe.models import Source
-from pbrecipe.ui.dialogs import ingredient_dialog as ing_mod
-from pbrecipe.ui.dialogs import unit_dialog as unit_mod
+from pbrecipe.ui.dialogs import _plural_list_dialog as pld_mod
 from pbrecipe.ui.dialogs.ingredient_dialog import IngredientDialog
 from pbrecipe.ui.dialogs.source_dialog import SourceDialog
 from pbrecipe.ui.dialogs.unit_dialog import UnitDialog
@@ -27,11 +27,13 @@ def db(tmp_path: Path):
 
 def test_unit_plural_dialog_accept(qtbot, db, monkeypatch):
     monkeypatch.setattr(
-        unit_mod.QDialog, "exec", lambda self: QDialog.DialogCode.Accepted
+        pld_mod.QDialog, "exec", lambda self: QDialog.DialogCode.Accepted
     )
     dlg = UnitDialog(db)
     qtbot.addWidget(dlg)
-    name, plural, ok = unit_mod._plural_dialog(dlg, "T", "L", "litres")
+    name, plural, ok = pld_mod.plural_name_dialog(
+        dlg, "T", MAX_UNIT_NAME, "L", "litres"
+    )
     assert ok is True
     assert name == "L"
     assert plural == "litres"
@@ -39,21 +41,23 @@ def test_unit_plural_dialog_accept(qtbot, db, monkeypatch):
 
 def test_unit_plural_dialog_reject(qtbot, db, monkeypatch):
     monkeypatch.setattr(
-        unit_mod.QDialog, "exec", lambda self: QDialog.DialogCode.Rejected
+        pld_mod.QDialog, "exec", lambda self: QDialog.DialogCode.Rejected
     )
     dlg = UnitDialog(db)
     qtbot.addWidget(dlg)
-    _name, _plural, ok = unit_mod._plural_dialog(dlg, "T")
+    _name, _plural, ok = pld_mod.plural_name_dialog(dlg, "T", MAX_UNIT_NAME)
     assert ok is False
 
 
 def test_ingredient_plural_dialog_accept(qtbot, db, monkeypatch):
     monkeypatch.setattr(
-        ing_mod.QDialog, "exec", lambda self: QDialog.DialogCode.Accepted
+        pld_mod.QDialog, "exec", lambda self: QDialog.DialogCode.Accepted
     )
     dlg = IngredientDialog(db)
     qtbot.addWidget(dlg)
-    name, plural, ok = ing_mod._plural_dialog(dlg, "T", "Oeuf", "Oeufs")
+    name, plural, ok = pld_mod.plural_name_dialog(
+        dlg, "T", MAX_INGREDIENT_NAME, "Oeuf", "Oeufs"
+    )
     assert ok is True
     assert (name, plural) == ("Oeuf", "Oeufs")
 

@@ -24,6 +24,33 @@ function h_tags(string $s): string {
     );
 }
 
+/**
+ * Render a readable error block for a database failure, instead of PHP's
+ * "Fatal error: Uncaught PDOException…". The technical message is logged
+ * (error_log) and only displayed when SITE_DEBUG is true.
+ */
+function render_db_error(Throwable $e): string {
+    error_log('PBRecipe — erreur de base de données : ' . $e->getMessage());
+    if ($e instanceof DbConnectionError) {
+        $title = 'Connexion à la base de données impossible.';
+        $hint  = 'Vérifiez les paramètres de connexion de l\'export PHP'
+               . ' (lib/config.php) et que le serveur de base de données est accessible.';
+    } else {
+        $title = 'Erreur lors de la lecture de la base de données.';
+        $hint  = 'Le site et la base de données ne sont probablement pas'
+               . ' à la même version de PBRecipe. Ouvrez la base avec PBRecipe'
+               . ' (ce qui met son schéma à jour), puis réexportez le site PHP.';
+    }
+    $html  = "<div class=\"db-error error\">\n";
+    $html .= "  <p><strong>" . h($title) . "</strong></p>\n";
+    $html .= "  <p>" . h($hint) . "</p>\n";
+    if (defined('SITE_DEBUG') && SITE_DEBUG) {
+        $html .= "  <pre class=\"db-error-detail\">" . h($e->getMessage()) . "</pre>\n";
+    }
+    $html .= "</div>\n";
+    return $html;
+}
+
 /** Return true if $html contains visible text (handles Qt rich-text boilerplate). */
 function has_visible_text(?string $html): bool {
     if ($html === null || $html === '') return false;
@@ -145,6 +172,39 @@ function parse_markers(string $html, bool $tech_standalone = false): string {
     return $html;
 }
 
+/**
+ * Return the display name of reference $kind ('unit', 'ingredient',
+ * 'equipment') in a recipe row: the plural form when "{$kind}_plural" is set
+ * and "{$kind}_name_plural" is not empty, else "{$kind}_name" ('' if none).
+ */
+function pick_name(array $row, string $kind): string {
+    if (!empty($row["{$kind}_plural"]) && !empty($row["{$kind}_name_plural"])) {
+        return (string)$row["{$kind}_name_plural"];
+    }
+    return (string)($row["{$kind}_name"] ?? '');
+}
+
+/**
+ * Render "before <strong>name</strong> after" for an ingredient or equipment
+ * row. $before and $after may contain <b>/<i>/<u> (see h_tags()). No space is
+ * inserted between $before and the name when $before ends with an apostrophe
+ * or a quote (e.g. "d'" + "huile").
+ */
+function render_named_item(string $before, string $name, string $after): string {
+    $html = $before !== '' ? h_tags($before) : '';
+    if ($name !== '') {
+        $last = mb_substr($before, -1, 1, 'UTF-8');
+        $glue = in_array($last, ["'", "\u{2019}", "\u{2018}", '"', "\u{201C}", "\u{201D}",
+                                 "\u{201A}", "\u{201B}", "\u{2039}", "\u{203A}"], true)
+                ? '' : ' ';
+        $html .= ($html !== '' ? $glue : '') . '<strong>' . h($name) . '</strong>';
+    }
+    if ($after !== '') {
+        $html .= ($html !== '' ? ' ' : '') . h_tags($after);
+    }
+    return $html;
+}
+
 /** Render a difficulty badge from the difficulty_levels table. */
 function render_difficulty(int $level): string {
     $levels = get_difficulty_levels();
@@ -244,10 +304,13 @@ function render_recipe(array $recipe, array $strings): string {
         $html .= "    <div class=\"recipe-meta\">" . $serving_html . $dur_html . $diff_html . "</div>\n";
     }
 
-    // Ingredients (with optional hero image floated left)
-    if (!empty($recipe['ingredients'])) {
+    // Ingredients row: up to 3 columns (hero image, ingredients, equipment),
+    // each present only if it has content.
+    $has_ingredients = !empty($recipe['ingredients']);
+    $has_equipment   = !empty($recipe['equipment']);
+    if ($has_ingredients || $has_equipment) {
+        $html .= "    <div class=\"recipe-ingredients-block recipe-section\">\n";
         if ($hero_src !== '') {
-            $html .= "    <div class=\"recipe-ingredients-block recipe-section\">\n";
             $html .= "      <figure class=\"hero-item\">\n";
             $html .= "        <img src=\"" . h($hero_src) . "\" alt=\"" . h($hero_code) . "\"\n";
             $html .= "             class=\"recipe-hero-img\" loading=\"lazy\">\n";
@@ -255,65 +318,59 @@ function render_recipe(array $recipe, array $strings): string {
             $html .= "          <img src=\"" . h($hero_src) . "\" alt=\"" . h($hero_code) . "\">\n";
             $html .= "        </span>\n";
             $html .= "      </figure>\n";
-            $ing_indent = '      ';
-        } else {
-            $ing_indent = '    ';
         }
-        $ing_class = $hero_src !== '' ? 'recipe-ingredients' : 'recipe-ingredients recipe-section';
-        $html .= $ing_indent . "<section class=\"$ing_class\">\n";
-        $html .= $ing_indent . "  <h2>" . h($strings['ingredients_label'] ?? 'Ingrédients') . "</h2>\n";
-        // Premier passage : détecter si au moins un ingrédient a un préfixe
-        $has_prefix = false;
-        foreach ($recipe['ingredients'] as $ing) {
-            if (!empty($ing['prefix'])) { $has_prefix = true; break; }
-        }
-
-        $html .= $ing_indent . "  <table class=\"ingredients-table\">\n";
-        $html .= $ing_indent . "    <tbody>\n";
-        foreach ($recipe['ingredients'] as $ing) {
-            $sep      = (string)($ing['separator'] ?? '');
-
-            $unit_name = !empty($ing['unit_plural']) && !empty($ing['unit_name_plural'])
-                       ? (string)$ing['unit_name_plural']
-                       : (string)($ing['unit_name'] ?? '');
-            $ing_name  = !empty($ing['ingredient_plural']) && !empty($ing['ingredient_name_plural'])
-                       ? (string)$ing['ingredient_name_plural']
-                       : (string)($ing['ingredient_name'] ?? '');
-
-            // Colonne "reste" : séparateur + nom en gras + suffixe
-            $rest_parts = [];
-            if ($sep !== '') $rest_parts[] = h_tags($sep);
-            $rest = implode(' ', $rest_parts);
-
-            if ($ing_name !== '') {
-                // Pas d'espace si le séparateur se termine par une apostrophe/quote
-                $last = mb_substr($sep, -1, 1, 'UTF-8');
-                $glue = in_array($last, ["'", "\u{2019}", "\u{2018}", '"', "\u{201C}", "\u{201D}",
-                                         "\u{201A}", "\u{201B}", "\u{2039}", "\u{203A}"], true)
-                        ? '' : ' ';
-                $rest .= ($rest !== '' ? $glue : '') . '<strong>' . h($ing_name) . '</strong>';
-            }
-            if (!empty($ing['suffix'])) {
-                $rest .= ' ' . h_tags($ing['suffix']);
+        if ($has_ingredients) {
+            $html .= "      <section class=\"recipe-ingredients\">\n";
+            $html .= "        <h2>" . h($strings['ingredients_label'] ?? 'Ingrédients') . "</h2>\n";
+            // Premier passage : détecter si au moins un ingrédient a un préfixe
+            $has_prefix = false;
+            foreach ($recipe['ingredients'] as $ing) {
+                if (!empty($ing['prefix'])) { $has_prefix = true; break; }
             }
 
-            $html .= $ing_indent . "      <tr>\n";
-            if ($has_prefix) {
-                $html .= $ing_indent . "        <td class=\"ing-prefix\">" . h_tags((string)($ing['prefix'] ?? '')) . "</td>\n";
+            $html .= "        <table class=\"ingredients-table\">\n";
+            $html .= "          <tbody>\n";
+            foreach ($recipe['ingredients'] as $ing) {
+                $unit_name = pick_name($ing, 'unit');
+                // Colonne "reste" : séparateur + nom en gras + suffixe
+                $rest = render_named_item(
+                    (string)($ing['separator'] ?? ''),
+                    pick_name($ing, 'ingredient'),
+                    (string)($ing['suffix'] ?? '')
+                );
+
+                $html .= "            <tr>\n";
+                if ($has_prefix) {
+                    $html .= "              <td class=\"ing-prefix\">" . h_tags((string)($ing['prefix'] ?? '')) . "</td>\n";
+                }
+                $qty_cell = trim(h((string)($ing['quantity'] ?? '')) . ' ' . h($unit_name));
+                $html .= "              <td class=\"ing-qty\">" . $qty_cell . "</td>\n";
+                $html .= "              <td class=\"ing-rest\">" . $rest . "</td>\n";
+                $html .= "            </tr>\n";
             }
-            $qty_cell = trim(h((string)($ing['quantity'] ?? '')) . ' ' . h($unit_name));
-            $html .= $ing_indent . "        <td class=\"ing-qty\">" . $qty_cell . "</td>\n";
-            $html .= $ing_indent . "        <td class=\"ing-rest\">" . $rest . "</td>\n";
-            $html .= $ing_indent . "      </tr>\n";
+            $html .= "          </tbody>\n";
+            $html .= "        </table>\n";
+            $html .= "      </section>\n";
         }
-        $html .= $ing_indent . "    </tbody>\n";
-        $html .= $ing_indent . "  </table>\n";
-        $html .= $ing_indent . "</section>\n";
-        if ($hero_src !== '') {
-            $html .= "    </div>\n";
+        if ($has_equipment) {
+            $html .= "      <section class=\"recipe-equipment\">\n";
+            $html .= "        <h2>" . h($strings['equipment_label'] ?? 'Matériel') . "</h2>\n";
+            $html .= "        <ul class=\"equipment-list\">\n";
+            foreach ($recipe['equipment'] as $eq) {
+                // Préfixe + nom en gras (singulier/pluriel) + suffixe
+                $item = render_named_item(
+                    (string)($eq['prefix'] ?? ''),
+                    pick_name($eq, 'equipment'),
+                    (string)($eq['suffix'] ?? '')
+                );
+                $html .= "          <li>" . $item . "</li>\n";
+            }
+            $html .= "        </ul>\n";
+            $html .= "      </section>\n";
         }
+        $html .= "    </div>\n";
     } elseif ($hero_src !== '') {
-        // No ingredients — demote hero to gallery
+        // Neither ingredients nor equipment — demote hero to gallery
         array_unshift($gallery, ['code' => $hero_code, 'src' => $hero_src]);
         $hero_src = '';
     }

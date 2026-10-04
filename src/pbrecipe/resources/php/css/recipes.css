@@ -11,7 +11,7 @@
  *  1. Formulaire de recherche
  *  2. Listing par catégories (page d'accueil)
  *  3. Fiche recette         — titre, méta, ingrédients, corps, techniques
- *  4. Image héros           — première image flottée à gauche des ingrédients
+ *  4. Image héros           — ligne photo / ingrédients / matériel (1 à 3 colonnes)
  *  5. Galerie d'images      — images supplémentaires avec agrandissement au survol
  *  6. Messages d'état       — liens technique, aucun résultat, erreur
  *  7. Responsive            — adaptation écrans étroits (mobiles)
@@ -204,7 +204,7 @@ details:not([open]) .category-name::before { content: '▸ '; }
          <span class="duration">…</span>     ← juste après
          <span class="difficulty">…</span>   ← cadré à droite (margin-left: auto)
        </div>
-       <div class="recipe-ingredients-block recipe-section"> ou <section class="recipe-ingredients recipe-section">
+       <div class="recipe-ingredients-block recipe-section">  (photo / ingrédients / matériel)
        <section class="recipe-description">…</section>
        <section class="recipe-comments">…</section>
        <section class="recipe-techniques">…</section>
@@ -414,12 +414,16 @@ details:not([open]) .category-name::before { content: '▸ '; }
 
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   4. IMAGE HÉROS (première image, flottée à gauche des ingrédients)
+   4. IMAGE HÉROS, INGRÉDIENTS ET MATÉRIEL (une ligne de 1 à 3 colonnes)
    ══════════════════════════════════════════════════════════════════════════════
-   Structure HTML :
-   <div class="recipe-ingredients-block">
-     <img class="recipe-hero-img" src="…" alt="…">
+   Structure HTML (chaque colonne n'est présente que si elle a un contenu) :
+   <div class="recipe-ingredients-block recipe-section">
+     <figure class="hero-item">…</figure>
      <section class="recipe-ingredients">…</section>
+     <section class="recipe-equipment">
+       <h2>…</h2>
+       <ul class="equipment-list"><li>…</li>…</ul>
+     </section>
    </div>
    ══════════════════════════════════════════════════════════════════════════════ */
 
@@ -445,13 +449,37 @@ details:not([open]) .category-name::before { content: '▸ '; }
 }
 
 .recipe-ingredients-block .recipe-ingredients {
-  flex: 1;
+  flex: 2 1 0;
   min-width: 0;  /* empêche le débordement si un ingrédient est très long */
+}
+
+.recipe-ingredients-block .recipe-equipment {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Trait vertical entre ingrédients et matériel */
+.recipe-ingredients + .recipe-equipment {
+  border-left: 1px solid var(--clr-border);
+  padding-left: 1.25rem;
+}
+
+.equipment-list {
+  margin: 0;
+  padding-left: 1.2em;
+  line-height: 1.3;
 }
 
 @media (max-width: 480px) {
   .recipe-ingredients-block { flex-direction: column; }
+  .recipe-ingredients-block > * { width: 100%; }
   .hero-item { width: 100%; }
+  .recipe-ingredients + .recipe-equipment {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--clr-border);
+    padding-top: .75rem;
+  }
 }
 
 
@@ -499,6 +527,8 @@ details:not([open]) .category-name::before { content: '▸ '; }
 .tech-link  { font-style: italic; }
 .no-results { color: var(--clr-muted); font-style: italic; padding: 1rem 0; }
 .error      { color: var(--clr-accent); font-family: var(--font-ui); padding: 1rem 0; }
+/* Erreur de base de données (render_db_error) : détail affiché si SITE_DEBUG */
+.db-error-detail { white-space: pre-wrap; font-size: .85rem; color: var(--clr-muted); }
 
 .site-presentation-block {
   margin-bottom: 1.5rem;

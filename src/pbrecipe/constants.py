@@ -14,6 +14,10 @@ MAX_UNIT_NAME = 15
 # ingredients
 MAX_INGREDIENT_NAME = 50
 
+# equipment
+MAX_EQUIPMENT_NAME = 50
+MAX_EQUIPMENT_AFFIX = 60  # recipe_equipment prefix, suffix
+
 # techniques
 MAX_TECHNIQUE_CODE = 10
 MAX_TECHNIQUE_TITLE = 200

@@ -3,6 +3,45 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 require_once __DIR__ . '/display.php';
 
+/**
+ * Render one multi-select filter group (Tom Select), optionally followed by an
+ * OR/AND toggle.
+ *
+ * $options:  value (int id) => label (plain text, escaped here)
+ * $selected: currently selected values
+ * $mode_name: name of the OR/AND radio pair; null for no toggle
+ * $or_and:   [OR label, AND label], already HTML-escaped
+ */
+function render_multi_filter(
+    string $name,
+    string $id,
+    string $placeholder,
+    array $options,
+    array $selected,
+    ?string $mode_name = null,
+    string $mode = 'or',
+    array $or_and = ['OU', 'ET']
+): string {
+    $selected = array_map('intval', $selected);
+    $html  = "  <div class=\"search-filter-group\">\n";
+    $html .= "    <select name=\"{$name}[]\" id=\"$id\" multiple data-placeholder=\"" . h($placeholder) . "\">\n";
+    foreach ($options as $value => $label) {
+        $sel   = in_array((int)$value, $selected, true) ? ' selected' : '';
+        $html .= "      <option value=\"" . (int)$value . "\"" . $sel . ">" . h((string)$label) . "</option>\n";
+    }
+    $html .= "    </select>\n";
+    if ($mode_name !== null) {
+        $mode  = $mode === 'and' ? 'and' : 'or';
+        [$lbl_or, $lbl_and] = $or_and;
+        $html .= "    <div class=\"search-mode-toggle\">\n";
+        $html .= "      <label><input type=\"radio\" name=\"$mode_name\" value=\"or\"" . ($mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
+        $html .= "      <label><input type=\"radio\" name=\"$mode_name\" value=\"and\"" . ($mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
+        $html .= "    </div>\n";
+    }
+    $html .= "  </div>\n";
+    return $html;
+}
+
 /** Render the search form. */
 function render_search_form(
     array $categories,
@@ -10,7 +49,8 @@ function render_search_form(
     array $techniques,
     array $strings,
     array $sources = [],
-    array $current = []
+    array $current = [],
+    array $equipment = []
 ): string {
     $html  = "<form class=\"search-form\" method=\"get\" action=\"\">\n";
 
@@ -26,86 +66,61 @@ function render_search_form(
     $html .= "    </div>\n";
     $html .= "  </div>\n";
 
-    // Categories — multi-select with Tom Select
+    $or_and = [h($strings['mode_or'] ?? 'OU'), h($strings['mode_and'] ?? 'ET')];
+
+    // Categories — multi-select with Tom Select + OR/ET toggle
     if (!empty($categories)) {
-        $current_cats = array_map('intval', (array)($current['cats'] ?? []));
-        $cat_mode     = ($current['cat_mode'] ?? 'or') === 'and' ? 'and' : 'or';
-        $placeholder  = h($strings['all_categories'] ?? 'Par catégorie');
-        $lbl_or       = h($strings['mode_or']  ?? 'OU');
-        $lbl_and      = h($strings['mode_and'] ?? 'ET');
-        $html .= "  <div class=\"search-filter-group\">\n";
-        $html .= "    <select name=\"cat[]\" id=\"ts-cat\" multiple data-placeholder=\"" . $placeholder . "\">\n";
-        foreach ($categories as $c) {
-            $sel   = in_array((int)$c['id'], $current_cats, true) ? ' selected' : '';
-            $html .= "      <option value=\"" . (int)$c['id'] . "\"" . $sel . ">" . h($c['name']) . "</option>\n";
-        }
-        $html .= "    </select>\n";
-        $html .= "    <div class=\"search-mode-toggle\">\n";
-        $html .= "      <label><input type=\"radio\" name=\"cat_mode\" value=\"or\"" . ($cat_mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
-        $html .= "      <label><input type=\"radio\" name=\"cat_mode\" value=\"and\"" . ($cat_mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
-        $html .= "    </div>\n";
-        $html .= "  </div>\n";
+        $html .= render_multi_filter(
+            'cat', 'ts-cat', $strings['all_categories'] ?? 'Par catégorie',
+            array_column($categories, 'name', 'id'), $current['cats'] ?? [],
+            'cat_mode', $current['cat_mode'] ?? 'or', $or_and
+        );
     }
 
-    // Ingredients — multi-select with Tom Select
+    // Ingredients — multi-select with Tom Select + OR/ET toggle
     if (!empty($ingredients)) {
-        $current_ings = array_map('intval', (array)($current['ings'] ?? []));
-        $ing_mode     = ($current['ing_mode'] ?? 'or') === 'and' ? 'and' : 'or';
-        $placeholder  = h($strings['search_by_ingredient'] ?? 'Par ingrédient');
-        $lbl_or       = h($strings['mode_or']  ?? 'OU');
-        $lbl_and      = h($strings['mode_and'] ?? 'ET');
-        $html .= "  <div class=\"search-filter-group\">\n";
-        $html .= "    <select name=\"ing[]\" id=\"ts-ing\" multiple data-placeholder=\"" . $placeholder . "\">\n";
-        foreach ($ingredients as $i) {
-            $sel   = in_array((int)$i['id'], $current_ings, true) ? ' selected' : '';
-            $html .= "      <option value=\"" . (int)$i['id'] . "\"" . $sel . ">" . h($i['name']) . "</option>\n";
-        }
-        $html .= "    </select>\n";
-        $html .= "    <div class=\"search-mode-toggle\">\n";
-        $html .= "      <label><input type=\"radio\" name=\"ing_mode\" value=\"or\"" . ($ing_mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
-        $html .= "      <label><input type=\"radio\" name=\"ing_mode\" value=\"and\"" . ($ing_mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
-        $html .= "    </div>\n";
-        $html .= "  </div>\n";
+        $html .= render_multi_filter(
+            'ing', 'ts-ing', $strings['search_by_ingredient'] ?? 'Par ingrédient',
+            array_column($ingredients, 'name', 'id'), $current['ings'] ?? [],
+            'ing_mode', $current['ing_mode'] ?? 'or', $or_and
+        );
+    }
+
+    // Equipment — multi-select with Tom Select + OR/ET toggle (singular names)
+    if (!empty($equipment)) {
+        $html .= render_multi_filter(
+            'eq', 'ts-eq', $strings['search_by_equipment'] ?? 'Par matériel',
+            array_column($equipment, 'name', 'id'), $current['eqs'] ?? [],
+            'eq_mode', $current['eq_mode'] ?? 'or', $or_and
+        );
     }
 
     // Difficulty — multi-select with Tom Select + OR/ET toggle
     $diff_levels = array_filter(get_difficulty_levels(), fn($d) => $d > 0, ARRAY_FILTER_USE_KEY);
     if (!empty($diff_levels)) {
-        $current_diffs = array_map('intval', (array)($current['diffs'] ?? []));
-        $diff_mode     = ($current['diff_mode'] ?? 'or') === 'and' ? 'and' : 'or';
-        $placeholder   = 'Par ' . h($strings['difficulty_label'] ?? 'Difficulté');
-        $lbl_or        = h($strings['mode_or']  ?? 'OU');
-        $lbl_and       = h($strings['mode_and'] ?? 'ET');
-        $html .= "  <div class=\"search-filter-group\">\n";
-        $html .= "    <select name=\"diff[]\" id=\"ts-diff\" multiple data-placeholder=\"" . $placeholder . "\">\n";
+        $options = [];
         foreach ($diff_levels as $d => $info) {
-            $label = $info['label'] !== '' ? $info['label'] : "Niveau $d";
-            $sel   = in_array((int)$d, $current_diffs, true) ? ' selected' : '';
-            $html .= "      <option value=\"" . (int)$d . "\"" . $sel . ">" . h($label) . "</option>\n";
+            $options[$d] = $info['label'] !== '' ? $info['label'] : "Niveau $d";
         }
-        $html .= "    </select>\n";
-        $html .= "    <div class=\"search-mode-toggle\">\n";
-        $html .= "      <label><input type=\"radio\" name=\"diff_mode\" value=\"or\"" . ($diff_mode === 'or' ? ' checked' : '') . "> $lbl_or</label>\n";
-        $html .= "      <label><input type=\"radio\" name=\"diff_mode\" value=\"and\"" . ($diff_mode === 'and' ? ' checked' : '') . "> $lbl_and</label>\n";
-        $html .= "    </div>\n";
-        $html .= "  </div>\n";
+        $html .= render_multi_filter(
+            'diff', 'ts-diff', 'Par ' . ($strings['difficulty_label'] ?? 'Difficulté'),
+            $options, $current['diffs'] ?? [],
+            'diff_mode', $current['diff_mode'] ?? 'or', $or_and
+        );
     }
 
     // Sources — multi-select with Tom Select (always OR)
     if (!empty($sources)) {
-        $current_srcs = array_map('intval', (array)($current['srcs'] ?? []));
-        $placeholder  = h($strings['all_sources'] ?? 'Par source');
-        $html .= "  <div class=\"search-filter-group\">\n";
-        $html .= "    <select name=\"src[]\" id=\"ts-src\" multiple data-placeholder=\"" . $placeholder . "\">\n";
+        $options = [];
         foreach ($sources as $s) {
-            $sel   = in_array((int)$s['id'], $current_srcs, true) ? ' selected' : '';
-            $label = trim((string)($s['shortcut'] ?? '')) !== ''
+            $options[$s['id']] = trim((string)($s['shortcut'] ?? '')) !== ''
                 ? $s['shortcut']
                 : strip_tags($s['name']);
-            $html .= "      <option value=\"" . (int)$s['id'] . "\"" . $sel . ">" . h($label) . "</option>\n";
         }
-        $html .= "    </select>\n";
-        $html .= "  </div>\n";
+        $html .= render_multi_filter(
+            'src', 'ts-src', $strings['all_sources'] ?? 'Par source',
+            $options, $current['srcs'] ?? []
+        );
     }
 
     $html .= "  <button type=\"submit\">Rechercher</button>\n";

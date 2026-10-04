@@ -31,6 +31,7 @@ $_recipe_code = isset($_GET['recipe']) ? strtoupper(trim((string)$_GET['recipe']
 $_code = isset($_GET['code']) ? strtoupper(trim((string)$_GET['code'])) : null;
 $_diff = isset($_GET['diff'])  ? (int)$_GET['diff'] : null;
 
+try {
 if ($_recipe_code !== null && $_recipe_code !== '' && $_code !== null && $_code !== '') {
     $_cache_key = 'img_' . preg_replace('/[^A-Z0-9_]/', '_', $_recipe_code . '_' . $_code);
     $_stmt = db_connect()->prepare(
@@ -49,6 +50,12 @@ if ($_recipe_code !== null && $_recipe_code !== '' && $_code !== null && $_code 
 }
 
 $_row = $_stmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException | DbConnectionError $e) {
+    // Réponse binaire : pas de page HTML, seulement le journal du serveur.
+    error_log('PBRecipe media.php — erreur de base de données : ' . $e->getMessage());
+    http_response_code(500);
+    exit;
+}
 if (!$_row) {
     http_response_code(404);
     exit;

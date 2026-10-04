@@ -27,6 +27,27 @@ class SearchTest extends TestCase
         'no_results'           => 'Aucune recette trouvée.',
     ];
 
+    // ── render_search_form() — matériel ───────────────────────────────────────
+
+    public function test_render_search_form_equipment_filter(): void
+    {
+        $equipment = [['id' => 1, 'name' => 'Fouet'], ['id' => 2, 'name' => 'Moule <rond>']];
+        $html = render_search_form([], [], [], $this->strings + ['search_by_equipment' => 'Par matériel'],
+                                   [], ['eqs' => [2], 'eq_mode' => 'and'], $equipment);
+        $this->assertStringContainsString('name="eq[]"', $html);
+        $this->assertStringContainsString('id="ts-eq"', $html);
+        $this->assertStringContainsString('data-placeholder="Par matériel"', $html);
+        $this->assertStringContainsString('<option value="2" selected>Moule &lt;rond&gt;</option>', $html);
+        $this->assertStringContainsString('<option value="1">Fouet</option>', $html);
+        $this->assertStringContainsString('name="eq_mode" value="and" checked', $html);
+    }
+
+    public function test_render_search_form_no_equipment_no_filter(): void
+    {
+        $html = render_search_form([], [], [], $this->strings);
+        $this->assertStringNotContainsString('ts-eq', $html);
+    }
+
     // ── render_search_results() ───────────────────────────────────────────────
 
     public function test_render_search_results_empty_shows_no_results_message(): void

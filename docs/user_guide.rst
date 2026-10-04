@@ -118,6 +118,14 @@ Ingredients
 Ingredients are shared across recipes.  Each ingredient belongs to a category
 and can have a plural form.
 
+Equipment
+~~~~~~~~~
+
+The equipment list (*Référentiels → Matériel…*, also available in the
+toolbar) holds the known kitchen equipment (e.g. *whisk*, *springform pan*)
+that recipes can require.  Like an ingredient, each item has a singular and
+an optional plural form.
+
 Techniques
 ~~~~~~~~~~
 
@@ -154,6 +162,16 @@ The ingredient list editor allows you to add rows with:
 - optional note (e.g. *finely chopped*)
 
 Ingredients can be reordered by dragging rows.
+
+Listing the equipment
+~~~~~~~~~~~~~~~~~~~~~
+
+The **Matériel** tab (between *Ingrédients* and *Réalisation*) lists the
+equipment needed for the recipe and works like the ingredient list.  Each row
+has a prefix (e.g. *2*), the equipment, a **Pl.** checkbox to use its plural
+form, and a suffix (e.g. *of 24 cm*).  Rows are added with **+**, removed with
+**−** and reordered by dragging.  On the web site, the equipment is shown to
+the right of the ingredients.
 
 Writing preparation steps
 ~~~~~~~~~~~~~~~~~~~~~~~~~

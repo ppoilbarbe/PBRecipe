@@ -74,6 +74,8 @@ categories(id PK, name ≤20 NN)
 units(id PK, name ≤15, name_plural ≤15 DEF'')  # name may be empty; name_plural: plural form
 ingredients(id PK, name ≤50 NN,
             name_plural ≤50 DEF'')              # name_plural: optional plural form
+equipment(id PK, name ≤50 NN,
+          name_plural ≤50 DEF'')               # known kitchen equipment
 sources(id PK, name TEXT NN)                   # TEXT (no length limit), may contain HTML
 techniques(code ≤10 PK, title ≤200 NN, description TEXT)
 difficulty_levels(level 0-3 PK, label ≤50 DEF'',
@@ -91,6 +93,10 @@ recipe_ingredients(id PK, recipe_code→recipes, position,
                    separator ≤20 DEF'',
                    ingredient_id→ingredients?, ingredient_plural BOOL DEF False,
                    suffix ≤20 DEF'')
+recipe_equipment(id PK, recipe_code→recipes, position,
+                 prefix ≤60 DEF'',
+                 equipment_id→equipment?, equipment_plural BOOL DEF False,
+                 suffix ≤60 DEF'')
 recipe_media(id PK, recipe_code→recipes, position,
              code ≤20 NN,        # reference in [IMG:CODE]
              mime_type ≤50 NN DEF'image/jpeg',
@@ -108,6 +114,19 @@ Migration at schema creation:
   `recipe_ingredients.ingredient_plural` are absent → `ALTER TABLE … ADD COLUMN …`.
 - v4: `_ensure_bool_columns()` — if `difficulty_levels.hide_label` is absent →
   `ALTER TABLE difficulty_levels ADD COLUMN hide_label BOOLEAN NOT NULL DEFAULT FALSE`.
+- `equipment` and `recipe_equipment` are created by `metadata.create_all()` on
+  older databases; they are not part of `_EXPECTED_TABLES`, so a database
+  without them is still recognized as a PBRecipe schema.
+- Last step of `create_schema()`: every existing table must contain all the
+  columns of the schema, otherwise `SchemaMismatchError` (subclass of
+  `RuntimeError`, attribute `missing`: list of "table.column") is raised.
+  GUI: "Base incompatible" message, then the program quits
+  (`MainWindow.fatal_error` set, `QApplication.exit(1)` deferred; at startup
+  `main()` exits before showing the window). `--check-connect`
+  reports the missing columns (`Database.missing_columns()`).
+- Headless exports (`--export-yaml`, `--export-php`) call `create_schema()`
+  after `check_schema()` (`_prepare_schema_for_export()` in `app.py`); an
+  empty or foreign database is refused (exit 1, no table created).
 
 Sorting of all lists: done on the Python side via `_sort_key()` (case- and
 diacritics-insensitive: `unicodedata.normalize("NFD").casefold().encode("ascii","ignore")`).
@@ -174,6 +193,13 @@ python -m pbrecipe [FILE] [OPTIONS]
 The `--debug`/`--verbose`/`--quiet` options override the default level for the current
 session without modifying `app.yaml`.
 
+## Unhandled database errors (GUI)
+`app.main()` installs `_DbErrorHook` as `sys.excepthook`: a `SQLAlchemyError`
+reaching it (exceptions raised in Qt slots are not propagated) is logged
+(CRITICAL), shown once in a `QMessageBox` (DBAPI message, full error in the
+details), then `QApplication.exit(1)` is scheduled. Other exceptions go to the
+previous hook.
+
 ## Logging
 
 - Default level: `INFO`, read from `app.yaml` at startup.
@@ -220,9 +246,11 @@ database/
 models/
   recipe.py                 Recipe, RecipeIngredient, RecipeMedia (dataclasses)
                             Recipe: serving: str = "" field (quantity/servings, max 30 chars)
+                            RecipeEquipment: prefix, equipment_id, equipment_plural,
+                              suffix (ordered by position, like RecipeIngredient)
                             RecipeMedia: code, mime_type, data:bytes
   difficulty.py             DifficultyLevel (level, label, mime_type, data:bytes|None)
-  category/ingredient/unit/source/technique.py
+  category/equipment/ingredient/unit/source/technique.py
 ui/
   main_window.py            QMainWindow: recipe list (left) + editor (right)
                             Splitter stored in self._splitter; sizes restored from app.yaml.
@@ -246,7 +274,7 @@ ui/
                                           Supprimer la recette
                                           ── Enregistrer la recette (Ctrl+S)
                               Référentiels → Catégories… | Ingrédients… | Unités…
-                                             Techniques… | Sources…
+                                             Matériel… | Techniques… | Sources…
                                              Niveaux de difficulté…
                                              ── Vérifier la cohérence
                               Outils    → Paramètres de la base… | Contenu et apparence…
@@ -259,7 +287,7 @@ ui/
                               tb_yaml:   [export-yaml] [export-yaml-as] [import-yaml]
                               tb_recipe: [new] [duplicate] [delete]
                               tb_ref:    [recipe-categories] [ingredients] [units]
-                                         [recipe-techniques] [recipe-sources] [difficulty]
+                                         [kitchen-utensils] [recipe-techniques] [recipe-sources] [difficulty]
                                          [consistency]
                             Menu-only icons (not in toolbar):
                               [new]                → Nouvelle base…
@@ -268,7 +296,8 @@ ui/
                               [medias]             → Médias…
                               [preferences-system] → Préférences du programme…
                               [help-about]         → À propos…
-  recipe_editor.py          QTabWidget: Informations | Ingrédients | Réalisation | Commentaires | Médias
+  recipe_editor.py          QTabWidget: Informations | Ingrédients | Matériel | Réalisation
+                              | Commentaires | Médias
                             Informations tab: Quantité field (QLineEdit ≤30 chars, serving)
                               before Difficulté in the meta form.
                             _slugify(name) → CODE (ASCII upper, spaces→_)
@@ -296,6 +325,14 @@ ui/
                               (uses name_plural if checked and the plural form is set).
                             reload(db): reloads unit/ingredient lists for each row
                               without losing entered values (used by reload_references()).
+  dialogs/_plural_list_dialog.py  PluralListDialog + plural_name_dialog(): shared by
+                              UnitDialog, IngredientDialog, EquipmentDialog.
+  equipment_list_editor.py  Matériel tab, same mechanism as the ingredients:
+                              rows prefix/equipment/[Pl.]/suffix.
+  _row_list_editor.py       Shared base of both row editors: BaseRow (drag handle,
+                              +/− buttons) and BaseRowListEditor (insertion, removal,
+                              drag-and-drop, reload(db) without losing values);
+                              helpers make_ref_combo/fill_ref_combo/make_plural_checkbox.
   html_editor.py            QTextEdit WYSIWYG.
                             Toolbar: G | I | U | H1 | H2 | H3 | H4 | • Liste | 1. Liste |
                                       [LIEN] | [RECETTE] | [IMG] | [TECH]
@@ -450,6 +487,9 @@ ingredients:
   - {name: Beurre, name_plural: ""}
   - {name: Farine, name_plural: Farines}
   - {name: Sucre, name_plural: ""}
+equipment:
+  - {name: Fouet, name_plural: Fouets}
+  - {name: Moule à manqué, name_plural: Moules à manqué}
 sources: [Larousse Gastronomique]
 techniques:
   - code: BAIN_MA
@@ -486,6 +526,12 @@ recipes:
         ingredient_plural: false
         separator: ""
         suffix: ""
+    equipment:                # missing equipment is created on import
+      - position: 0
+        prefix: "1"
+        equipment: Moule à manqué
+        equipment_plural: false
+        suffix: "de 24 cm"
     media:
       - position: 0
         code: GATEAU_CHOC_1
@@ -514,18 +560,32 @@ target/
 ## PHP recipe display
 1. `<h1>` name + categories right-aligned
 2. Card: meta row — quantity/servings (`serving`) + difficulty (bitmap icon + label from `$DIFFICULTY_LEVELS`) + total duration (prep+wait)
-3. Ingredient table: prefix | qty unit (plural if `unit_plural` and `name_plural` set) | separator **name** (plural if `ingredient_plural` and `name_plural` set) suffix
+3. Ingredients row (`.recipe-ingredients-block`, 0 to 3 columns, each present only if it has content):
+   hero image (first media) | ingredient table | equipment list (`.recipe-equipment`, `equipment_label`;
+   each item: prefix **name** (plural if `equipment_plural` and `name_plural` set) suffix).
+   Ingredient table: prefix | qty unit (plural if `unit_plural` and `name_plural` set) | separator **name** (plural if `ingredient_plural` and `name_plural` set) suffix.
+   Without ingredients nor equipment, the hero image is moved to the gallery.
 4. Description section (parsed HTML)
 5. Comments section (parsed HTML) — if not empty
 6. Mentioned techniques section (recursive, deduplicated) — if present
 7. Additional image gallery — if present
 8. Source right-aligned
 
+## PHP database errors
+`index.php` wraps all database access in `try { … } catch (PDOException |
+DbConnectionError)`: HTTP 500 and `render_db_error()` (display.php) as page body,
+a readable message (query error → probable version mismatch between site and
+database; `DbConnectionError` thrown by `db_connect()` → connection hint). The
+exception message is sent to `error_log()` and shown only if `SITE_DEBUG`.
+`media.php`: HTTP 500, no body.
+
 ## PHP home page
 - Search form:
   - Free text
   - Category multi-select (Tom Select, `cat[]`) + OR/AND toggle (`cat_mode=or|and`)
   - Ingredient multi-select (Tom Select, `ing[]`) + OR/AND toggle (`ing_mode=or|and`)
+  - Equipment multi-select (Tom Select, `eq[]`) + OR/AND toggle (`eq_mode=or|and`);
+    only equipment used by at least one recipe is offered (singular name only)
   - Difficulty select (single value)
   - Source multi-select (Tom Select, `src[]`) + OR/AND toggle (`src_mode=or|and`)
   - Technique select (single value, triggers immediate submit)
@@ -538,7 +598,7 @@ target/
 - Home: `index.php` (no parameter)
 - Recipe: `index.php?RECIPE=CODE`
 - Standalone technique: `index.php?tech=CODE`
-- Search: `index.php?q=…&cat[]=ID&cat[]=ID&cat_mode=or&ing[]=ID&ing_mode=and&diff=N&src[]=ID&src_mode=or`
+- Search: `index.php?q=…&cat[]=ID&cat[]=ID&cat_mode=or&ing[]=ID&ing_mode=and&eq[]=ID&eq_mode=or&diff=N&src[]=ID&src_mode=or`
 
 ## Makefile (default target: `help`)
 `help venv venv-update install run test test-php coverage lint format hooks dist srcdist update-vendors docs docs-live live-test clean`

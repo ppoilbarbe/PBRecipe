@@ -126,7 +126,7 @@ def test_unit_dialog_add_edit(qtbot, db, monkeypatch):
     dlg = UnitDialog(db)
     qtbot.addWidget(dlg)
     monkeypatch.setattr(
-        "pbrecipe.ui.dialogs.unit_dialog._plural_dialog",
+        "pbrecipe.ui.dialogs._plural_list_dialog.plural_name_dialog",
         lambda *a, **k: ("L", "litres", True),
     )
     dlg._add()
@@ -137,7 +137,7 @@ def test_unit_dialog_add_edit(qtbot, db, monkeypatch):
 
     dlg._list.setCurrentRow(0)
     monkeypatch.setattr(
-        "pbrecipe.ui.dialogs.unit_dialog._plural_dialog",
+        "pbrecipe.ui.dialogs._plural_list_dialog.plural_name_dialog",
         lambda *a, **k: ("mL", "millilitres", True),
     )
     dlg._edit()
@@ -148,7 +148,7 @@ def test_unit_dialog_add_cancelled(qtbot, db, monkeypatch):
     dlg = UnitDialog(db)
     qtbot.addWidget(dlg)
     monkeypatch.setattr(
-        "pbrecipe.ui.dialogs.unit_dialog._plural_dialog",
+        "pbrecipe.ui.dialogs._plural_list_dialog.plural_name_dialog",
         lambda *a, **k: ("", "", False),
     )
     dlg._add()
@@ -165,7 +165,7 @@ def test_ingredient_dialog(qtbot, db, monkeypatch):
     dlg = IngredientDialog(db)
     qtbot.addWidget(dlg)
     monkeypatch.setattr(
-        "pbrecipe.ui.dialogs.ingredient_dialog._plural_dialog",
+        "pbrecipe.ui.dialogs._plural_list_dialog.plural_name_dialog",
         lambda *a, **k: ("Oeuf", "Oeufs", True),
     )
     dlg._add()
@@ -175,7 +175,7 @@ def test_ingredient_dialog(qtbot, db, monkeypatch):
 
     dlg._list.setCurrentRow(0)
     monkeypatch.setattr(
-        "pbrecipe.ui.dialogs.ingredient_dialog._plural_dialog",
+        "pbrecipe.ui.dialogs._plural_list_dialog.plural_name_dialog",
         lambda *a, **k: ("Oeuf frais", "", True),
     )
     dlg._edit()

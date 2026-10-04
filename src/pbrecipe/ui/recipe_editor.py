@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Full recipe editor widget: metadata, ingredients, directions, comments and media."""
+"""Full recipe editor widget: metadata, ingredients, equipment, directions,
+comments and media."""
 
 from __future__ import annotations
 
@@ -39,6 +40,7 @@ from pbrecipe.constants import (
 )
 from pbrecipe.database import Database
 from pbrecipe.models import Recipe
+from pbrecipe.ui.equipment_list_editor import EquipmentListEditor
 from pbrecipe.ui.html_editor import HtmlEditor
 from pbrecipe.ui.ingredient_list_editor import IngredientListEditor
 from pbrecipe.ui.media_tab import MediaTab
@@ -103,17 +105,22 @@ class RecipeEditor(QWidget):
         self._ingredient_editor.changed.connect(self._mark_dirty)
         tabs.addTab(self._ingredient_editor, "Ingrédients")
 
-        # Tab 3 — description
+        # Tab 3 — equipment
+        self._equipment_editor = EquipmentListEditor()
+        self._equipment_editor.changed.connect(self._mark_dirty)
+        tabs.addTab(self._equipment_editor, "Matériel")
+
+        # Tab 4 — description
         self._desc_editor = HtmlEditor(current_recipe_mode=True)
         self._desc_editor.changed.connect(self._mark_dirty)
         tabs.addTab(self._desc_editor, "Réalisation")
 
-        # Tab 4 — comments
+        # Tab 5 — comments
         self._comment_editor = HtmlEditor(current_recipe_mode=True)
         self._comment_editor.changed.connect(self._mark_dirty)
         tabs.addTab(self._comment_editor, "Commentaires")
 
-        # Tab 5 — media
+        # Tab 6 — media
         self._media_tab = MediaTab()
         self._media_tab.changed.connect(self._mark_dirty)
         self._media_tab.changed.connect(self._refresh_editor_images)
@@ -231,6 +238,7 @@ class RecipeEditor(QWidget):
         self._reload_categories(recipe)
         self._reload_sources(recipe)
         self._ingredient_editor.load(recipe.ingredients, db)
+        self._equipment_editor.load(recipe.equipment, db)
         globals_data = db.get_globals()
         try:
             media_max_w = int(globals_data.get("media_max_w", DEFAULT_MEDIA_MAX_W))
@@ -284,6 +292,7 @@ class RecipeEditor(QWidget):
         self._category_list.clear()
         self._source_combo.clear()
         self._ingredient_editor.clear()
+        self._equipment_editor.clear()
         self._media_tab.load([])
         self._loading = False
         self._check_btn.setEnabled(False)
@@ -298,6 +307,7 @@ class RecipeEditor(QWidget):
         self._reload_sources(self._recipe)
         self._reload_difficulty_levels(self._db, self._recipe.difficulty)
         self._ingredient_editor.reload(self._db)
+        self._equipment_editor.reload(self._db)
         self._refs_db = None  # force full reload of editor references
         self._reload_editor_references(self._recipe, self._db)
         self._refs_db = self._db
@@ -383,6 +393,7 @@ class RecipeEditor(QWidget):
         self._recipe.ingredients = self._ingredient_editor.get_ingredients(
             self._recipe.code
         )
+        self._recipe.equipment = self._equipment_editor.get_equipment(self._recipe.code)
         self._recipe.media = self._media_tab.get_media(self._recipe.code)
         self._mark_clean()
         _log.info(

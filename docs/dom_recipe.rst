@@ -20,8 +20,7 @@ General structure
        article --> card["div.recipe-card"]
 
        card --> meta["div.recipe-meta"]:::opt
-       card --> ingblock["div.recipe-ingredients-block.recipe-section<br/>(with hero image — see detail)"]:::opt
-       card --> ingsect["section.recipe-ingredients.recipe-section<br/>(without hero image — see detail)"]:::opt
+       card --> ingblock["div.recipe-ingredients-block.recipe-section<br/>(hero image / ingredients / equipment — see detail)"]:::opt
        card --> desc["section.recipe-description.recipe-section"]:::opt
        card --> comm["section.recipe-comments.recipe-section"]:::opt
        card --> tech["section.recipe-techniques.recipe-section"]:::opt
@@ -44,11 +43,13 @@ General structure
        techitem --> h3["h3 · title"]
        techitem --> tbody["div.technique-body<br/>(HTML + parsed markers)"]
 
-Ingredient block with hero image
---------------------------------
+Ingredients row (hero image, ingredients, equipment)
+----------------------------------------------------
 
-Rendered when the recipe has at least one ingredient **and** at least one image.
-The hero image is the first image declared in the recipe media.
+Rendered when the recipe has at least one ingredient **or** at least one piece
+of equipment.  The row holds 1 to 3 columns, each present only if it has
+content.  The hero image is the first image declared in the recipe media; when
+the recipe has neither ingredients nor equipment, it is moved to the gallery.
 
 
 .. mermaid::
@@ -58,8 +59,9 @@ The hero image is the first image declared in the recipe media.
 
        block["div.recipe-ingredients-block.recipe-section"]
 
-       block --> fig["figure.hero-item"]
-       block --> sect["section.recipe-ingredients"]
+       block --> fig["figure.hero-item"]:::opt
+       block --> sect["section.recipe-ingredients"]:::opt
+       block --> eqsect["section.recipe-equipment"]:::opt
 
        fig --> heroimg["img.recipe-hero-img · loading=lazy"]
        fig --> preview["span.hero-preview"]
@@ -68,10 +70,15 @@ The hero image is the first image declared in the recipe media.
        sect --> h2["h2 · Ingrédients label"]
        sect --> table["table.ingredients-table<br/>→ see Ingredient table"]
 
+       eqsect --> h2eq["h2 · Matériel label"]
+       eqsect --> ul["ul.equipment-list"]
+       ul --> li["li (1 per equipment row, recipe order)"]
+       li --> eqtxt["prefix · strong (singular/plural name) · suffix"]
+
 Ingredient table
 ----------------
 
-Rendered identically whether or not a hero image is present.
+Rendered identically whatever the other columns of the row.
 The ``ing-prefix`` column is only included when at least one ingredient has a prefix.
 
 

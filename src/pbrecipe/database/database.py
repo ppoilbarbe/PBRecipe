@@ -9,9 +9,11 @@ import re
 import unicodedata
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import asdict, fields
 
 from sqlalchemy import (
     String,
+    Table,
     and_,
     create_engine,
     delete,
@@ -29,9 +31,11 @@ from pbrecipe.database.schema import (
     metadata,
     t_categories,
     t_difficulty_levels,
+    t_equipment,
     t_globals,
     t_ingredients,
     t_recipe_categories,
+    t_recipe_equipment,
     t_recipe_ingredients,
     t_recipe_media,
     t_recipes,
@@ -42,8 +46,10 @@ from pbrecipe.database.schema import (
 from pbrecipe.models import (
     Category,
     DifficultyLevel,
+    Equipment,
     Ingredient,
     Recipe,
+    RecipeEquipment,
     RecipeIngredient,
     RecipeMedia,
     Source,
@@ -53,6 +59,9 @@ from pbrecipe.models import (
 
 _log = logging.getLogger(__name__)
 
+# Minimal set identifying a PBRecipe schema. Tables added later (e.g. equipment,
+# recipe_equipment) are deliberately left out: older databases lacking them
+# must still be recognized, create_schema() then adds them.
 _EXPECTED_TABLES = frozenset(
     {
         "categories",
@@ -77,8 +86,53 @@ def _sort_key(s: str) -> str:
     return unicodedata.normalize("NFD", s).encode("ascii", "ignore").decode()
 
 
+def _select_recipe_rows(conn: Connection, table: Table, cls: type, code: str) -> list:
+    """Load the ordered child rows of a recipe into dataclasses of type *cls*.
+
+    Dataclass field names must match the table column names.
+    """
+    rows = conn.execute(
+        select(table).where(table.c.recipe_code == code).order_by(table.c.position)
+    ).fetchall()
+    result = []
+    for r in rows:
+        values = {f.name: getattr(r, f.name) for f in fields(cls)}
+        values.update(
+            {f.name: bool(values[f.name]) for f in fields(cls) if f.type == "bool"}
+        )
+        result.append(cls(**values))
+    return result
+
+
+def _replace_recipe_rows(
+    conn: Connection, table: Table, code: str, items: list
+) -> None:
+    """Replace all child rows of a recipe with *items* (dataclasses, id ignored)."""
+    conn.execute(delete(table).where(table.c.recipe_code == code))
+    if items:
+        rows = []
+        for item in items:
+            values = asdict(item)
+            values.pop("id")
+            values["recipe_code"] = code
+            rows.append(values)
+        conn.execute(insert(table), rows)
+
+
 def _safe_url(url: str) -> str:
     return re.sub(r"(://[^:@/]+:)[^@/]+(@)", r"\1***\2", url)
+
+
+class SchemaMismatchError(RuntimeError):
+    """The database lacks columns of the current schema (incompatible format)."""
+
+    def __init__(self, missing: list[str]) -> None:
+        self.missing = missing
+        lines = "\n".join(f"  – {col}" for col in missing)
+        super().__init__(
+            "Le schéma de la base est incompatible avec cette version"
+            f" du programme.\nColonnes absentes :\n{lines}"
+        )
 
 
 class Database:
@@ -129,7 +183,34 @@ class Database:
             self._migrate(conn)
             self._ensure_all_varchar_sizes(conn)
             self._ensure_mediumblob(conn)
+            missing = self._missing_columns(conn)
+            if missing:
+                _log.error("Schéma incompatible, colonnes absentes : %s", missing)
+                raise SchemaMismatchError(missing)
         _log.info("Schéma vérifié/créé")
+
+    def missing_columns(self) -> list[str]:
+        """Return the schema columns absent from existing tables ("table.column")."""
+        assert self._engine
+        with self._engine.connect() as conn:
+            return self._missing_columns(conn)
+
+    @staticmethod
+    def _missing_columns(conn: Connection) -> list[str]:
+        # Tables absentes ignorées : create_schema() les crée.
+        insp = inspect(conn)
+        existing = set(insp.get_table_names())
+        missing = []
+        for table in metadata.sorted_tables:
+            if table.name not in existing:
+                continue
+            present = {c["name"] for c in insp.get_columns(table.name)}
+            missing += [
+                f"{table.name}.{col.name}"
+                for col in table.columns
+                if col.name not in present
+            ]
+        return missing
 
     def clear_all_data(self) -> None:
         """Delete all rows from every table, preserving the schema."""
@@ -137,11 +218,13 @@ class Database:
         with self._engine.begin() as conn:
             for tbl in (
                 t_recipe_media,
+                t_recipe_equipment,
                 t_recipe_ingredients,
                 t_recipe_categories,
                 t_recipes,
                 t_techniques,
                 t_sources,
+                t_equipment,
                 t_ingredients,
                 t_units,
                 t_categories,
@@ -435,6 +518,45 @@ class Database:
         _log.info("Ingrédient supprimé : id=%s", ingredient_id)
 
     # ------------------------------------------------------------------
+    # Equipment
+    # ------------------------------------------------------------------
+
+    def list_equipment(self) -> list[Equipment]:
+        with self._tx() as conn:
+            rows = conn.execute(select(t_equipment)).fetchall()
+        _log.debug("Matériel : %d éléments trouvés", len(rows))
+        return sorted(
+            [Equipment(id=r.id, name=r.name, name_plural=r.name_plural) for r in rows],
+            key=lambda x: _sort_key(x.name),
+        )
+
+    def save_equipment(self, equipment: Equipment) -> Equipment:
+        with self._tx() as conn:
+            if equipment.id is None:
+                result = conn.execute(
+                    insert(t_equipment).values(
+                        name=equipment.name, name_plural=equipment.name_plural
+                    )
+                )
+                equipment.id = result.inserted_primary_key[0]
+                _log.info("Matériel créé : «%s» (id=%s)", equipment.name, equipment.id)
+            else:
+                conn.execute(
+                    update(t_equipment)
+                    .where(t_equipment.c.id == equipment.id)
+                    .values(name=equipment.name, name_plural=equipment.name_plural)
+                )
+                _log.info(
+                    "Matériel mis à jour : «%s» (id=%s)", equipment.name, equipment.id
+                )
+        return equipment
+
+    def delete_equipment(self, equipment_id: int) -> None:
+        with self._tx() as conn:
+            conn.execute(delete(t_equipment).where(t_equipment.c.id == equipment_id))
+        _log.info("Matériel supprimé : id=%s", equipment_id)
+
+    # ------------------------------------------------------------------
     # Sources
     # ------------------------------------------------------------------
 
@@ -715,26 +837,12 @@ class Database:
                     )
                 ).fetchall()
             ]
-            recipe.ingredients = [
-                RecipeIngredient(
-                    id=r.id,
-                    recipe_code=code,
-                    position=r.position,
-                    prefix=r.prefix,
-                    quantity=r.quantity,
-                    unit_id=r.unit_id,
-                    separator=r.separator,
-                    ingredient_id=r.ingredient_id,
-                    suffix=r.suffix,
-                    unit_plural=bool(r.unit_plural),
-                    ingredient_plural=bool(r.ingredient_plural),
-                )
-                for r in conn.execute(
-                    select(t_recipe_ingredients)
-                    .where(t_recipe_ingredients.c.recipe_code == code)
-                    .order_by(t_recipe_ingredients.c.position)
-                ).fetchall()
-            ]
+            recipe.ingredients = _select_recipe_rows(
+                conn, t_recipe_ingredients, RecipeIngredient, code
+            )
+            recipe.equipment = _select_recipe_rows(
+                conn, t_recipe_equipment, RecipeEquipment, code
+            )
             recipe.media = [
                 RecipeMedia(
                     id=r.id,
@@ -751,10 +859,12 @@ class Database:
                 ).fetchall()
             ]
         _log.debug(
-            "Recette chargée : %s — %d catégories, %d ingrédients, %d médias",
+            "Recette chargée : %s — %d catégories, %d ingrédients,"
+            " %d matériels, %d médias",
             code,
             len(recipe.categories),
             len(recipe.ingredients),
+            len(recipe.equipment),
             len(recipe.media),
         )
         return recipe
@@ -786,6 +896,7 @@ class Database:
                     for tbl in (
                         t_recipe_categories,
                         t_recipe_ingredients,
+                        t_recipe_equipment,
                         t_recipe_media,
                     ):
                         conn.execute(
@@ -843,30 +954,12 @@ class Database:
                     ],
                 )
 
-            conn.execute(
-                delete(t_recipe_ingredients).where(
-                    t_recipe_ingredients.c.recipe_code == recipe.code
-                )
+            _replace_recipe_rows(
+                conn, t_recipe_ingredients, recipe.code, recipe.ingredients
             )
-            if recipe.ingredients:
-                conn.execute(
-                    insert(t_recipe_ingredients),
-                    [
-                        {
-                            "recipe_code": recipe.code,
-                            "position": i.position,
-                            "prefix": i.prefix,
-                            "quantity": i.quantity,
-                            "unit_id": i.unit_id,
-                            "separator": i.separator,
-                            "ingredient_id": i.ingredient_id,
-                            "suffix": i.suffix,
-                            "unit_plural": i.unit_plural,
-                            "ingredient_plural": i.ingredient_plural,
-                        }
-                        for i in recipe.ingredients
-                    ],
-                )
+            _replace_recipe_rows(
+                conn, t_recipe_equipment, recipe.code, recipe.equipment
+            )
 
             conn.execute(
                 delete(t_recipe_media).where(
@@ -900,6 +993,7 @@ class Database:
         category_id: int | None = None,
         ingredient_id: int | None = None,
         difficulty: int | None = None,
+        equipment_id: int | None = None,
     ) -> list[Recipe]:
         stmt = select(
             t_recipes.c.code,
@@ -926,6 +1020,14 @@ class Database:
                     t_recipe_ingredients.c.ingredient_id == ingredient_id,
                 ),
             )
+        if equipment_id is not None:
+            stmt = stmt.join(
+                t_recipe_equipment,
+                and_(
+                    t_recipe_equipment.c.recipe_code == t_recipes.c.code,
+                    t_recipe_equipment.c.equipment_id == equipment_id,
+                ),
+            )
         if name:
             stmt = stmt.where(t_recipes.c.name.ilike(f"%{name}%"))
         if difficulty is not None:
@@ -934,11 +1036,12 @@ class Database:
         with self._tx() as conn:
             rows = conn.execute(stmt).fetchall()
         _log.debug(
-            "Recherche recettes : name=%r cat=%s ing=%s diff=%s → %d résultats",
+            "Recherche recettes : name=%r cat=%s ing=%s diff=%s eq=%s → %d résultats",
             name,
             category_id,
             ingredient_id,
             difficulty,
+            equipment_id,
             len(rows),
         )
         return sorted(

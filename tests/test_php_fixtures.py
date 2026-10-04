@@ -6,8 +6,10 @@ import pytest
 from pbrecipe.database.database import Database
 from pbrecipe.models import (
     Category,
+    Equipment,
     Ingredient,
     Recipe,
+    RecipeEquipment,
     RecipeIngredient,
     Source,
     Technique,
@@ -39,6 +41,11 @@ def test_create_php_test_db():
     ing_farine = db.save_ingredient(Ingredient(name="Farine", name_plural="Farines"))
     ing_sucre = db.save_ingredient(Ingredient(name="Sucre", name_plural="Sucres"))
     source = db.save_source(Source(name="Mon livre"))
+    eq_moule = db.save_equipment(
+        Equipment(name="Moule à manqué", name_plural="Moules à manqué")
+    )
+    eq_fouet = db.save_equipment(Equipment(name="Fouet", name_plural="Fouets"))
+    db.save_equipment(Equipment(name="Mandoline"))  # inutilisé
 
     db.save_technique(
         Technique(
@@ -85,6 +92,16 @@ def test_create_php_test_db():
                     suffix="vanillé",
                 ),
             ],
+            equipment=[
+                RecipeEquipment(
+                    position=0,
+                    prefix="2",
+                    equipment_id=eq_moule.id,
+                    equipment_plural=True,
+                    suffix="de 24 cm",
+                ),
+                RecipeEquipment(position=1, equipment_id=eq_fouet.id),
+            ],
         )
     )
     db.save_recipe(
@@ -96,6 +113,7 @@ def test_create_php_test_db():
             wait_time=40,
             description="<p>Préparer la pâte brisée.</p>",
             categories=[cat_entree.id],
+            equipment=[RecipeEquipment(position=0, equipment_id=eq_fouet.id)],
         )
     )
 

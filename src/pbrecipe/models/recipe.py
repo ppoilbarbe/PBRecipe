@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Philippe Poilbarbe <philippe@cardolan.net>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Data models for a recipe, its associated ingredients and media."""
+"""Data models for a recipe, its associated ingredients, equipment and media."""
 
 from __future__ import annotations
 
@@ -20,6 +20,17 @@ class RecipeIngredient:
     suffix: str = ""  # max 20 chars
     unit_plural: bool = False
     ingredient_plural: bool = False
+
+
+@dataclass
+class RecipeEquipment:
+    id: int | None = None
+    recipe_code: str = ""
+    position: int = 0
+    prefix: str = ""  # max 60 chars
+    equipment_id: int | None = None
+    suffix: str = ""  # max 60 chars
+    equipment_plural: bool = False
 
 
 @dataclass
@@ -47,6 +58,7 @@ class Recipe:
 
     categories: list[int] = field(default_factory=list)  # category IDs
     ingredients: list[RecipeIngredient] = field(default_factory=list)
+    equipment: list[RecipeEquipment] = field(default_factory=list)
     media: list[RecipeMedia] = field(default_factory=list)
 
     @property

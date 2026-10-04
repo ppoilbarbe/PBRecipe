@@ -16,8 +16,10 @@ from pbrecipe.database import Database
 from pbrecipe.models import (
     Category,
     DifficultyLevel,
+    Equipment,
     Ingredient,
     Recipe,
+    RecipeEquipment,
     RecipeIngredient,
     RecipeMedia,
     Source,
@@ -28,6 +30,14 @@ from pbrecipe.models import (
 _log = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────────────────────
+
+
+def _plural_entries(items: list) -> list[dict[str, str]]:
+    """Serialize reference items having ``name`` and ``name_plural``."""
+    return [
+        {"name": i.name, "name_plural": i.name_plural}
+        for i in sorted(items, key=lambda x: x.name)
+    ]
 
 
 class YamlExport:
@@ -49,12 +59,13 @@ class YamlExport:
         recipes = len(doc.get("recipes", []))
         _log.info(
             "Export YAML terminé : %d globals, %d recettes, %d catégories,"
-            " %d ingrédients, %d unités, %d sources, %d techniques,"
+            " %d ingrédients, %d matériels, %d unités, %d sources, %d techniques,"
             " %d niveaux de difficulté",
             len(doc.get("globals", {})),
             recipes,
             len(doc.get("categories", [])),
             len(doc.get("ingredients", [])),
+            len(doc.get("equipment", [])),
             len(doc.get("units", [])),
             len(doc.get("sources", [])),
             len(doc.get("techniques", [])),
@@ -67,6 +78,7 @@ class YamlExport:
         categories = self._db.list_categories()
         units = self._db.list_units()
         ingredients = self._db.list_ingredients()
+        equipment = self._db.list_equipment()
         sources = self._db.list_sources()
         techniques = self._db.list_techniques()
         difficulty_levels = self._db.list_difficulty_levels()
@@ -76,6 +88,7 @@ class YamlExport:
         cat_by_id = {c.id: c.name for c in categories}
         unit_by_id = {u.id: u.name for u in units}
         ing_by_id = {i.id: i.name for i in ingredients}
+        eq_by_id = {e.id: e.name for e in equipment}
         src_by_id = {s.id: s.name for s in sources}
 
         total = len(recipe_stubs)
@@ -89,21 +102,16 @@ class YamlExport:
                     progress(i + 1, total, f"Recette {i + 1}/{total} : {stub.code}")
                 recipes.append(
                     self._serialize_recipe(
-                        recipe, cat_by_id, unit_by_id, ing_by_id, src_by_id
+                        recipe, cat_by_id, unit_by_id, ing_by_id, eq_by_id, src_by_id
                     )
                 )
 
         return {
             "globals": globals_data,
             "categories": [c.name for c in sorted(categories, key=lambda x: x.name)],
-            "units": [
-                {"name": u.name, "name_plural": u.name_plural}
-                for u in sorted(units, key=lambda x: x.name)
-            ],
-            "ingredients": [
-                {"name": i.name, "name_plural": i.name_plural}
-                for i in sorted(ingredients, key=lambda x: x.name)
-            ],
+            "units": _plural_entries(units),
+            "ingredients": _plural_entries(ingredients),
+            "equipment": _plural_entries(equipment),
             "sources": [s.name for s in sorted(sources, key=lambda x: x.name)],
             "techniques": [
                 {
@@ -134,6 +142,7 @@ class YamlExport:
         cat_by_id: dict,
         unit_by_id: dict,
         ing_by_id: dict,
+        eq_by_id: dict,
         src_by_id: dict,
     ) -> dict[str, Any]:
         ingredients = []
@@ -154,6 +163,18 @@ class YamlExport:
             entry["unit_plural"] = ri.unit_plural
             entry["ingredient_plural"] = ri.ingredient_plural
             ingredients.append(entry)
+        equipment = [
+            {
+                "position": re.position,
+                "prefix": re.prefix,
+                "equipment": eq_by_id.get(re.equipment_id, "")
+                if re.equipment_id is not None
+                else "",
+                "equipment_plural": re.equipment_plural,
+                "suffix": re.suffix,
+            }
+            for re in recipe.equipment
+        ]
         media = [
             {
                 "position": m.position,
@@ -180,6 +201,7 @@ class YamlExport:
                 cat_by_id[cid] for cid in recipe.categories if cid in cat_by_id
             ],
             "ingredients": ingredients,
+            "equipment": equipment,
             "media": media,
         }
 
@@ -217,6 +239,7 @@ class YamlImport:
             "categories": 0,
             "units": 0,
             "ingredients": 0,
+            "equipment": 0,
             "sources": 0,
             "techniques": 0,
             "difficulty_levels": 0,
@@ -240,8 +263,30 @@ class YamlImport:
             stats,
             "categories",
         )
-        unit_map = self._import_units(doc.get("units", []), stats)
-        ing_map = self._import_ingredients(doc.get("ingredients", []), stats)
+        unit_map = self._import_plural_list(
+            doc.get("units", []),
+            self._db.list_units(),
+            self._db.save_unit,
+            lambda name, plural: Unit(name=name, name_plural=plural),
+            stats,
+            "units",
+        )
+        ing_map = self._import_plural_list(
+            doc.get("ingredients", []),
+            self._db.list_ingredients(),
+            self._db.save_ingredient,
+            lambda name, plural: Ingredient(name=name, name_plural=plural),
+            stats,
+            "ingredients",
+        )
+        eq_map = self._import_plural_list(
+            doc.get("equipment", []),
+            self._db.list_equipment(),
+            self._db.save_equipment,
+            lambda name, plural: Equipment(name=name, name_plural=plural),
+            stats,
+            "equipment",
+        )
         src_map = self._import_simple_list(
             doc.get("sources", []),
             self._db.list_sources(),
@@ -259,16 +304,19 @@ class YamlImport:
                     recipe_data.get("code", "") if isinstance(recipe_data, dict) else ""
                 )
                 progress(i + 1, total, f"Recette {i + 1}/{total} : {code}")
-            self._import_recipe(recipe_data, cat_map, unit_map, ing_map, src_map, stats)
+            self._import_recipe(
+                recipe_data, cat_map, unit_map, ing_map, eq_map, src_map, stats
+            )
 
         _log.info(
             "Import YAML terminé : %d globals, +%d cat, +%d unités, +%d ing,"
-            " +%d sources, +%d techniques, %d niveaux de difficulté,"
+            " +%d matériels, +%d sources, +%d techniques, %d niveaux de difficulté,"
             " %d recettes créées, %d recettes mises à jour",
             stats["globals"],
             stats["categories"],
             stats["units"],
             stats["ingredients"],
+            stats["equipment"],
             stats["sources"],
             stats["techniques"],
             stats["difficulty_levels"],
@@ -287,51 +335,43 @@ class YamlImport:
         self._db.set_globals(merged)
         stats["globals"] = len(raw)
 
-    def _import_units(self, entries: list, stats: dict) -> dict[str, int]:
-        existing = {u.name: u for u in self._db.list_units()}
-        result: dict[str, int] = {u.name: u.id for u in existing.values()}
+    def _import_plural_list(
+        self,
+        entries: list,
+        existing: list,
+        save_fn,
+        make_fn,
+        stats: dict,
+        key: str,
+    ) -> dict[str, int]:
+        """Create or update items with ``name``/``name_plural``. Return name→id."""
+        by_name = {item.name: item for item in existing}
         for raw in entries:
+            if not isinstance(raw, dict):
+                continue
             name = str(raw.get("name", "")).strip()
             name_plural = str(raw.get("name_plural", "")).strip()
             if not name:
                 continue
-            if name in existing:
-                u = existing[name]
-                if u.name_plural != name_plural:
-                    u.name_plural = name_plural
-                    self._db.save_unit(u)
-                result[name] = u.id
+            if name in by_name:
+                item = by_name[name]
+                if item.name_plural != name_plural:
+                    item.name_plural = name_plural
+                    save_fn(item)
             else:
-                u = self._db.save_unit(Unit(name=name, name_plural=name_plural))
-                existing[name] = u
-                result[name] = u.id
-                stats["units"] += 1
-                _log.debug("Créé (units) : «%s»", name)
-        return result
+                by_name[name] = save_fn(make_fn(name, name_plural))
+                stats[key] += 1
+                _log.debug("Créé (%s) : «%s»", key, name)
+        return {name: item.id for name, item in by_name.items()}
 
-    def _import_ingredients(self, entries: list, stats: dict) -> dict[str, int]:
-        existing = {i.name: i for i in self._db.list_ingredients()}
-        result: dict[str, int] = {i.name: i.id for i in existing.values()}
-        for raw in entries:
-            name = str(raw.get("name", "")).strip()
-            name_plural = str(raw.get("name_plural", "")).strip()
-            if not name:
-                continue
-            if name in existing:
-                i = existing[name]
-                if i.name_plural != name_plural:
-                    i.name_plural = name_plural
-                    self._db.save_ingredient(i)
-                result[name] = i.id
-            else:
-                i = self._db.save_ingredient(
-                    Ingredient(name=name, name_plural=name_plural)
-                )
-                existing[name] = i
-                result[name] = i.id
-                stats["ingredients"] += 1
-                _log.debug("Créé (ingredients) : «%s»", name)
-        return result
+    def _resolve_ref(
+        self, name: str, name_map: dict[str, int], save_fn, make_fn, label: str
+    ) -> int | None:
+        """Return the id of reference *name*, creating it on the fly if missing."""
+        if name not in name_map:
+            name_map[name] = save_fn(make_fn(name)).id
+            _log.debug("%s créé(e) à la volée : «%s»", label, name)
+        return name_map[name]
 
     def _import_simple_list(
         self,
@@ -418,6 +458,7 @@ class YamlImport:
         cat_map: dict[str, int],
         unit_map: dict[str, int],
         ing_map: dict[str, int],
+        eq_map: dict[str, int],
         src_map: dict[str, int],
         stats: dict,
     ) -> None:
@@ -429,52 +470,53 @@ class YamlImport:
             _log.warning("Recette ignorée : code absent")
             return
 
-        # Resolve category IDs — create missing ones on the fly
-        category_ids: list[int] = []
-        for cat_name in data.get("categories", []):
-            name = str(cat_name)
-            if name not in cat_map:
-                created = self._db.save_category(Category(name=name))
-                cat_map[name] = created.id
-                _log.debug("Catégorie créée à la volée : «%s»", name)
-            cid = cat_map[name]
-            if cid is not None:
-                category_ids.append(cid)
+        db = self._db
+        # Resolve reference IDs — missing references are created on the fly
+        category_ids = [
+            self._resolve_ref(
+                str(name),
+                cat_map,
+                db.save_category,
+                lambda n: Category(name=n),
+                "Catégorie",
+            )
+            for name in data.get("categories", [])
+        ]
 
-        # Resolve source ID — create if missing
         source_id: int | None = None
-        src_name = data.get("source")
-        if src_name:
-            name = str(src_name)
-            if name not in src_map:
-                created = self._db.save_source(Source(name=name))
-                src_map[name] = created.id
-                _log.debug("Source créée à la volée : «%s»", name)
-            source_id = src_map.get(name)
+        if data.get("source"):
+            source_id = self._resolve_ref(
+                str(data["source"]),
+                src_map,
+                db.save_source,
+                lambda n: Source(name=n),
+                "Source",
+            )
 
-        # Build ingredients — resolve unit/ingredient IDs, create if missing
         ingredients: list[RecipeIngredient] = []
         for pos, ri_data in enumerate(data.get("ingredients", [])):
             if not isinstance(ri_data, dict):
                 continue
             unit_name = str(ri_data.get("unit", ""))
-            unit_id: int | None = None
-            if unit_name != "":
-                if unit_name not in unit_map:
-                    created = self._db.save_unit(Unit(name=unit_name))
-                    unit_map[unit_name] = created.id
-                    _log.debug("Unité créée à la volée : «%s»", unit_name)
-                unit_id = unit_map.get(unit_name)
-
+            unit_id = (
+                self._resolve_ref(
+                    unit_name, unit_map, db.save_unit, lambda n: Unit(name=n), "Unité"
+                )
+                if unit_name
+                else None
+            )
             ing_name = str(ri_data.get("ingredient", ""))
-            ing_id: int | None = None
-            if ing_name:
-                if ing_name not in ing_map:
-                    created = self._db.save_ingredient(Ingredient(name=ing_name))
-                    ing_map[ing_name] = created.id
-                    _log.debug("Ingrédient créé à la volée : «%s»", ing_name)
-                ing_id = ing_map.get(ing_name)
-
+            ing_id = (
+                self._resolve_ref(
+                    ing_name,
+                    ing_map,
+                    db.save_ingredient,
+                    lambda n: Ingredient(name=n),
+                    "Ingrédient",
+                )
+                if ing_name
+                else None
+            )
             ingredients.append(
                 RecipeIngredient(
                     recipe_code=code,
@@ -487,6 +529,33 @@ class YamlImport:
                     suffix=str(ri_data.get("suffix", "")),
                     unit_plural=bool(ri_data.get("unit_plural", False)),
                     ingredient_plural=bool(ri_data.get("ingredient_plural", False)),
+                )
+            )
+
+        equipment: list[RecipeEquipment] = []
+        for pos, re_data in enumerate(data.get("equipment", [])):
+            if not isinstance(re_data, dict):
+                continue
+            eq_name = str(re_data.get("equipment", ""))
+            eq_id = (
+                self._resolve_ref(
+                    eq_name,
+                    eq_map,
+                    db.save_equipment,
+                    lambda n: Equipment(name=n),
+                    "Matériel",
+                )
+                if eq_name
+                else None
+            )
+            equipment.append(
+                RecipeEquipment(
+                    recipe_code=code,
+                    position=int(re_data.get("position", pos)),
+                    prefix=str(re_data.get("prefix", "")),
+                    equipment_id=eq_id,
+                    suffix=str(re_data.get("suffix", "")),
+                    equipment_plural=bool(re_data.get("equipment_plural", False)),
                 )
             )
 
@@ -533,6 +602,7 @@ class YamlImport:
             source_id=source_id,
             categories=category_ids,
             ingredients=ingredients,
+            equipment=equipment,
             media=media,
         )
         self._db.save_recipe(recipe)

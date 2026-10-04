@@ -12,14 +12,23 @@ function sort_key(string $s): string {
     return $ascii !== false ? $ascii : $lower;
 }
 
-/** Return categories used by at least one recipe, ordered by name. */
-function get_all_categories(): array {
+/**
+ * Return the items of reference table $table (id, name) used by at least one
+ * recipe through link table $link_table (column $fk), ordered by name.
+ * Table and column names are internal constants, never user input.
+ */
+function get_used_references(string $table, string $link_table, string $fk): array {
     $rows = db_connect()->query(
-        'SELECT DISTINCT c.id, c.name FROM categories c
-         JOIN recipe_categories rc ON rc.category_id = c.id'
+        "SELECT DISTINCT t.id, t.name FROM $table t
+         JOIN $link_table l ON l.$fk = t.id"
     )->fetchAll();
     usort($rows, fn($a, $b) => strcmp(sort_key($a['name']), sort_key($b['name'])));
     return $rows;
+}
+
+/** Return categories used by at least one recipe, ordered by name. */
+function get_all_categories(): array {
+    return get_used_references('categories', 'recipe_categories', 'category_id');
 }
 
 /** Return recipes grouped by category: [category_name => [recipe, …], …] */
@@ -113,6 +122,18 @@ function get_recipe(string $code): ?array {
     $ings->execute([$code]);
     $r['ingredients'] = $ings->fetchAll();
 
+    // Equipment
+    $eqs = $pdo->prepare('
+        SELECT re.*,
+               e.name AS equipment_name, e.name_plural AS equipment_name_plural
+        FROM recipe_equipment re
+        LEFT JOIN equipment e ON e.id = re.equipment_id
+        WHERE re.recipe_code = ?
+        ORDER BY re.position
+    ');
+    $eqs->execute([$code]);
+    $r['equipment'] = $eqs->fetchAll();
+
     // Media — URL servie par media.php (source de vérité : la DB)
     $media = $pdo->prepare(
         'SELECT code FROM recipe_media WHERE recipe_code = ? ORDER BY position'
@@ -137,6 +158,23 @@ function get_recipe(string $code): ?array {
     return $r;
 }
 
+/**
+ * Build the WHERE clause restricting recipes to those linked (through
+ * $link_table.$fk) to the given ids: any of them ('or') or all of them ('and').
+ * Appends the bound values to $params.
+ */
+function link_filter(string $link_table, string $fk, array $ids, string $mode, array &$params): string {
+    $ids = array_values(array_unique(array_map('intval', $ids)));
+    $ph  = implode(',', array_fill(0, count($ids), '?'));
+    $params = array_merge($params, $ids);
+    $sql = "r.code IN (SELECT recipe_code FROM $link_table WHERE $fk IN ($ph)";
+    if ($mode === 'and') {
+        // count inlined as an int: bound as a string, SQLite never matches it
+        $sql .= " GROUP BY recipe_code HAVING COUNT(DISTINCT $fk) = " . count($ids);
+    }
+    return $sql . ')';
+}
+
 /** Search recipes; returns a lightweight list. */
 function search_recipes(
     string $name = '',
@@ -146,7 +184,9 @@ function search_recipes(
     array $source_ids = [],
     string $cat_mode = 'or',
     string $ing_mode = 'or',
-    string $diff_mode = 'or'
+    string $diff_mode = 'or',
+    array $equipment_ids = [],
+    string $eq_mode = 'or'
 ): array {
     $pdo    = db_connect();
     $sql    = 'SELECT DISTINCT r.code, r.name, r.difficulty FROM recipes r';
@@ -154,26 +194,13 @@ function search_recipes(
     $params = [];
 
     if (!empty($category_ids)) {
-        $ids   = array_values(array_unique(array_map('intval', $category_ids)));
-        $ph    = implode(',', array_fill(0, count($ids), '?'));
-        if ($cat_mode === 'and') {
-            $where[]  = "r.code IN (SELECT recipe_code FROM recipe_categories WHERE category_id IN ($ph) GROUP BY recipe_code HAVING COUNT(DISTINCT category_id) = ?)";
-            $params   = array_merge($params, $ids, [count($ids)]);
-        } else {
-            $where[]  = "r.code IN (SELECT recipe_code FROM recipe_categories WHERE category_id IN ($ph))";
-            $params   = array_merge($params, $ids);
-        }
+        $where[] = link_filter('recipe_categories', 'category_id', $category_ids, $cat_mode, $params);
     }
     if (!empty($ingredient_ids)) {
-        $ids   = array_values(array_unique(array_map('intval', $ingredient_ids)));
-        $ph    = implode(',', array_fill(0, count($ids), '?'));
-        if ($ing_mode === 'and') {
-            $where[]  = "r.code IN (SELECT recipe_code FROM recipe_ingredients WHERE ingredient_id IN ($ph) GROUP BY recipe_code HAVING COUNT(DISTINCT ingredient_id) = ?)";
-            $params   = array_merge($params, $ids, [count($ids)]);
-        } else {
-            $where[]  = "r.code IN (SELECT recipe_code FROM recipe_ingredients WHERE ingredient_id IN ($ph))";
-            $params   = array_merge($params, $ids);
-        }
+        $where[] = link_filter('recipe_ingredients', 'ingredient_id', $ingredient_ids, $ing_mode, $params);
+    }
+    if (!empty($equipment_ids)) {
+        $where[] = link_filter('recipe_equipment', 'equipment_id', $equipment_ids, $eq_mode, $params);
     }
     if ($name !== '') {
         $where[]  = 'r.name LIKE ?';
@@ -207,12 +234,12 @@ function search_recipes(
 
 /** Return ingredients used by at least one recipe, ordered by name. */
 function get_all_ingredients(): array {
-    $rows = db_connect()->query(
-        'SELECT DISTINCT i.id, i.name FROM ingredients i
-         JOIN recipe_ingredients ri ON ri.ingredient_id = i.id'
-    )->fetchAll();
-    usort($rows, fn($a, $b) => strcmp(sort_key($a['name']), sort_key($b['name'])));
-    return $rows;
+    return get_used_references('ingredients', 'recipe_ingredients', 'ingredient_id');
+}
+
+/** Return equipment used by at least one recipe, ordered by name (singular only). */
+function get_all_equipment(): array {
+    return get_used_references('equipment', 'recipe_equipment', 'equipment_id');
 }
 
 /** Return all techniques ordered by title (case- and diacritic-insensitive). */

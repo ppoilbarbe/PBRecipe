@@ -7,8 +7,81 @@ and this project adheres to **YYYY.x** versioning (calendar year + sequence).
 
 ## [Unreleased]
 
+### Added
+
+- **Equipment reference list**: new `equipment` table holding the known
+  kitchen equipment with singular and plural names (like ingredients),
+  managed from *Référentiels → Matériel…* and the reference toolbar
+  (`kitchen-utensils.svg` icon, synced from PBIcons). Each recipe can list
+  the equipment it needs (new `recipe_equipment` table: ordered rows with
+  prefix, equipment, plural flag and suffix); both tables are created
+  automatically when an existing database is opened.
+- **Recipe editor**: new *Matériel* tab between *Ingrédients* and
+  *Réalisation*, working like the ingredient list: rows with prefix,
+  equipment, *Pl.* checkbox and suffix, +/− buttons, drag-and-drop
+  reordering. Recipe copy duplicates the equipment rows.
+- **YAML export/import**: equipment reference list (`name`/`name_plural`)
+  and per-recipe equipment rows; missing equipment is created on import.
+- **PHP export**: equipment filter on the home page (Tom Select
+  multi-select `eq[]` with OR/AND toggle `eq_mode`, offering only equipment
+  used by at least one recipe, by singular name). The recipe card shows the
+  equipment (prefix, singular or plural name, suffix) to the right of the
+  ingredients: the row now holds 0 to 3 columns (hero image,
+  ingredients, equipment) depending on available content. New
+  `equipment_label` and `search_by_equipment` strings in *Contenu et
+  apparence*.
+
+### Fixed
+
+- **PHP: database errors**: a database error (site and database from
+  different PBRecipe versions, e.g. `no such table: recipe_equipment`, or a
+  failed connection) no longer ends in PHP's raw *Fatal error: Uncaught
+  PDOException…*. `index.php` catches it and shows a readable message with
+  a hint (re-open the database with PBRecipe then re-export the site, or
+  check the connection parameters), with HTTP status 500; the technical
+  message goes to the server log and is displayed only when `SITE_DEBUG` is
+  enabled. `db_connect()` now throws `DbConnectionError` instead of calling
+  `die()`, and `media.php` answers 500 without output.
+- **Unhandled database errors in the GUI**: a SQLAlchemy error raised in a
+  Qt slot (e.g. a database whose schema is incompatible with this version)
+  was only printed on the console, leaving the program running with empty
+  views and inactive actions. It is now logged, shown in an error dialog
+  (short message, full SQL error in the details), and the program quits.
+- **Incompatible database detected on opening**: after creating missing
+  tables and applying the known column migrations, `create_schema()` now
+  checks that every existing table has all the columns of the current schema
+  and raises `SchemaMismatchError` listing the missing ones. The GUI shows
+  a *Base incompatible* error then quits (at startup, the main window is not
+  even shown) instead of failing later on the first query; headless exports
+  exit with an error, and `--check-connect` reports the missing columns.
+- **Recipe copy**: the *Pl.* (plural) checkboxes of the ingredients were
+  lost when copying a recipe; all ingredient row fields are now copied.
+
+- **PHP search, AND mode**: the category and ingredient filters in AND mode
+  never matched anything on SQLite, because the expected count was bound as
+  a string (`COUNT(DISTINCT …) = '2'` is always false in SQLite). The count
+  is now inlined as an integer (also used by the new equipment filter).
+- **Headless exports** (`--export-yaml`, `--export-php`): the database
+  schema is now brought up to date before exporting, as when opening the
+  database in the GUI (missing tables and columns are created). Previously a
+  database not yet reopened in the GUI after an upgrade could make the YAML
+  export fail or produce a PHP site querying missing tables/columns. An empty
+  or foreign database is now refused with an explicit error instead of
+  failing on the first query.
+
 ### Changed
 
+- **Reference dialogs and row editors refactored**: units, ingredients and
+  equipment share one singular/plural list dialog (`PluralListDialog`);
+  ingredient and equipment rows share one row-editor base
+  (`ui/_row_list_editor.py`: drag handle, +/− buttons, drag-and-drop,
+  reference combos). Recipe child rows are loaded/saved by shared database
+  helpers, and YAML import shares the singular/plural list import and the
+  on-the-fly creation of missing references. In PHP, the category,
+  ingredient and equipment filters share `get_used_references()`,
+  `link_filter()` and `render_multi_filter()` (also used by difficulty and
+  sources), and ingredient and equipment display share `pick_name()` and
+  `render_named_item()`.
 - **Build system**: migrated from Conda (`environment.yml`) to
   [pixi](https://pixi.sh) — `pyproject.toml` now carries the full
   `[tool.pixi.*]` manifest (conda-forge dependencies + the editable PyPI

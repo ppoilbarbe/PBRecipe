@@ -1,7 +1,7 @@
 /* PBRecipe — minimal JS for interactive behaviours */
 
 // ── Tom Select — filtres de recherche multi-sélection ─────────────────────────
-['ts-cat', 'ts-ing', 'ts-diff', 'ts-src'].forEach(function(id) {
+['ts-cat', 'ts-ing', 'ts-eq', 'ts-diff', 'ts-src'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el && typeof TomSelect !== 'undefined') {
     new TomSelect(el, {
@@ -19,20 +19,13 @@ document.querySelectorAll('details.category-block').forEach(el => {
 });
 
 // ── Images manquantes ─────────────────────────────────────────────────────────
-// Si l'image héros ne se charge pas, on démonte le bloc flex :
-// la section ingrédients remplace le bloc et reçoit la classe recipe-section,
-// de sorte qu'aucun espace n'est réservé à gauche des ingrédients.
+// Si l'image héros ne se charge pas, on retire sa colonne du bloc flex :
+// ingrédients et matériel récupèrent alors toute la largeur.
 document.querySelectorAll('.recipe-hero-img').forEach(img => {
   const fix = () => {
-    const block = img.closest('.recipe-ingredients-block');
-    if (!block) { img.style.display = 'none'; return; }
-    const section = block.querySelector('.recipe-ingredients');
-    if (section) {
-      section.classList.add('recipe-section');
-      block.replaceWith(section);
-    } else {
-      block.remove();
-    }
+    const figure = img.closest('.hero-item');
+    if (figure) figure.remove();
+    else img.style.display = 'none';
   };
   if (img.complete && img.naturalWidth === 0) fix();
   else img.addEventListener('error', fix);

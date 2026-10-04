@@ -18,6 +18,139 @@ class DisplayTest extends TestCase
         ];
     }
 
+    // ── render_recipe() — ligne photo / ingrédients / matériel ───────────────
+
+    private function recipe(array $overrides = []): array
+    {
+        return $overrides + [
+            'name' => 'R', 'categories' => [], 'serving' => '', 'difficulty' => 0,
+            'prep_time' => null, 'wait_time' => null, 'cook_time' => null,
+            'description' => '', 'comments' => '', 'source' => '',
+            'ingredients' => [], 'equipment' => [], 'media' => [],
+        ];
+    }
+
+    private function ingredient(): array
+    {
+        return ['prefix' => '', 'quantity' => '200', 'unit_name' => 'g', 'separator' => 'de',
+                'ingredient_name' => 'Farine', 'suffix' => ''];
+    }
+
+    public function test_render_recipe_three_columns(): void
+    {
+        $html = render_recipe($this->recipe([
+            'ingredients' => [$this->ingredient()],
+            'equipment'   => [
+                ['prefix' => '', 'equipment_name' => 'Fouet', 'suffix' => ''],
+                ['prefix' => '2', 'equipment_name' => 'Moule <rond>',
+                 'equipment_name_plural' => 'Moules <ronds>', 'equipment_plural' => 1,
+                 'suffix' => 'de <i>24</i> cm'],
+            ],
+            'media'       => [['code' => 'IMG1', 'url' => 'media.php?x']],
+        ]), ['equipment_label' => 'Matos']);
+        $this->assertSame(1, substr_count($html, 'recipe-ingredients-block recipe-section'));
+        $hero = strpos($html, 'hero-item');
+        $ing  = strpos($html, 'class="recipe-ingredients"');
+        $eq   = strpos($html, 'class="recipe-equipment"');
+        $this->assertTrue($hero < $ing && $ing < $eq, 'ordre : photo, ingrédients, matériel');
+        $this->assertStringContainsString('<h2>Matos</h2>', $html);
+        $this->assertStringContainsString('<li><strong>Fouet</strong></li>', $html);
+        $this->assertStringContainsString(
+            '<li>2 <strong>Moules &lt;ronds&gt;</strong> de <i>24</i> cm</li>', $html);
+    }
+
+    public function test_render_recipe_equipment_only(): void
+    {
+        $html = render_recipe($this->recipe([
+            'equipment' => [['prefix' => '', 'equipment_name' => 'Fouet', 'suffix' => '']],
+        ]), []);
+        $this->assertStringContainsString('recipe-ingredients-block recipe-section', $html);
+        $this->assertStringContainsString('<h2>Matériel</h2>', $html);
+        $this->assertStringNotContainsString('class="recipe-ingredients"', $html);
+        $this->assertStringNotContainsString('hero-item', $html);
+    }
+
+    public function test_render_recipe_ingredients_without_equipment(): void
+    {
+        $html = render_recipe($this->recipe(['ingredients' => [$this->ingredient()]]), []);
+        $this->assertStringContainsString('class="recipe-ingredients"', $html);
+        $this->assertStringNotContainsString('recipe-equipment', $html);
+    }
+
+    public function test_render_recipe_no_ingredients_nor_equipment_moves_hero_to_gallery(): void
+    {
+        $html = render_recipe($this->recipe([
+            'media' => [['code' => 'IMG1', 'url' => 'media.php?x']],
+        ]), []);
+        $this->assertStringNotContainsString('recipe-ingredients-block', $html);
+        $this->assertStringNotContainsString('hero-item', $html);
+        $this->assertStringContainsString('gallery-item', $html);
+    }
+
+    // ── render_db_error() ────────────────────────────────────────────────────
+
+    private function captureErrorLog(callable $fn): array
+    {
+        $log  = tempnam(sys_get_temp_dir(), 'pbr');
+        $prev = ini_set('error_log', $log);
+        try {
+            $html = $fn();
+        } finally {
+            ini_set('error_log', $prev === false ? '' : $prev);
+        }
+        $logged = (string)file_get_contents($log);
+        unlink($log);
+        return [$html, $logged];
+    }
+
+    public function test_render_db_error_query_failure_hints_version_mismatch(): void
+    {
+        $e = new PDOException('SQLSTATE[HY000]: General error: 1 no such table: recipe_equipment');
+        [$html, $logged] = $this->captureErrorLog(fn() => render_db_error($e));
+        $this->assertStringContainsString('class="db-error error"', $html);
+        $this->assertStringContainsString('pas à la même version', $html);
+        $this->assertStringContainsString('réexportez le site PHP', $html);
+        // Détail technique : journal du serveur seulement (SITE_DEBUG non défini)
+        $this->assertFalse(defined('SITE_DEBUG'));
+        $this->assertStringNotContainsString('recipe_equipment', $html);
+        $this->assertStringContainsString('no such table: recipe_equipment', $logged);
+    }
+
+    public function test_render_db_error_connection_failure(): void
+    {
+        $e = new DbConnectionError('SQLSTATE[HY000] [2002] Connection refused');
+        [$html, $logged] = $this->captureErrorLog(fn() => render_db_error($e));
+        $this->assertStringContainsString('Connexion à la base de données impossible', $html);
+        $this->assertStringNotContainsString('même version', $html);
+        $this->assertStringContainsString('Connection refused', $logged);
+    }
+
+    // ── pick_name() / render_named_item() ────────────────────────────────────
+
+    public function test_pick_name_singular_plural_and_missing(): void
+    {
+        $row = ['equipment_name' => 'Fouet', 'equipment_name_plural' => 'Fouets'];
+        $this->assertSame('Fouet',  pick_name($row, 'equipment'));
+        $this->assertSame('Fouets', pick_name($row + ['equipment_plural' => 1], 'equipment'));
+        // Pluriel demandé mais forme plurielle vide : singulier
+        $this->assertSame('Sel', pick_name(['ingredient_name' => 'Sel', 'ingredient_name_plural' => '',
+                                            'ingredient_plural' => 1], 'ingredient'));
+        $this->assertSame('', pick_name([], 'unit'));
+    }
+
+    public function test_render_named_item_apostrophe_glue(): void
+    {
+        $this->assertSame('d&#039;<strong>huile</strong>', render_named_item("d'", 'huile', ''));
+        $this->assertSame('de <strong>farine</strong> tamisée',
+                          render_named_item('de', 'farine', 'tamisée'));
+    }
+
+    public function test_render_named_item_without_name(): void
+    {
+        $this->assertSame('papier &lt;x&gt; <b>sulfurisé</b>',
+                          render_named_item('papier <x>', '', '<b>sulfurisé</b>'));
+    }
+
     // ── h() ──────────────────────────────────────────────────────────────────
 
     public function test_h_escapes_angle_brackets(): void

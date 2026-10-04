@@ -14,7 +14,7 @@ Full documentation: [pbrecipe.readthedocs.io](https://pbrecipe.readthedocs.io)
 - Recipe editing with rich HTML descriptions (headings, lists, links, images).
 - Instant recipe list filter, case- and accent-insensitive.
 - Spell and grammar checking (Grammalecte or LanguageTool, F7).
-- Reference management: categories, ingredients, units, sources, techniques,
+- Reference management: categories, ingredients, units, equipment, sources, techniques,
   difficulty levels (with icon).
 - Dynamic markers in text: `[RECIPE:code]`, `[IMG:code]`, `[TECH:code]`.
 - YAML import/export (portable backup of the entire database).
@@ -92,6 +92,11 @@ classDiagram
         string name
         string name_plural
     }
+    class equipment {
+        int id PK
+        string name
+        string name_plural
+    }
     class sources {
         int id PK
         text name
@@ -141,6 +146,15 @@ classDiagram
         bool ingredient_plural
         string suffix
     }
+    class recipe_equipment {
+        int id PK
+        string recipe_code FK
+        int position
+        string prefix
+        int equipment_id FK
+        bool equipment_plural
+        string suffix
+    }
     class recipe_media {
         int id PK
         string recipe_code FK
@@ -156,6 +170,8 @@ classDiagram
     recipes "1" --> "0..*" recipe_ingredients
     units "0..1" --> "0..*" recipe_ingredients : unit_id
     ingredients "0..1" --> "0..*" recipe_ingredients : ingredient_id
+    recipes "1" --> "0..*" recipe_equipment
+    equipment "0..1" --> "0..*" recipe_equipment : equipment_id
     recipes "1" --> "0..*" recipe_media
 ```
 
